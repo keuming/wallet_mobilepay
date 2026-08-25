@@ -15,6 +15,7 @@ import { WebhooksModule } from './modules/webhooks/webhooks.module';
 import { KycModule } from './modules/kyc/kyc.module';
 import { AgentsModule } from './modules/agents/agents.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
+import { AdminModule } from './modules/admin/admin.module';
 import { IdempotencyMiddleware } from './common/middleware/idempotency.middleware';
 
 @Module({
@@ -34,6 +35,7 @@ import { IdempotencyMiddleware } from './common/middleware/idempotency.middlewar
     KycModule,
     AgentsModule,
     NotificationsModule,
+    AdminModule,
   ],
 })
 export class AppModule implements NestModule {

@@ -32,7 +32,7 @@ export class WebhooksService {
           providerName: 'HUB2',
           eventType: 'unknown',
           status: 'REJECTED_BAD_SIGNATURE',
-          payload: this.safeParse(rawBody),
+          payload: this.safeParse(rawBody) as Prisma.InputJsonValue,
           signature,
         },
       });

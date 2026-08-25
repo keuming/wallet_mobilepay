@@ -84,7 +84,7 @@ export class WalletsService {
           sourceWalletId: senderWallet.id,
           destWalletId: recipientWallet.id,
           initiatedByUserId: senderId,
-          description: dto.description ?? `Transfert vers ${sender.firstName}`,
+          description: dto.description ?? `Transfert vers ${recipientUser.firstName}`,
           idempotencyKey,
         },
       });
