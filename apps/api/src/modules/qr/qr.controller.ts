@@ -1,0 +1,68 @@
+import { Body, Controller, Get, Headers, Param, Post, Query, UseGuards } from '@nestjs/common';
+import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
+import { QrService } from './qr.service';
+import { CreateDynamicQrDto, CreatePaymentLinkDto } from '../merchants/dto/merchants.dto';
+import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
+import { MerchantScopeGuard } from '../../common/guards/merchant-scope.guard';
+import { CurrentUser, AuthenticatedUser } from '../../common/decorators/current-user.decorator';
+
+@ApiTags('qr')
+@ApiBearerAuth()
+@Controller()
+export class QrController {
+  constructor(private qrService: QrService) {}
+
+  // --- Particulier ---
+  @Get('users/me/qr')
+  @UseGuards(JwtAuthGuard)
+  getMyQr(@CurrentUser() user: AuthenticatedUser) {
+    return this.qrService.getOrCreatePersonalQr(user.userId);
+  }
+
+  // --- Marchand (scoped) ---
+  @Post('merchants/:merchantId/qr/dynamic')
+  @UseGuards(JwtAuthGuard, MerchantScopeGuard)
+  createDynamicQr(@Param('merchantId') merchantId: string, @Body() dto: CreateDynamicQrDto) {
+    return this.qrService.createDynamicQr(merchantId, dto);
+  }
+
+  @Post('merchants/:merchantId/payment-links')
+  @UseGuards(JwtAuthGuard, MerchantScopeGuard)
+  createPaymentLink(@Param('merchantId') merchantId: string, @Body() dto: CreatePaymentLinkDto) {
+    return this.qrService.createPaymentLink(merchantId, dto);
+  }
+
+  // --- Résolution publique (avant authentification du payeur côté app) ---
+  @Get('qr/:code')
+  resolveQr(@Param('code') code: string) {
+    return this.qrService.resolveQr(code);
+  }
+
+  @Get('payment-links/:slug')
+  resolvePaymentLink(@Param('slug') slug: string) {
+    return this.qrService.resolvePaymentLink(slug);
+  }
+
+  // --- Paiement (le payeur doit être authentifié) ---
+  @Post('qr/:code/pay')
+  @UseGuards(JwtAuthGuard)
+  payQr(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('code') code: string,
+    @Body('amount') amount: number | undefined,
+    @Headers('idempotency-key') idempotencyKey: string,
+  ) {
+    return this.qrService.payQr(user.userId, code, amount, idempotencyKey);
+  }
+
+  @Post('payment-links/:slug/pay')
+  @UseGuards(JwtAuthGuard)
+  payPaymentLink(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('slug') slug: string,
+    @Body('amount') amount: number | undefined,
+    @Headers('idempotency-key') idempotencyKey: string,
+  ) {
+    return this.qrService.payPaymentLink(user.userId, slug, amount, idempotencyKey);
+  }
+}

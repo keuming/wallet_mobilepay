@@ -1,0 +1,522 @@
+// ============================================================================
+// MobilePay CI — Schéma de base de données (PostgreSQL via Prisma)
+// ============================================================================
+// Conventions :
+//  - Tous les montants sont stockés en centimes (Int/BigInt) — jamais de Float.
+//  - Toutes les tables ont un id UUID (v4) + createdAt/updatedAt.
+//  - Les entités financières (LedgerEntry, Transaction) sont append-only :
+//    on ne fait jamais d'UPDATE sur un montant, on écrit un nouveau mouvement.
+// ============================================================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ---------------------------------------------------------------------------
+// ENUMS
+// ---------------------------------------------------------------------------
+
+enum UserRole {
+  PARTICULIER
+  MERCHANT_USER
+  AGENT
+  ADMIN
+}
+
+enum MerchantUserRole {
+  MERCHANT_ADMIN
+  CASHIER
+  ACCOUNTANT
+  MANAGER
+}
+
+enum WalletType {
+  PARTICULIER
+  MERCHANT
+}
+
+enum KycLevel {
+  LEVEL_0 // non vérifié — plafonds minimaux
+  LEVEL_1 // identité de base (nom, téléphone)
+  LEVEL_2 // pièce d'identité vérifiée
+  LEVEL_3 // vérification complète (marchand / gros volumes)
+}
+
+enum KycStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  EXPIRED
+}
+
+enum MerchantStatus {
+  PENDING
+  ACTIVE
+  SUSPENDED
+  REJECTED
+}
+
+enum AgentStatus {
+  ACTIVE
+  SUSPENDED
+}
+
+enum TransactionType {
+  TRANSFER // particulier -> particulier
+  PAYMENT // particulier -> marchand
+  TOPUP // recharge de wallet (cash-in via provider)
+  WITHDRAWAL // retrait (cash-out)
+  AIRTIME
+  SETTLEMENT // règlement marchand -> banque
+  REFUND
+  FEE
+}
+
+enum TransactionStatus {
+  INITIATED
+  PENDING
+  PROCESSING
+  SUCCESS
+  FAILED
+  CANCELLED
+  EXPIRED
+  REFUNDED
+}
+
+enum LedgerEntryType {
+  DEBIT
+  CREDIT
+}
+
+enum QrType {
+  PARTICULIER
+  MERCHANT_STATIC
+  MERCHANT_DYNAMIC
+}
+
+enum QrStatus {
+  UNASSIGNED // pré-imprimé, pas encore lié
+  ASSIGNED // attribué à un agent
+  ACTIVE // lié à un compte et utilisable
+  BLOCKED
+  EXPIRED // pour les QR dynamiques
+}
+
+enum PaymentLinkStatus {
+  ACTIVE
+  DISABLED
+  EXPIRED
+}
+
+enum ProviderName {
+  HUB2
+  STRIPE
+  PAYPAL
+  RELOADLY
+}
+
+enum WebhookStatus {
+  RECEIVED
+  VERIFIED
+  PROCESSED
+  FAILED
+  REJECTED_BAD_SIGNATURE
+}
+
+// ---------------------------------------------------------------------------
+// UTILISATEURS
+// ---------------------------------------------------------------------------
+
+model User {
+  id           String   @id @default(uuid())
+  phone        String   @unique // format E.164, ex: +2250700000000 — identifiant de connexion principal
+  email        String?  @unique
+  passwordHash String
+  firstName    String
+  lastName     String
+  role         UserRole @default(PARTICULIER)
+
+  kycLevel  KycLevel @default(LEVEL_0)
+  isActive  Boolean  @default(true)
+  isBlocked Boolean  @default(false)
+
+  mfaEnabled Boolean @default(false)
+  mfaSecret  String? // chiffré au repos (voir EncryptionService)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  wallet         Wallet?
+  merchantLinks  MerchantUser[]
+  agentProfile   Agent?
+  kycDossiers    KycDossier[]
+  auditLogs      AuditLog[]
+  refreshTokens  RefreshToken[]
+  notifications  Notification[]
+  beneficiaries  Beneficiary[]
+  qrCode         QrCode? // QR personnel (particulier uniquement)
+
+  @@index([role])
+  @@map("users")
+}
+
+model RefreshToken {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash String   @unique
+  expiresAt DateTime
+  revokedAt DateTime?
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@map("refresh_tokens")
+}
+
+model Beneficiary {
+  id        String   @id @default(uuid())
+  ownerId   String
+  owner     User     @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  label     String
+  phone     String
+  createdAt DateTime @default(now())
+
+  @@unique([ownerId, phone])
+  @@map("beneficiaries")
+}
+
+// ---------------------------------------------------------------------------
+// MARCHANDS & AGENTS
+// ---------------------------------------------------------------------------
+
+model Merchant {
+  id            String         @id @default(uuid())
+  businessName  String
+  legalName     String?
+  category      String? // ex: "Restauration", "VTC", "Commerce général"
+  status        MerchantStatus @default(PENDING)
+  agentId       String?
+  agent         Agent?         @relation(fields: [agentId], references: [id])
+  feeRateBps    Int            @default(200) // frais MobilePay en points de base (200 = 2%)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  wallet         Wallet?
+  users          MerchantUser[]
+  qrCodes        QrCode[]
+  paymentLinks   PaymentLink[]
+  kycDossiers    KycDossier[]
+  settlements    Settlement[]
+
+  @@index([status])
+  @@index([agentId])
+  @@map("merchants")
+}
+
+// Table de jonction Users <-> Merchants avec un rôle interne par marchand
+model MerchantUser {
+  id         String           @id @default(uuid())
+  merchantId String
+  merchant   Merchant         @relation(fields: [merchantId], references: [id], onDelete: Cascade)
+  userId     String
+  user       User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role       MerchantUserRole @default(CASHIER)
+  createdAt  DateTime         @default(now())
+
+  @@unique([merchantId, userId])
+  @@index([userId])
+  @@map("merchant_users")
+}
+
+model Agent {
+  id           String      @id @default(uuid())
+  userId       String      @unique
+  user         User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  status       AgentStatus @default(ACTIVE)
+  zone         String? // zone géographique assignée
+  commissionBps Int        @default(50) // commission agent en points de base
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  merchants   Merchant[]
+  qrBatches   QrBatch[]
+  commissions Commission[]
+
+  @@map("agents")
+}
+
+// ---------------------------------------------------------------------------
+// KYC
+// ---------------------------------------------------------------------------
+
+model KycDossier {
+  id         String    @id @default(uuid())
+  userId     String?
+  user       User?     @relation(fields: [userId], references: [id])
+  merchantId String?
+  merchant   Merchant? @relation(fields: [merchantId], references: [id])
+
+  status       KycStatus @default(PENDING)
+  documentType String // ex: "CNI", "Passeport", "RCCM"
+  documentRef  String
+  reviewedBy   String? // adminId
+  reviewedAt   DateTime?
+  rejectReason String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status])
+  @@map("kyc_dossiers")
+}
+
+// ---------------------------------------------------------------------------
+// WALLETS & LEDGER
+// ---------------------------------------------------------------------------
+
+// Un wallet appartient SOIT à un User (particulier) SOIT à un Merchant, jamais les deux.
+// Le solde n'est PAS stocké directement : il est dérivé de la somme des LedgerEntry
+// (source de vérité comptable), mais on maintient `cachedBalance` pour la lecture rapide,
+// recalculé de manière transactionnelle à chaque écriture (voir WalletsService).
+model Wallet {
+  id     String     @id @default(uuid())
+  type   WalletType
+  userId String?    @unique
+  user   User?      @relation(fields: [userId], references: [id])
+  merchantId String? @unique
+  merchant   Merchant? @relation(fields: [merchantId], references: [id])
+
+  currency       String @default("XOF")
+  cachedBalance  BigInt @default(0) // solde disponible, en centimes — MAJ transactionnelle uniquement
+  pendingBalance BigInt @default(0) // fonds en attente de règlement (marchand)
+  isFrozen       Boolean @default(false)
+
+  version Int @default(0) // optimistic locking pour les écritures concurrentes
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  ledgerEntries LedgerEntry[]
+
+  @@index([type])
+  @@map("wallets")
+}
+
+// Ledger comptable en partie double — append-only, jamais modifié ni supprimé.
+// Chaque Transaction génère au moins deux LedgerEntry (un débit, un crédit) qui s'équilibrent.
+model LedgerEntry {
+  id            String          @id @default(uuid())
+  transactionId String
+  transaction   Transaction     @relation(fields: [transactionId], references: [id])
+  walletId      String
+  wallet        Wallet          @relation(fields: [walletId], references: [id])
+  type          LedgerEntryType
+  amount        BigInt // toujours positif ; le sens est donné par `type`
+  balanceAfter  BigInt // solde du wallet immédiatement après cette écriture (audit trail)
+  description   String
+  createdAt     DateTime        @default(now())
+
+  @@index([walletId, createdAt])
+  @@index([transactionId])
+  @@map("ledger_entries")
+}
+
+// ---------------------------------------------------------------------------
+// TRANSACTIONS
+// ---------------------------------------------------------------------------
+
+model Transaction {
+  id        String            @id @default(uuid())
+  reference String            @unique @default(cuid()) // référence publique, ex: TX-XXXXXXXX
+  type      TransactionType
+  status    TransactionStatus @default(INITIATED)
+
+  amount   BigInt // montant brut en centimes
+  feeAmount BigInt @default(0)
+  currency String @default("XOF")
+
+  sourceWalletId String?
+  destWalletId   String?
+
+  initiatedByUserId String
+  description       String?
+
+  idempotencyKey String? @unique // évite les doublons sur retry client
+
+  providerName        ProviderName?
+  providerRef          String? // référence côté HUB2/Stripe/PayPal
+  failureReason        String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  ledgerEntries    LedgerEntry[]
+  paymentAttempts  PaymentAttempt[]
+  webhookEvents    WebhookEvent[]
+
+  @@index([status])
+  @@index([sourceWalletId])
+  @@index([destWalletId])
+  @@index([createdAt])
+  @@map("transactions")
+}
+
+// Une transaction peut avoir plusieurs tentatives côté provider (retry, changement de provider)
+model PaymentAttempt {
+  id            String            @id @default(uuid())
+  transactionId String
+  transaction   Transaction       @relation(fields: [transactionId], references: [id])
+  providerName  ProviderName
+  status        TransactionStatus
+  providerRef   String?
+  rawResponse   Json?
+  createdAt     DateTime          @default(now())
+
+  @@index([transactionId])
+  @@map("payment_attempts")
+}
+
+model Settlement {
+  id         String   @id @default(uuid())
+  merchantId String
+  merchant   Merchant @relation(fields: [merchantId], references: [id])
+  amount     BigInt
+  status     TransactionStatus @default(PENDING)
+  periodFrom DateTime
+  periodTo   DateTime
+  paidAt     DateTime?
+  createdAt  DateTime @default(now())
+
+  @@index([merchantId])
+  @@map("settlements")
+}
+
+model Commission {
+  id        String   @id @default(uuid())
+  agentId   String
+  agent     Agent    @relation(fields: [agentId], references: [id])
+  amount    BigInt
+  reason    String // ex: "Activation marchand", "Volume mensuel"
+  createdAt DateTime @default(now())
+
+  @@index([agentId])
+  @@map("commissions")
+}
+
+// ---------------------------------------------------------------------------
+// QR CODE & PAYMENT LINK
+// ---------------------------------------------------------------------------
+
+model QrBatch {
+  id           String   @id @default(uuid())
+  label        String // ex: LOT-000001
+  quantity     Int
+  generatedBy  String // adminId
+  assignedAgentId String?
+  assignedAgent   Agent?  @relation(fields: [assignedAgentId], references: [id])
+  createdAt    DateTime @default(now())
+
+  codes QrCode[]
+
+  @@map("qr_batches")
+}
+
+model QrCode {
+  id         String   @id @default(uuid())
+  code       String   @unique // ex: MPQR00000001 — référence opaque, jamais de données sensibles encodées
+  type       QrType
+  status     QrStatus @default(UNASSIGNED)
+
+  batchId    String?
+  batch      QrBatch? @relation(fields: [batchId], references: [id])
+
+  ownerUserId     String?  @unique
+  ownerUser       User?    @relation(fields: [ownerUserId], references: [id])
+  merchantId      String?
+  merchant        Merchant? @relation(fields: [merchantId], references: [id])
+
+  // QR dynamique uniquement :
+  fixedAmount BigInt?
+  description String?
+  expiresAt   DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status])
+  @@index([merchantId])
+  @@map("qr_codes")
+}
+
+model PaymentLink {
+  id         String            @id @default(uuid())
+  slug       String            @unique // ex: 8HJ72K
+  merchantId String
+  merchant   Merchant          @relation(fields: [merchantId], references: [id])
+  amount     BigInt?           // null = montant libre saisi par le payeur
+  description String?
+  status     PaymentLinkStatus @default(ACTIVE)
+  expiresAt  DateTime?
+  createdAt  DateTime          @default(now())
+
+  @@index([merchantId])
+  @@map("payment_links")
+}
+
+// ---------------------------------------------------------------------------
+// WEBHOOKS, NOTIFICATIONS, AUDIT
+// ---------------------------------------------------------------------------
+
+model WebhookEvent {
+  id            String        @id @default(uuid())
+  providerName  ProviderName
+  eventType     String
+  transactionId String?
+  transaction   Transaction?  @relation(fields: [transactionId], references: [id])
+  status        WebhookStatus @default(RECEIVED)
+  payload       Json
+  signature     String?
+  processedAt   DateTime?
+  createdAt     DateTime      @default(now())
+
+  @@index([providerName, status])
+  @@index([transactionId])
+  @@map("webhook_events")
+}
+
+model Notification {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  channel   String // "push" | "sms" | "email"
+  title     String
+  body      String
+  readAt    DateTime?
+  createdAt DateTime @default(now())
+
+  @@index([userId, readAt])
+  @@map("notifications")
+}
+
+model AuditLog {
+  id         String   @id @default(uuid())
+  actorId    String?
+  actor      User?    @relation(fields: [actorId], references: [id])
+  action     String // ex: "WALLET_BALANCE_ADJUSTED", "MERCHANT_SUSPENDED"
+  entityType String
+  entityId   String
+  metadata   Json?
+  ipAddress  String?
+  createdAt  DateTime @default(now())
+
+  @@index([entityType, entityId])
+  @@index([actorId])
+  @@map("audit_logs")
+}

@@ -1,0 +1,97 @@
+import { Injectable, NotFoundException } from '@nestjs/common';
+import { PrismaService } from '../../config/prisma.service';
+import { CreateMerchantDto } from './dto/merchants.dto';
+
+@Injectable()
+export class MerchantsService {
+  constructor(private prisma: PrismaService) {}
+
+  /**
+   * Crée le marchand + son wallet marchand + le rattache à l'utilisateur créateur
+   * en tant que MERCHANT_ADMIN. Le marchand démarre en statut PENDING : il doit
+   * passer le KYC (voir module kyc) avant activation par un agent ou un admin.
+   */
+  async create(userId: string, dto: CreateMerchantDto) {
+    return this.prisma.$transaction(async (tx) => {
+      const merchant = await tx.merchant.create({
+        data: {
+          businessName: dto.businessName,
+          legalName: dto.legalName,
+          category: dto.category,
+          status: 'PENDING',
+        },
+      });
+
+      await tx.wallet.create({
+        data: { type: 'MERCHANT', merchantId: merchant.id, currency: 'XOF' },
+      });
+
+      await tx.merchantUser.create({
+        data: { merchantId: merchant.id, userId, role: 'MERCHANT_ADMIN' },
+      });
+
+      // Le QR statique du marchand est réservé mais pas encore actif tant que
+      // le marchand n'est pas ACTIVE (voir §13 — activation automatique).
+      await tx.qrCode.create({
+        data: {
+          code: `MPM${merchant.id.slice(0, 10).toUpperCase()}`,
+          type: 'MERCHANT_STATIC',
+          status: 'UNASSIGNED',
+          merchantId: merchant.id,
+        },
+      });
+
+      return merchant;
+    });
+  }
+
+  async getWallet(merchantId: string) {
+    const wallet = await this.prisma.wallet.findUnique({ where: { merchantId } });
+    if (!wallet) throw new NotFoundException('Wallet marchand introuvable.');
+    return wallet;
+  }
+
+  /** Agrège les chiffres de l'écran principal du dashboard marchand (§10). */
+  async getDashboard(merchantId: string) {
+    const wallet = await this.getWallet(merchantId);
+
+    const startOfDay = new Date();
+    startOfDay.setHours(0, 0, 0, 0);
+    const startOfMonth = new Date(startOfDay.getFullYear(), startOfDay.getMonth(), 1);
+
+    const [todaySum, monthSum] = await Promise.all([
+      this.sumIncomingSince(wallet.id, startOfDay),
+      this.sumIncomingSince(wallet.id, startOfMonth),
+    ]);
+
+    return {
+      availableBalance: wallet.cachedBalance,
+      pendingBalance: wallet.pendingBalance,
+      todayCollections: todaySum,
+      monthCollections: monthSum,
+    };
+  }
+
+  private async sumIncomingSince(walletId: string, since: Date) {
+    const result = await this.prisma.ledgerEntry.aggregate({
+      where: { walletId, type: 'CREDIT', createdAt: { gte: since } },
+      _sum: { amount: true },
+    });
+    return result._sum.amount ?? 0n;
+  }
+
+  async getTransactions(merchantId: string, page = 1, pageSize = 20) {
+    const wallet = await this.getWallet(merchantId);
+    const [entries, total] = await this.prisma.$transaction([
+      this.prisma.ledgerEntry.findMany({
+        where: { walletId: wallet.id },
+        orderBy: { createdAt: 'desc' },
+        skip: (page - 1) * pageSize,
+        take: pageSize,
+        include: { transaction: true },
+      }),
+      this.prisma.ledgerEntry.count({ where: { walletId: wallet.id } }),
+    ]);
+    return { entries, total, page, pageSize };
+  }
+}

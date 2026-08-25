@@ -1,0 +1,131 @@
+import { Injectable } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import * as crypto from 'crypto';
+import {
+  InitiateTopupParams,
+  InitiateWithdrawalParams,
+  PaymentProviderAdapter,
+  ProviderInitiationResult,
+  WebhookVerificationResult,
+} from './provider.interface';
+
+/**
+ * Adaptateur HUB2 (§26) — fournisseur de paiement mobile-money local
+ * (Orange Money, MTN MoMo, Moov, Wave via l'agrégateur HUB2).
+ *
+ * Flux cash-in (top-up) : MobilePay initie une demande de collecte auprès de
+ * HUB2, qui pousse un USSD/prompt sur le téléphone du client ; HUB2 notifie
+ * ensuite le résultat via webhook signé (voir WebhooksService).
+ */
+@Injectable()
+export class Hub2Adapter implements PaymentProviderAdapter {
+  readonly name = 'HUB2' as const;
+
+  private readonly baseUrl: string;
+  private readonly apiKey: string;
+  private readonly webhookSecret: string;
+
+  constructor(private config: ConfigService) {
+    this.baseUrl = this.config.get('HUB2_BASE_URL', '');
+    this.apiKey = this.config.get('HUB2_API_KEY', '');
+    this.webhookSecret = this.config.get('HUB2_WEBHOOK_SECRET', '');
+  }
+
+  async initiateTopup(params: InitiateTopupParams): Promise<ProviderInitiationResult> {
+    const body = {
+      amount: Number(params.amount) / 100, // HUB2 attend un montant décimal, pas des centimes
+      currency: params.currency,
+      customer: { phone: params.customerPhone },
+      reference: params.reference,
+      callback_url: `${this.config.get('API_BASE_URL')}/api/webhooks/hub2`,
+    };
+
+    const response = await this.request('/collections', body);
+
+    return {
+      providerRef: response.id ?? response.transaction_id ?? params.reference,
+      status: 'PENDING',
+      raw: response,
+    };
+  }
+
+  async initiateWithdrawal(params: InitiateWithdrawalParams): Promise<ProviderInitiationResult> {
+    const body = {
+      amount: Number(params.amount) / 100,
+      currency: params.currency,
+      customer: { phone: params.customerPhone },
+      reference: params.reference,
+      callback_url: `${this.config.get('API_BASE_URL')}/api/webhooks/hub2`,
+    };
+
+    const response = await this.request('/disbursements', body);
+
+    return {
+      providerRef: response.id ?? response.transaction_id ?? params.reference,
+      status: 'PENDING',
+      raw: response,
+    };
+  }
+
+  /**
+   * HUB2 signe chaque webhook en HMAC-SHA256 du corps brut avec le secret partagé.
+   * On recalcule la signature et on compare en temps constant (`timingSafeEqual`)
+   * pour éviter les attaques par timing.
+   */
+  verifyWebhook(rawBody: string, signatureHeader: string): WebhookVerificationResult {
+    const expected = crypto
+      .createHmac('sha256', this.webhookSecret)
+      .update(rawBody)
+      .digest('hex');
+
+    const isValid =
+      !!signatureHeader &&
+      signatureHeader.length === expected.length &&
+      crypto.timingSafeEqual(Buffer.from(signatureHeader), Buffer.from(expected));
+
+    if (!isValid) {
+      return { isValid: false, eventType: 'unknown', providerRef: '', status: 'FAILED' };
+    }
+
+    const payload = JSON.parse(rawBody);
+    const statusMap: Record<string, 'SUCCESS' | 'FAILED' | 'PENDING'> = {
+      successful: 'SUCCESS',
+      completed: 'SUCCESS',
+      failed: 'FAILED',
+      cancelled: 'FAILED',
+      pending: 'PENDING',
+    };
+
+    return {
+      isValid: true,
+      eventType: payload.event ?? 'payment.status_update',
+      providerRef: payload.id ?? payload.transaction_id,
+      status: statusMap[payload.status] ?? 'PENDING',
+      failureReason: payload.failure_reason,
+    };
+  }
+
+  private async request(path: string, body: unknown): Promise<any> {
+    // En sandbox sans clé configurée, on simule une réponse pour permettre le
+    // développement local sans dépendance externe.
+    if (!this.apiKey) {
+      return { id: `SIMULATED-${crypto.randomUUID()}`, status: 'pending' };
+    }
+
+    const res = await fetch(`${this.baseUrl}${path}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${this.apiKey}`,
+      },
+      body: JSON.stringify(body),
+    });
+
+    if (!res.ok) {
+      const text = await res.text();
+      throw new Error(`HUB2 API error (${res.status}): ${text}`);
+    }
+
+    return res.json();
+  }
+}
