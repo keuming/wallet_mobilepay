@@ -25,6 +25,13 @@ export class MerchantsController {
     return this.merchantsService.create(user.userId, dto);
   }
 
+  /** Marchands auxquels l'utilisateur connecté est rattaché (bootstrap du dashboard marchand). */
+  @Get('mine')
+  @UseGuards(JwtAuthGuard)
+  listMine(@CurrentUser() user: AuthenticatedUser) {
+    return this.merchantsService.listMineForUser(user.userId);
+  }
+
   // Toutes les routes ci-dessous sont protégées par MerchantScopeGuard :
   // impossible de consulter un marchand auquel on n'est pas rattaché (§9, §32).
   @Get(':merchantId/dashboard')

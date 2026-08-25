@@ -20,6 +20,24 @@ export class QrController {
   }
 
   // --- Marchand (scoped) ---
+  @Get('merchants/:merchantId/qr/static')
+  @UseGuards(JwtAuthGuard, MerchantScopeGuard)
+  getMerchantStaticQr(@Param('merchantId') merchantId: string) {
+    return this.qrService.getMerchantStaticQr(merchantId);
+  }
+
+  @Get('merchants/:merchantId/qr')
+  @UseGuards(JwtAuthGuard, MerchantScopeGuard)
+  listMerchantQr(@Param('merchantId') merchantId: string) {
+    return this.qrService.listMerchantQr(merchantId);
+  }
+
+  @Get('merchants/:merchantId/payment-links')
+  @UseGuards(JwtAuthGuard, MerchantScopeGuard)
+  listPaymentLinks(@Param('merchantId') merchantId: string) {
+    return this.qrService.listPaymentLinks(merchantId);
+  }
+
   @Post('merchants/:merchantId/qr/dynamic')
   @UseGuards(JwtAuthGuard, MerchantScopeGuard)
   createDynamicQr(@Param('merchantId') merchantId: string, @Body() dto: CreateDynamicQrDto) {

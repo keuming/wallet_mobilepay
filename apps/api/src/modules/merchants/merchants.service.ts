@@ -51,6 +51,20 @@ export class MerchantsService {
     return wallet;
   }
 
+  /** Marchands auxquels l'utilisateur connecté est rattaché, avec son rôle interne (§32). */
+  async listMineForUser(userId: string) {
+    const links = await this.prisma.merchantUser.findMany({
+      where: { userId },
+      include: { merchant: { include: { wallet: true } } },
+    });
+    return links.map((link) => ({
+      merchantId: link.merchantId,
+      role: link.role,
+      businessName: link.merchant.businessName,
+      status: link.merchant.status,
+    }));
+  }
+
   /** Agrège les chiffres de l'écran principal du dashboard marchand (§10). */
   async getDashboard(merchantId: string) {
     const wallet = await this.getWallet(merchantId);

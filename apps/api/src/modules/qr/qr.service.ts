@@ -14,6 +14,37 @@ export class QrService {
     private config: ConfigService,
   ) {}
 
+  /** QR statique du marchand, généré à sa création (§13). */
+  async getMerchantStaticQr(merchantId: string) {
+    const qr = await this.prisma.qrCode.findFirst({
+      where: { merchantId, type: 'MERCHANT_STATIC' },
+    });
+    if (!qr) throw new NotFoundException('QR marchand introuvable.');
+    const url = `${this.config.get('QR_LINK_BASE_URL')}/q/${qr.code}`;
+    const imageDataUrl = await QRCode.toDataURL(url);
+    return { ...qr, url, imageDataUrl };
+  }
+
+  /** Liste tous les QR (statique + dynamiques) d'un marchand (§11 onglet QR Codes). */
+  async listMerchantQr(merchantId: string) {
+    return this.prisma.qrCode.findMany({
+      where: { merchantId },
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+
+  /** Liste les Payment Links d'un marchand (§11 onglet Payment Links). */
+  async listPaymentLinks(merchantId: string) {
+    const links = await this.prisma.paymentLink.findMany({
+      where: { merchantId },
+      orderBy: { createdAt: 'desc' },
+    });
+    return links.map((link) => ({
+      ...link,
+      url: `${this.config.get('QR_LINK_BASE_URL')}/p/${link.slug}`,
+    }));
+  }
+
   /** Génère (ou retourne) le QR personnel d'un particulier (§6). */
   async getOrCreatePersonalQr(userId: string) {
     let qr = await this.prisma.qrCode.findUnique({ where: { ownerUserId: userId } });

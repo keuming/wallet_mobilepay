@@ -117,11 +117,17 @@ mobilepay-mvp/
 │   │       ├── components/
 │   │       ├── contexts/          # AuthContext
 │   │       └── lib/               # apiClient (fetch + refresh transparent)
-│   └── admin/                    # Frontend Next.js — Back-office administrateur (port 3002)
+│   ├── admin/                    # Frontend Next.js — Back-office administrateur (port 3002)
+│   │   └── src/
+│   │       ├── app/               # login, dashboard, marchands (liste+détail), utilisateurs, agents, transactions
+│   │       ├── components/        # AdminShell (sidebar + topbar communs)
+│   │       ├── contexts/          # AuthContext (vérifie le rôle ADMIN)
+│   │       └── lib/               # apiClient
+│   └── merchant/                 # Frontend Next.js — Dashboard Marchand (port 3003)
 │       └── src/
-│           ├── app/               # login, dashboard, marchands (liste+détail), utilisateurs, agents, transactions
-│           ├── components/        # AdminShell (sidebar + topbar communs)
-│           ├── contexts/          # AuthContext (vérifie le rôle ADMIN)
+│           ├── app/               # login, dashboard (§10), encaisser (§12, 4 modes), qr, transactions
+│           ├── components/        # MerchantShell
+│           ├── contexts/          # AuthContext (résout les marchands liés via /merchants/mine)
 │           └── lib/               # apiClient
 └── docs/
     ├── ARCHITECTURE.md
@@ -149,6 +155,11 @@ npm run dev                       # Web sur http://localhost:3001
 cd apps/admin
 npm install
 npm run dev                       # Admin sur http://localhost:3002
+
+# Dans un quatrième terminal — dashboard marchand :
+cd apps/merchant
+npm install
+npm run dev                       # Dashboard marchand sur http://localhost:3003
 ```
 
 ## 4. Ce qui est implémenté vs stubé
@@ -167,12 +178,13 @@ npm run dev                       # Admin sur http://localhost:3002
 | Webhooks entrants | ✅ Implémenté | Vérification HMAC, idempotence par `providerRef` |
 | RBAC (particulier/marchand/agent/admin) | ✅ Implémenté | Guards + `MerchantScopeGuard` pour l'isolation multi-tenant |
 | Back-office admin (dashboard, marchands, utilisateurs, agents, transactions) | ✅ Implémenté | App Next.js dédiée (`apps/admin`) — dashboard §17, revue KYC + activation marchand, blocage particulier, suspension agent, recherche transactions §22 |
+| Dashboard marchand (accueil, encaissement 4 modes, QR/liens, transactions) | ✅ Implémenté | App Next.js dédiée (`apps/merchant`) — écran principal §10, les 4 modes d'encaissement §12 (QR permanent/dynamique, Payment Link, demande de paiement avec confirmation côté client) |
 | KYC | 🟡 Stub | Modèle de données + endpoints CRUD ; pas d'OCR/vérification automatique — la revue se fait manuellement depuis le back-office admin |
 | Agents & QR pré-imprimés (lots) | 🟡 Stub | Modèle + génération de lot ; app agent mobile à construire (Phase 4) |
 | Stripe / PayPal / Reloadly | 🟡 Stub | Interface `PaymentProviderAdapter` prête, implémentation à écrire (Phase 6) |
 | Back-office admin (toutes les vues) | 🟡 Partiel | Dashboard, marchands, particuliers, agents, transactions faits ; gestion QR/lots, réconciliation, KYC en masse restent à construire en UI (endpoints API déjà prêts) |
 | Notifications SMS/push | 🟡 Stub | Écriture en DB ; envoi réel à brancher sur un provider SMS local |
-| Web marchand / agent | ⬜ Non démarré | Wallet particulier (apps/web) et back-office admin (apps/admin) scaffoldés ; dashboard marchand et app agent restent à construire (Phase 3+/4) |
+| Web marchand / agent | 🟡 Partiel | Dashboard marchand construit (`apps/merchant`) — reste : onglets Clients/Rapports/Paramètres du §11, app agent mobile (Phase 4) |
 
 ## 5. Sécurité déjà en place
 
