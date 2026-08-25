@@ -46,6 +46,13 @@ export class MerchantsController {
     return this.merchantsService.getWallet(merchantId);
   }
 
+  /** Vue détaillée pour l'onglet "Wallet" du dashboard marchand (§11). */
+  @Get(':merchantId/wallet-detail')
+  @UseGuards(JwtAuthGuard, MerchantScopeGuard)
+  getWalletDetail(@Param('merchantId') merchantId: string) {
+    return this.merchantsService.getWalletDetail(merchantId);
+  }
+
   @Get(':merchantId/transactions')
   @UseGuards(JwtAuthGuard, MerchantScopeGuard)
   getTransactions(

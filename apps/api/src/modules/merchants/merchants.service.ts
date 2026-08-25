@@ -51,6 +51,42 @@ export class MerchantsService {
     return wallet;
   }
 
+  /**
+   * Vue détaillée du wallet marchand (§11 onglet "Wallet" : solde, frais, règlements).
+   * Les frais du mois sont calculés depuis les Transaction.feeAmount des paiements
+   * reçus par ce marchand (le ledger ne modélise pas encore un wallet plateforme
+   * dédié — voir note dans PaymentEngineService.collectForMerchant).
+   */
+  async getWalletDetail(merchantId: string) {
+    const wallet = await this.getWallet(merchantId);
+    const startOfMonth = new Date();
+    startOfMonth.setDate(1);
+    startOfMonth.setHours(0, 0, 0, 0);
+
+    const feesAgg = await this.prisma.transaction.aggregate({
+      where: {
+        destWalletId: wallet.id,
+        type: 'PAYMENT',
+        status: 'SUCCESS',
+        createdAt: { gte: startOfMonth },
+      },
+      _sum: { feeAmount: true },
+    });
+
+    const settlements = await this.prisma.settlement.findMany({
+      where: { merchantId },
+      orderBy: { createdAt: 'desc' },
+      take: 10,
+    });
+
+    return {
+      cachedBalance: wallet.cachedBalance,
+      pendingBalance: wallet.pendingBalance,
+      feesThisMonth: feesAgg._sum.feeAmount ?? 0n,
+      recentSettlements: settlements,
+    };
+  }
+
   /** Marchands auxquels l'utilisateur connecté est rattaché, avec son rôle interne (§32). */
   async listMineForUser(userId: string) {
     const links = await this.prisma.merchantUser.findMany({
