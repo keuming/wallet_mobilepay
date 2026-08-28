@@ -1,5 +1,6 @@
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
+import { NestExpressApplication } from '@nestjs/platform-express';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import helmet from 'helmet';
 import { AppModule } from './app.module';
@@ -7,7 +8,15 @@ import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 import { ResponseInterceptor } from './common/interceptors/response.interceptor';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule, { cors: true, rawBody: true });
+  const app = await NestFactory.create<NestExpressApplication>(AppModule, { cors: true, rawBody: true });
+
+  // Limite relevée pour accepter les pièces jointes KYC encodées en base64
+  // (recto/verso pièce d'identité + selfie) — le défaut (100kb) est bien trop
+  // restrictif pour des photos. `useBodyParser` reste compatible avec la
+  // capture `rawBody` utilisée par les webhooks HUB2 (contrairement à un
+  // `app.use(express.json())` manuel qui la casserait).
+  app.useBodyParser('json', { limit: '15mb' });
+  app.useBodyParser('urlencoded', { limit: '15mb', extended: true });
 
   app.use(helmet());
   app.setGlobalPrefix('api');

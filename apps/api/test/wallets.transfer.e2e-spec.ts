@@ -1,8 +1,11 @@
 import { Test } from '@nestjs/testing';
 import { BadRequestException } from '@nestjs/common';
+import * as bcrypt from 'bcrypt';
 import { WalletsService } from '../src/modules/wallets/wallets.service';
 import { LedgerService } from '../src/modules/ledger/ledger.service';
 import { PrismaService } from '../src/config/prisma.service';
+
+const TEST_PIN = '1234';
 
 /**
  * Tests d'intégration sur le point le plus critique du système : le transfert
@@ -42,6 +45,7 @@ describe('WalletsService.transfer (intégration)', () => {
         firstName: 'Test',
         lastName: 'Sender',
         passwordHash: 'x',
+        transactionPinHash: await bcrypt.hash(TEST_PIN, 4), // rounds faible : tests seulement
         wallet: { create: { type: 'PARTICULIER', cachedBalance: 10_000_00n } }, // 10 000 FCFA
       },
     });
@@ -63,7 +67,7 @@ describe('WalletsService.transfer (intégration)', () => {
 
     await wallets.transfer(
       senderId,
-      { toPhone: recipient.phone, amount: 5_000_00 },
+      { toPhone: recipient.phone, amount: 5_000_00, pin: TEST_PIN },
       `test-key-${Date.now()}`,
     );
 
@@ -80,7 +84,7 @@ describe('WalletsService.transfer (intégration)', () => {
     await expect(
       wallets.transfer(
         senderId,
-        { toPhone: recipient.phone, amount: 999_999_00 },
+        { toPhone: recipient.phone, amount: 999_999_00, pin: TEST_PIN },
         `test-key-${Date.now()}`,
       ),
     ).rejects.toThrow(BadRequestException);
@@ -90,8 +94,8 @@ describe('WalletsService.transfer (intégration)', () => {
     const recipient = await prisma.user.findUniqueOrThrow({ where: { id: recipientId } });
     const idempotencyKey = `same-key-${Date.now()}`;
 
-    await wallets.transfer(senderId, { toPhone: recipient.phone, amount: 1_000_00 }, idempotencyKey);
-    await wallets.transfer(senderId, { toPhone: recipient.phone, amount: 1_000_00 }, idempotencyKey);
+    await wallets.transfer(senderId, { toPhone: recipient.phone, amount: 1_000_00, pin: TEST_PIN }, idempotencyKey);
+    await wallets.transfer(senderId, { toPhone: recipient.phone, amount: 1_000_00, pin: TEST_PIN }, idempotencyKey);
 
     const senderWallet = await prisma.wallet.findUniqueOrThrow({ where: { userId: senderId } });
     // Un seul débit de 1 000 FCFA doit avoir eu lieu, pas deux.
@@ -104,8 +108,8 @@ describe('WalletsService.transfer (intégration)', () => {
     const recipient = await prisma.user.findUniqueOrThrow({ where: { id: recipientId } });
 
     const results = await Promise.allSettled([
-      wallets.transfer(senderId, { toPhone: recipient.phone, amount: 6_000_00 }, `concurrent-a-${Date.now()}`),
-      wallets.transfer(senderId, { toPhone: recipient.phone, amount: 6_000_00 }, `concurrent-b-${Date.now()}`),
+      wallets.transfer(senderId, { toPhone: recipient.phone, amount: 6_000_00, pin: TEST_PIN }, `concurrent-a-${Date.now()}`),
+      wallets.transfer(senderId, { toPhone: recipient.phone, amount: 6_000_00, pin: TEST_PIN }, `concurrent-b-${Date.now()}`),
     ]);
 
     const succeeded = results.filter((r) => r.status === 'fulfilled');

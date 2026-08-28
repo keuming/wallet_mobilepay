@@ -22,11 +22,13 @@ export class WalletsController {
     @CurrentUser() user: AuthenticatedUser,
     @Query('page') page?: string,
     @Query('pageSize') pageSize?: string,
+    @Query('search') search?: string,
   ) {
     return this.walletsService.getHistory(
       user.userId,
       page ? Number(page) : 1,
       pageSize ? Number(pageSize) : 20,
+      search,
     );
   }
 }

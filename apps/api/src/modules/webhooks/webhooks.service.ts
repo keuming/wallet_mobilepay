@@ -67,9 +67,20 @@ export class WebhooksService {
         verification.failureReason,
       );
     }
-    // WITHDRAWAL et REFUND suivraient le même pattern via des méthodes dédiées
-    // de PaymentEngineService, à ajouter en Phase 5 lors du branchement complet
-    // du cash-out.
+    if (transaction.type === 'WITHDRAWAL') {
+      await this.paymentEngine.completeWithdrawal(
+        transaction.id,
+        verification.status === 'SUCCESS',
+        verification.failureReason,
+      );
+    }
+    if (transaction.type === 'PAYMENT' && transaction.providerName === 'HUB2') {
+      await this.paymentEngine.completeExternalMerchantPayment(
+        transaction.id,
+        verification.status === 'SUCCESS',
+        verification.failureReason,
+      );
+    }
 
     await this.prisma.webhookEvent.update({
       where: { id: event.id },

@@ -3,8 +3,10 @@ import {
   ConflictException,
   Injectable,
   NotFoundException,
+  UnauthorizedException,
 } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
+import * as bcrypt from 'bcrypt';
 import { PrismaService } from '../../config/prisma.service';
 import { LedgerService } from '../ledger/ledger.service';
 import { TransferDto } from './dto/wallets.dto';
@@ -24,19 +26,108 @@ export class WalletsService {
     return wallet;
   }
 
-  async getHistory(userId: string, page = 1, pageSize = 20) {
+  async getHistory(userId: string, page = 1, pageSize = 20, search?: string) {
     const wallet = await this.getWalletByUserId(userId);
+
+    // Si une recherche est fournie, on résout d'abord les wallets correspondant
+    // à ce nom/numéro (particulier ou marchand), pour ne remonter que les
+    // transactions impliquant ce correspondant précis — utile pour une
+    // investigation ciblée sur une transaction.
+    let counterpartyWalletIds: string[] | null = null;
+    if (search && search.trim()) {
+      const term = search.trim();
+      const [matchingUsers, matchingMerchants] = await Promise.all([
+        this.prisma.user.findMany({
+          where: {
+            OR: [
+              { phone: { contains: term, mode: 'insensitive' } },
+              { firstName: { contains: term, mode: 'insensitive' } },
+              { lastName: { contains: term, mode: 'insensitive' } },
+            ],
+          },
+          select: { wallet: { select: { id: true } } },
+        }),
+        this.prisma.merchant.findMany({
+          where: { businessName: { contains: term, mode: 'insensitive' } },
+          select: { wallet: { select: { id: true } } },
+        }),
+      ]);
+      counterpartyWalletIds = [...matchingUsers, ...matchingMerchants]
+        .map((m) => m.wallet?.id)
+        .filter((id): id is string => !!id);
+
+      // Aucun correspondant trouvé pour ce terme : on ne renvoie rien plutôt
+      // que de rendre l'historique complet (éviterait un faux sentiment de
+      // recherche fonctionnelle).
+      if (counterpartyWalletIds.length === 0) {
+        return { entries: [], total: 0, page, pageSize };
+      }
+    }
+
+    const where: Prisma.LedgerEntryWhereInput = {
+      walletId: wallet.id,
+      ...(counterpartyWalletIds
+        ? {
+            transaction: {
+              OR: [
+                { sourceWalletId: { in: counterpartyWalletIds } },
+                { destWalletId: { in: counterpartyWalletIds } },
+              ],
+            },
+          }
+        : {}),
+    };
+
     const [entries, total] = await this.prisma.$transaction([
       this.prisma.ledgerEntry.findMany({
-        where: { walletId: wallet.id },
+        where,
         orderBy: { createdAt: 'desc' },
         skip: (page - 1) * pageSize,
         take: pageSize,
         include: { transaction: true },
       }),
-      this.prisma.ledgerEntry.count({ where: { walletId: wallet.id } }),
+      this.prisma.ledgerEntry.count({ where }),
     ]);
-    return { entries, total, page, pageSize };
+
+    const enriched = await Promise.all(entries.map((entry) => this.resolveCounterparty(entry, wallet.id)));
+
+    return { entries: enriched, total, page, pageSize };
+  }
+
+  /**
+   * Détermine et résout le "correspondant" d'une écriture — l'autre partie de
+   * la transaction (destinataire si on a été débité, expéditeur si on a été
+   * crédité). Nécessaire pour une vue investigation claire de l'historique.
+   */
+  private async resolveCounterparty(
+    entry: Prisma.LedgerEntryGetPayload<{ include: { transaction: true } }>,
+    ownWalletId: string,
+  ) {
+    const { sourceWalletId, destWalletId } = entry.transaction;
+    const otherWalletId =
+      sourceWalletId === ownWalletId ? destWalletId : destWalletId === ownWalletId ? sourceWalletId : null;
+
+    if (!otherWalletId || otherWalletId === ownWalletId) {
+      return { ...entry, counterparty: null };
+    }
+
+    const otherWallet = await this.prisma.wallet.findUnique({
+      where: { id: otherWalletId },
+      include: {
+        user: { select: { firstName: true, lastName: true, phone: true } },
+        merchant: { select: { businessName: true } },
+      },
+    });
+
+    if (!otherWallet) return { ...entry, counterparty: null };
+
+    const counterparty = otherWallet.user
+      ? { type: 'PARTICULIER' as const, name: `${otherWallet.user.firstName} ${otherWallet.user.lastName}`, phone: otherWallet.user.phone }
+      : otherWallet.merchant
+        ? { type: 'MERCHANT' as const, name: otherWallet.merchant.businessName, phone: null }
+        : null;
+
+    return { ...entry, counterparty };
   }
 
   /**
@@ -60,6 +151,15 @@ export class WalletsService {
       this.prisma.user.findUniqueOrThrow({ where: { id: senderId } }),
       this.prisma.user.findUnique({ where: { phone: dto.toPhone } }),
     ]);
+
+    if (!sender.transactionPinHash) {
+      throw new BadRequestException(
+        'Vous devez créer un code secret avant d\'envoyer de l\'argent (menu → Modifier mon code secret).',
+      );
+    }
+    if (!(await bcrypt.compare(dto.pin, sender.transactionPinHash))) {
+      throw new UnauthorizedException('Code secret incorrect.');
+    }
 
     if (!recipientUser) {
       throw new NotFoundException('Aucun compte MobilePay associé à ce numéro.');

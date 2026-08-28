@@ -1,4 +1,5 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../config/prisma.service';
 
 export interface SubmitKycInput {
@@ -6,6 +7,13 @@ export interface SubmitKycInput {
   merchantId?: string;
   documentType: string;
   documentRef: string;
+  attachments?: {
+    rectoBase64?: string;
+    versoBase64?: string;
+    selfieBase64?: string;
+    latitude?: number;
+    longitude?: number;
+  };
 }
 
 @Injectable()
@@ -22,6 +30,7 @@ export class KycService {
         merchantId: input.merchantId,
         documentType: input.documentType,
         documentRef: input.documentRef,
+        attachments: input.attachments as Prisma.InputJsonValue,
         status: 'PENDING',
       },
     });

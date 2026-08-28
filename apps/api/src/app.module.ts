@@ -16,6 +16,7 @@ import { KycModule } from './modules/kyc/kyc.module';
 import { AgentsModule } from './modules/agents/agents.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
 import { AdminModule } from './modules/admin/admin.module';
+import { CardsModule } from './modules/cards/cards.module';
 import { IdempotencyMiddleware } from './common/middleware/idempotency.middleware';
 
 @Module({
@@ -36,6 +37,7 @@ import { IdempotencyMiddleware } from './common/middleware/idempotency.middlewar
     AgentsModule,
     NotificationsModule,
     AdminModule,
+    CardsModule,
   ],
 })
 export class AppModule implements NestModule {
@@ -50,6 +52,8 @@ export class AppModule implements NestModule {
         'api/payment-links/:slug/pay',
         'api/wallets/topup',
         'api/wallets/withdraw',
+        'api/airtime',
+        'api/cards/:id/load',
       );
   }
 }

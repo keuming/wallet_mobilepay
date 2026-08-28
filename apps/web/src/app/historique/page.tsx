@@ -7,12 +7,6 @@ import { useAuth } from '../../contexts/AuthContext';
 import { apiFetch } from '../../lib/apiClient';
 import { shareReceipt } from '../../lib/receipt';
 import { groupLedgerEntries } from '../../lib/groupLedgerEntries';
-import SideMenu from '../../components/SideMenu';
-
-interface Wallet {
-  cachedBalance: number;
-  currency: string;
-}
 
 interface Counterparty {
   type: 'PARTICULIER' | 'MERCHANT';
@@ -21,6 +15,7 @@ interface Counterparty {
 }
 
 interface Transaction {
+  id: string;
   reference: string;
   type: string;
   status: string;
@@ -36,8 +31,10 @@ interface LedgerEntry {
   counterparty: Counterparty | null;
 }
 
-function formatFcfa(amountInCents: number): string {
-  return (amountInCents / 100).toLocaleString('fr-FR');
+const PAGE_SIZE = 15;
+
+function fcfa(cents: number): string {
+  return `${(cents / 100).toLocaleString('fr-FR')} FCFA`;
 }
 
 const TYPE_LABELS: Record<string, string> = {
@@ -50,15 +47,22 @@ const TYPE_LABELS: Record<string, string> = {
   FEE: 'Frais',
 };
 
-export default function DashboardPage() {
-  const { user, loading, logout } = useAuth();
+export default function HistoriquePage() {
+  const { user, loading } = useAuth();
   const router = useRouter();
-  const [wallet, setWallet] = useState<Wallet | null>(null);
   const [entries, setEntries] = useState<LedgerEntry[]>([]);
-  const [fetching, setFetching] = useState(true);
+  const [total, setTotal] = useState(0);
+  const [page, setPage] = useState(1);
+  const [search, setSearch] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [fetching, setFetching] = useState(true);
   const [shareStatus, setShareStatus] = useState<Record<string, 'shared' | 'copied' | 'failed'>>({});
-  const [menuOpen, setMenuOpen] = useState(false);
+
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedSearch(search), 350);
+    return () => clearTimeout(t);
+  }, [search]);
 
   useEffect(() => {
     if (loading) return;
@@ -66,16 +70,20 @@ export default function DashboardPage() {
       router.replace('/login');
       return;
     }
-    Promise.all([
-      apiFetch<Wallet>('/wallet'),
-      apiFetch<{ entries: LedgerEntry[] }>('/wallet/transactions?pageSize=10'),
-    ])
-      .then(([w, history]) => {
-        setWallet(w);
-        setEntries(history.entries);
+    setFetching(true);
+    const params = new URLSearchParams({ page: String(page), pageSize: String(PAGE_SIZE) });
+    if (debouncedSearch) params.set('search', debouncedSearch);
+    apiFetch<{ entries: LedgerEntry[]; total: number }>(`/wallet/transactions?${params}`)
+      .then((res) => {
+        setEntries(res.entries);
+        setTotal(res.total);
       })
       .finally(() => setFetching(false));
-  }, [user, loading, router]);
+  }, [user, loading, router, page, debouncedSearch]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [debouncedSearch]);
 
   const handleShare = async (entry: LedgerEntry) => {
     const result = await shareReceipt({
@@ -92,96 +100,53 @@ export default function DashboardPage() {
     setShareStatus((s) => ({ ...s, [entry.id]: result }));
   };
 
-  if (loading || fetching || !user) {
-    return (
-      <div className="mp-container">
-        <div className="mp-section">Chargement...</div>
-      </div>
-    );
-  }
+  if (loading || !user) return null;
+
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
   return (
     <div className="mp-container">
-      <div className="mp-header">
-        <div className="mp-header-row">
-          <button className="mp-icon-btn" onClick={() => setMenuOpen(true)} title="Menu">
-            ☰
-          </button>
-          <span className="mp-brand-mark">
-            <span className="dot" />
-            Bonjour {user.firstName}
-          </span>
-          <button
-            onClick={() => logout().then(() => router.push('/login'))}
-            className="mp-icon-btn"
-            title="Déconnexion"
-          >
-            ⏻
-          </button>
-        </div>
-      </div>
-
-      <SideMenu open={menuOpen} onClose={() => setMenuOpen(false)} />
-
-      <div className="mp-balance-card">
-        <div className="mp-balance-label">💳 Solde disponible</div>
-        <div className="mp-balance-amount">
-          {wallet ? formatFcfa(wallet.cachedBalance) : '—'}
-          <span className="currency">FCFA</span>
-        </div>
-
-        <div className="mp-actions">
-          <Link href="/envoyer" className="mp-action-btn">
-            <span className="icon">↗️</span>
-            Envoyer
-          </Link>
-          <Link href="/recevoir" className="mp-action-btn">
-            <span className="icon">📥</span>
-            Encaisser
-          </Link>
-          <Link href="/payer" className="mp-action-btn">
-            <span className="icon">🏪</span>
-            Payer
-          </Link>
-          <Link href="/recharger" className="mp-action-btn">
-            <span className="icon">💰</span>
-            Recharger
-          </Link>
-        </div>
-      </div>
-
-      <div className="mp-feature-list">
-        <Link href="/carte" className="mp-feature-card featured">
-          <div className="mp-feature-icon">💎</div>
-          <div className="mp-feature-text">
-            <div className="mp-feature-title">Carte virtuelle</div>
-            <div className="mp-feature-sub">Payer en ligne partout dans le monde</div>
-          </div>
-          <div className="mp-feature-chevron">→</div>
+      <div className="mp-page-header">
+        <Link href="/dashboard" className="mp-back-link">
+          ← Retour
         </Link>
+        <h1>📋 Historique des transactions</h1>
       </div>
 
-      <div className="mp-section">
-        <h3>
-          📋 Transactions récentes
-          <Link
-            href="/historique"
-            style={{ marginLeft: 'auto', fontSize: 12, fontWeight: 600, color: 'var(--mp-green-dark)' }}
-          >
-            Voir tout →
-          </Link>
-        </h3>
-        {entries.length === 0 && (
-          <p style={{ color: 'var(--mp-muted)', fontSize: 14 }}>Aucune transaction pour le moment.</p>
-        )}
-        <div className="mp-history-list" style={{ padding: 0 }}>
-          {groupLedgerEntries(entries).map(({ key, main: entry, feeAmount }) => {
-            const name = entry.counterparty?.name ?? entry.description;
+      <div className="mp-search-wrap">
+        <div className="mp-search-bar">
+          <span className="icon">🔍</span>
+          <input
+            placeholder="Rechercher un nom ou un numéro..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+          {search && (
+            <button className="mp-search-clear" onClick={() => setSearch('')}>
+              ✕
+            </button>
+          )}
+        </div>
+      </div>
+
+      <div className="mp-history-list">
+        {fetching ? (
+          <div className="mp-empty-state">Chargement...</div>
+        ) : entries.length === 0 ? (
+          <div className="mp-empty-state">
+            <span className="icon">🗂️</span>
+            {debouncedSearch
+              ? `Aucun résultat pour « ${debouncedSearch} ».`
+              : 'Aucune transaction pour le moment.'}
+          </div>
+        ) : (
+          groupLedgerEntries(entries).map(({ key, main: entry, feeAmount }) => {
             const isExpanded = expandedId === entry.id;
+            const counterpartyName = entry.counterparty?.name ?? entry.description;
             return (
               <div
-                className={`mp-history-card ${isExpanded ? 'expanded' : ''}`}
                 key={key}
+                className={`mp-history-card ${isExpanded ? 'expanded' : ''}`}
                 onClick={() => setExpandedId(isExpanded ? null : entry.id)}
               >
                 <div className="mp-history-row">
@@ -193,18 +158,18 @@ export default function DashboardPage() {
                         : '↗'}
                   </div>
                   <div className="mp-history-main">
-                    <div className="mp-history-name">{name}</div>
+                    <div className="mp-history-name">{counterpartyName}</div>
                     <div className="mp-history-sub">
-                      {TYPE_LABELS[entry.transaction?.type] ?? entry.transaction?.type}
+                      {TYPE_LABELS[entry.transaction.type] ?? entry.transaction.type}
                       {entry.counterparty?.phone ? ` · ${entry.counterparty.phone}` : ''}
                     </div>
                   </div>
                   <div className="mp-history-amount-block">
                     <div className={`mp-history-amount ${entry.type === 'CREDIT' ? 'credit' : 'debit'}`}>
-                      {entry.type === 'CREDIT' ? '+' : '−'} {formatFcfa(entry.amount)} FCFA
+                      {entry.type === 'CREDIT' ? '+' : '−'} {fcfa(entry.amount)}
                     </div>
                     {feeAmount !== null && (
-                      <div className="mp-history-fee-line">+ {formatFcfa(feeAmount)} FCFA frais</div>
+                      <div className="mp-history-fee-line">+ {fcfa(feeAmount)} frais</div>
                     )}
                     <div className="mp-history-time">
                       {new Date(entry.createdAt).toLocaleDateString('fr-FR')}
@@ -229,7 +194,7 @@ export default function DashboardPage() {
                     {feeAmount !== null && (
                       <div className="mp-detail-row">
                         <span className="k">Frais MobilePay</span>
-                        <span className="v">{formatFcfa(feeAmount)} FCFA</span>
+                        <span className="v">{fcfa(feeAmount)}</span>
                       </div>
                     )}
                     {entry.counterparty && (
@@ -272,9 +237,27 @@ export default function DashboardPage() {
                 )}
               </div>
             );
-          })}
-        </div>
+          })
+        )}
       </div>
+
+      {!fetching && entries.length > 0 && (
+        <div className="mp-pagination">
+          <button className="mp-page-btn" disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>
+            ← Préc.
+          </button>
+          <span className="mp-page-info">
+            Page {page} / {totalPages}
+          </span>
+          <button
+            className="mp-page-btn"
+            disabled={page >= totalPages}
+            onClick={() => setPage((p) => p + 1)}
+          >
+            Suiv. →
+          </button>
+        </div>
+      )}
     </div>
   );
 }

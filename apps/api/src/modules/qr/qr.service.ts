@@ -98,7 +98,15 @@ export class QrService {
   }
 
   /** Paie un QR marchand (statique ou dynamique) — appelé par le wallet du payeur. */
-  async payQr(payerUserId: string, code: string, amount: number | undefined, idempotencyKey: string) {
+  async payQr(
+    payerUserId: string,
+    code: string,
+    amount: number | undefined,
+    fundingSource: 'WALLET' | 'MOBILE_MONEY',
+    pin: string,
+    idempotencyKey: string,
+    customerPhone?: string,
+  ) {
     const qr = await this.resolveQr(code);
 
     if (qr.type === 'PARTICULIER') {
@@ -110,13 +118,23 @@ export class QrService {
     if (!finalAmount) {
       throw new BadRequestException('Un montant est requis pour ce QR.');
     }
+    const description = qr.description ?? `Paiement QR ${qr.code}`;
+
+    if (fundingSource === 'MOBILE_MONEY') {
+      if (!customerPhone) throw new BadRequestException('Le numéro Mobile Money est requis.');
+      return this.paymentEngine.collectForMerchantFromExternal(
+        { payerUserId, merchantId: qr.merchantId, amount: finalAmount, description, customerPhone, pin },
+        idempotencyKey,
+      );
+    }
 
     return this.paymentEngine.collectForMerchant({
       payerUserId,
       merchantId: qr.merchantId,
       amount: finalAmount,
-      description: qr.description ?? `Paiement QR ${qr.code}`,
+      description,
       idempotencyKey,
+      pin,
     });
   }
 
@@ -149,18 +167,31 @@ export class QrService {
     payerUserId: string,
     slug: string,
     amount: number | undefined,
+    fundingSource: 'WALLET' | 'MOBILE_MONEY',
+    pin: string,
     idempotencyKey: string,
+    customerPhone?: string,
   ) {
     const link = await this.resolvePaymentLink(slug);
     const finalAmount = link.amount ?? (amount ? BigInt(amount) : null);
     if (!finalAmount) throw new BadRequestException('Un montant est requis pour ce lien.');
+    const description = link.description ?? `Paiement lien ${link.slug}`;
+
+    if (fundingSource === 'MOBILE_MONEY') {
+      if (!customerPhone) throw new BadRequestException('Le numéro Mobile Money est requis.');
+      return this.paymentEngine.collectForMerchantFromExternal(
+        { payerUserId, merchantId: link.merchantId, amount: finalAmount, description, customerPhone, pin },
+        idempotencyKey,
+      );
+    }
 
     return this.paymentEngine.collectForMerchant({
       payerUserId,
       merchantId: link.merchantId,
       amount: finalAmount,
-      description: link.description ?? `Paiement lien ${link.slug}`,
+      description,
       idempotencyKey,
+      pin,
     });
   }
 }

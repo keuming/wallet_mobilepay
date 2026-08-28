@@ -3,34 +3,34 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { apiFetch, ApiError } from '../../lib/apiClient';
-import StatusModal, { ResultStatus } from '../../components/StatusModal';
-import PaymentMethodBadge, { PaymentMethodId } from '../../components/PaymentMethodBadge';
+import { apiFetch, ApiError } from '../../../lib/apiClient';
+import StatusModal, { ResultStatus } from '../../../components/StatusModal';
+import PaymentMethodBadge, { PaymentMethodId } from '../../../components/PaymentMethodBadge';
 
-type Destination = 'MOBILEPAY' | 'ORANGE' | 'MOOV' | 'WAVE' | 'MTN' | 'VISA' | 'VIREMENT';
+type Operator = 'ORANGE' | 'MOOV' | 'WAVE' | 'MTN';
 
-const DESTINATIONS: Array<{ id: Destination; label: string; badge: PaymentMethodId | null; available: boolean }> = [
-  { id: 'MOBILEPAY', label: 'Compte MobilePay', badge: 'MOBILEPAY', available: true },
-  { id: 'ORANGE', label: 'Orange Money', badge: 'ORANGE', available: true },
-  { id: 'MOOV', label: 'Moov Money', badge: 'MOOV', available: true },
-  { id: 'WAVE', label: 'Wave', badge: 'WAVE', available: true },
-  { id: 'MTN', label: 'MTN Money', badge: 'MTN', available: true },
-  { id: 'VISA', label: 'Carte Visa', badge: 'VISA', available: false },
-  { id: 'VIREMENT', label: 'Virement bancaire', badge: null, available: false },
+const MOBILE_MONEY_OPTIONS: Array<{ id: Operator; badge: PaymentMethodId; label: string }> = [
+  { id: 'ORANGE', badge: 'ORANGE', label: 'Orange Money' },
+  { id: 'MOOV', badge: 'MOOV', label: 'Moov Money' },
+  { id: 'WAVE', badge: 'WAVE', label: 'Wave' },
+  { id: 'MTN', badge: 'MTN', label: 'MTN Money' },
 ];
 
-const STEPS = ['Destination', 'Compte', 'Montant', 'Résumé', 'Code secret'];
+const CARD_OPTIONS: Array<{ badge: PaymentMethodId; label: string }> = [
+  { badge: 'VISA', label: 'Visa' },
+  { badge: 'MASTERCARD', label: 'Mastercard' },
+];
 
-export default function EnvoyerPage() {
+const STEPS = ['Source', 'Compte', 'Montant', 'Résumé', 'Code secret'];
+
+export default function RechargerWalletPage() {
   const router = useRouter();
   const [step, setStep] = useState(0);
-  const [destination, setDestination] = useState<Destination | null>(null);
+  const [operator, setOperator] = useState<Operator | null>(null);
   const [accountNumber, setAccountNumber] = useState('');
   const [amount, setAmount] = useState('');
-  const [description, setDescription] = useState('');
   const [pin, setPin] = useState('');
   const [hasPin, setHasPin] = useState<boolean | null>(null);
-  const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [result, setResult] = useState<{ status: ResultStatus; message: string } | null>(null);
 
@@ -41,13 +41,13 @@ export default function EnvoyerPage() {
   const canGoNext = (): boolean => {
     switch (step) {
       case 0:
-        return destination !== null;
+        return operator !== null;
       case 1:
         return accountNumber.replace(/\D/g, '').length >= 8;
       case 2:
         return !!amount && Number(amount) > 0;
       case 3:
-        return true; // étape Résumé — validée par le clic sur "Continuer", pas de champ à remplir
+        return true;
       case 4:
         return pin.length >= 4;
       default:
@@ -55,65 +55,42 @@ export default function EnvoyerPage() {
     }
   };
 
+  const selectedLabel = MOBILE_MONEY_OPTIONS.find((o) => o.id === operator)?.label;
+
   const handleSubmit = async () => {
-    setError(null);
+    if (!operator) return;
     setSubmitting(true);
     try {
-      let response: { status?: string };
-      if (destination === 'MOBILEPAY') {
-        response = await apiFetch('/transfers', {
-          method: 'POST',
-          idempotent: true,
-          body: JSON.stringify({
-            toPhone: accountNumber,
-            amount: Math.round(Number(amount) * 100),
-            pin,
-            description: description || undefined,
-          }),
-        });
-      } else {
-        response = await apiFetch('/wallets/send-external', {
-          method: 'POST',
-          idempotent: true,
-          body: JSON.stringify({
-            operator: destination,
-            accountNumber,
-            amount: Math.round(Number(amount) * 100),
-            pin,
-          }),
-        });
-      }
+      const response = await apiFetch<{ status?: string }>('/wallets/topup', {
+        method: 'POST',
+        idempotent: true,
+        body: JSON.stringify({
+          operator,
+          accountNumber,
+          amount: Math.round(Number(amount) * 100),
+          pin,
+        }),
+      });
 
-      // Le statut réel renvoyé par le serveur détermine la couleur du modal —
-      // un envoi vers un opérateur externe reste PROCESSING tant que HUB2 n'a
-      // pas confirmé, ce n'est pas un succès immédiat comme un transfert MobilePay.
       if (response.status === 'SUCCESS') {
-        setResult({
-          status: 'success',
-          message: `${Number(amount).toLocaleString('fr-FR')} FCFA envoyés à ${destinationInfo?.label}.`,
-        });
-      } else if (response.status === 'PROCESSING' || response.status === 'PENDING' || response.status === 'INITIATED') {
+        setResult({ status: 'success', message: `${Number(amount).toLocaleString('fr-FR')} FCFA ajoutés à votre wallet.` });
+      } else if (response.status === 'PROCESSING' || response.status === 'PENDING') {
         setResult({
           status: 'pending',
-          message: 'Votre envoi a été transmis et est en attente de confirmation par l\'opérateur.',
+          message: 'Une demande de confirmation a été envoyée sur votre téléphone. Votre solde sera mis à jour dès validation.',
         });
-      } else if (response.status === 'FAILED' || response.status === 'CANCELLED' || response.status === 'EXPIRED') {
-        setResult({ status: 'failed', message: 'L\'envoi n\'a pas pu être finalisé. Aucun montant ne sera débité au-delà de la tentative.' });
+      } else if (response.status === 'FAILED') {
+        setResult({ status: 'failed', message: 'La recharge n\'a pas pu être finalisée.' });
       } else {
-        // Réponse reçue mais sans statut exploitable — cas rare, on reste prudent.
-        setResult({ status: 'unknown', message: 'La réponse du serveur est incomplète. Vérifiez votre historique pour confirmer l\'issue de cet envoi.' });
+        setResult({ status: 'unknown', message: 'Réponse du serveur incomplète. Vérifiez votre historique.' });
       }
     } catch (err) {
       if (err instanceof ApiError) {
-        // Le serveur a répondu avec une erreur explicite (solde insuffisant,
-        // code secret incorrect, destinataire introuvable...) — échec confirmé.
         setResult({ status: 'failed', message: err.message });
       } else {
-        // Aucune réponse exploitable du tout (coupure réseau, timeout) — l'issue
-        // réelle de la transaction est inconnue, distincte d'un échec confirmé.
         setResult({
           status: 'unknown',
-          message: 'Impossible de contacter le serveur. Vérifiez votre connexion puis consultez votre historique avant de retenter.',
+          message: 'Impossible de contacter le serveur. Vérifiez votre connexion puis consultez votre historique.',
         });
       }
     } finally {
@@ -129,22 +106,20 @@ export default function EnvoyerPage() {
     }
   };
 
-  const destinationInfo = DESTINATIONS.find((d) => d.id === destination);
-
   if (hasPin === false) {
     return (
       <div className="mp-container">
         <div className="mp-page-header">
-          <Link href="/dashboard" className="mp-back-link">
+          <Link href="/recevoir" className="mp-back-link">
             ← Retour
           </Link>
-          <h1>↗️ Envoyer de l'argent</h1>
+          <h1>💰 Recharger mon wallet</h1>
         </div>
         <div className="mp-section" style={{ textAlign: 'center' }}>
           <div style={{ fontSize: 40, marginBottom: 8 }}>🔒</div>
           <p style={{ fontWeight: 700, color: 'var(--mp-navy)' }}>Code secret requis</p>
           <p style={{ color: 'var(--mp-muted)', fontSize: 13.5, marginBottom: 16 }}>
-            Vous devez créer un code secret transactionnel avant de pouvoir envoyer de l'argent.
+            Créez votre code secret transactionnel avant de recharger votre wallet.
           </p>
           <Link href="/code-secret" className="mp-btn-primary" style={{ display: 'inline-block' }}>
             Créer mon code secret
@@ -158,7 +133,7 @@ export default function EnvoyerPage() {
     <div className="mp-container">
       <div className="mp-page-header">
         {step === 0 ? (
-          <Link href="/dashboard" className="mp-back-link">
+          <Link href="/recevoir" className="mp-back-link">
             ← Retour
           </Link>
         ) : (
@@ -166,7 +141,7 @@ export default function EnvoyerPage() {
             ← Précédent
           </button>
         )}
-        <h1>↗️ Envoyer de l'argent</h1>
+        <h1>💰 Recharger mon wallet</h1>
         <div style={{ fontSize: 12, opacity: 0.75, marginTop: 4, position: 'relative' }}>
           Étape {step + 1}/{STEPS.length} — {STEPS[step]}
         </div>
@@ -178,26 +153,34 @@ export default function EnvoyerPage() {
       </div>
 
       <div className="mp-form">
-        {/* Étape 1 : Destination */}
+        {/* Étape 1 : Source */}
         {step === 0 && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            {DESTINATIONS.map((d) => (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            <div style={{ fontSize: 12.5, color: 'var(--mp-muted)', fontWeight: 600 }}>MOBILE MONEY</div>
+            {MOBILE_MONEY_OPTIONS.map((o) => (
               <button
-                key={d.id}
-                disabled={!d.available}
-                onClick={() => setDestination(d.id)}
-                className={`mp-list-card ${destination === d.id ? 'selected' : ''}`}
+                key={o.id}
+                onClick={() => setOperator(o.id)}
+                className={`mp-list-card ${operator === o.id ? 'selected' : ''}`}
                 style={{ display: 'flex', alignItems: 'center', gap: 10 }}
               >
-                {d.badge ? (
-                  <PaymentMethodBadge method={d.badge} size={26} />
-                ) : (
-                  <span style={{ fontSize: 18 }}>🏦</span>
-                )}
-                <span style={{ flex: 1 }}>{d.label}</span>
-                {!d.available && (
-                  <span style={{ fontSize: 10.5, color: 'var(--mp-muted)', fontWeight: 700 }}>Bientôt</span>
-                )}
+                <PaymentMethodBadge method={o.badge} size={28} />
+                <span>{o.label}</span>
+              </button>
+            ))}
+            <div style={{ fontSize: 12.5, color: 'var(--mp-muted)', fontWeight: 600, marginTop: 6 }}>
+              CARTE BANCAIRE
+            </div>
+            {CARD_OPTIONS.map((c) => (
+              <button
+                key={c.label}
+                disabled
+                className="mp-list-card"
+                style={{ display: 'flex', alignItems: 'center', gap: 10 }}
+              >
+                <PaymentMethodBadge method={c.badge} size={28} />
+                <span style={{ flex: 1 }}>{c.label}</span>
+                <span style={{ fontSize: 10.5, color: 'var(--mp-muted)', fontWeight: 700 }}>Bientôt</span>
               </button>
             ))}
           </div>
@@ -206,7 +189,7 @@ export default function EnvoyerPage() {
         {/* Étape 2 : Numéro de compte */}
         {step === 1 && (
           <label>
-            Numéro de compte {destinationInfo?.label}
+            Numéro de compte {selectedLabel}
             <input
               className="mp-input"
               style={{ width: '100%', marginTop: 6 }}
@@ -220,34 +203,21 @@ export default function EnvoyerPage() {
 
         {/* Étape 3 : Montant */}
         {step === 2 && (
-          <>
-            <label>
-              Montant (FCFA)
-              <input
-                className="mp-input"
-                style={{ width: '100%', marginTop: 6 }}
-                type="number"
-                min={1}
-                value={amount}
-                onChange={(e) => setAmount(e.target.value)}
-                autoFocus
-              />
-            </label>
-            {destination === 'MOBILEPAY' && (
-              <label>
-                Motif (optionnel)
-                <input
-                  className="mp-input"
-                  style={{ width: '100%', marginTop: 6 }}
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                />
-              </label>
-            )}
-          </>
+          <label>
+            Montant (FCFA)
+            <input
+              className="mp-input"
+              style={{ width: '100%', marginTop: 6 }}
+              type="number"
+              min={100}
+              value={amount}
+              onChange={(e) => setAmount(e.target.value)}
+              autoFocus
+            />
+          </label>
         )}
 
-        {/* Étape 4 : Résumé — contrôle final avant validation */}
+        {/* Étape 4 : Résumé */}
         {step === 3 && (
           <>
             <div
@@ -262,11 +232,8 @@ export default function EnvoyerPage() {
                 🔍 Vérifiez avant de continuer
               </div>
               <div className="mp-detail-row">
-                <span className="k">Destination</span>
-                <span className="v" style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                  {destinationInfo?.badge && <PaymentMethodBadge method={destinationInfo.badge} size={18} />}
-                  {destinationInfo?.label}
-                </span>
+                <span className="k">Source</span>
+                <span className="v">{selectedLabel}</span>
               </div>
               <div className="mp-detail-row">
                 <span className="k">Numéro de compte</span>
@@ -278,17 +245,7 @@ export default function EnvoyerPage() {
                   {Number(amount).toLocaleString('fr-FR')} FCFA
                 </span>
               </div>
-              {destination === 'MOBILEPAY' && description && (
-                <div className="mp-detail-row">
-                  <span className="k">Motif</span>
-                  <span className="v">{description}</span>
-                </div>
-              )}
             </div>
-            <p style={{ fontSize: 12, color: 'var(--mp-muted)', textAlign: 'center' }}>
-              Cette opération est irréversible une fois validée avec votre code secret.
-            </p>
-
             <button className="mp-btn-primary" onClick={goNext}>
               ✅ Continuer vers la validation
             </button>
@@ -300,7 +257,7 @@ export default function EnvoyerPage() {
               style={{ color: 'var(--mp-red)', borderColor: 'rgba(214, 69, 69, 0.25)' }}
               onClick={() => router.push('/dashboard')}
             >
-              ✕ Annuler la transaction
+              ✕ Annuler
             </button>
           </>
         )}
@@ -318,8 +275,8 @@ export default function EnvoyerPage() {
               }}
             >
               <div className="mp-detail-row">
-                <span className="k">Destination</span>
-                <span className="v">{destinationInfo?.label}</span>
+                <span className="k">Source</span>
+                <span className="v">{selectedLabel}</span>
               </div>
               <div className="mp-detail-row">
                 <span className="k">Montant</span>
@@ -343,11 +300,9 @@ export default function EnvoyerPage() {
           </>
         )}
 
-        {error && <div className="mp-error">{error}</div>}
-
         {step !== 3 && (
           <button className="mp-btn-primary" disabled={!canGoNext() || submitting} onClick={goNext}>
-            {submitting ? 'Envoi...' : step === STEPS.length - 1 ? 'Valider et envoyer' : 'Suivant'}
+            {submitting ? 'Envoi...' : step === STEPS.length - 1 ? 'Valider et recharger' : 'Suivant'}
           </button>
         )}
       </div>

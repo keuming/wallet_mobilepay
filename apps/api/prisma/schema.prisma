@@ -72,6 +72,8 @@ enum TransactionType {
   TOPUP // recharge de wallet (cash-in via provider)
   WITHDRAWAL // retrait (cash-out)
   AIRTIME
+  CARD_LOAD // chargement d'une carte virtuelle depuis le wallet
+  CARD_UNLOAD // reversement du solde carte vers le wallet
   SETTLEMENT // règlement marchand -> banque
   REFUND
   FEE
@@ -99,6 +101,19 @@ enum QrType {
   MERCHANT_DYNAMIC
 }
 
+enum CardStatus {
+  PENDING // demande émise, en cours de traitement chez le partenaire émetteur
+  ACTIVE
+  FROZEN // gelée temporairement par le titulaire ou un admin (anti-fraude)
+  CLOSED
+}
+
+enum CardIssuer {
+  UNION33
+  ONAFRIQ
+  OTHER
+}
+
 enum QrStatus {
   UNASSIGNED // pré-imprimé, pas encore lié
   ASSIGNED // attribué à un agent
@@ -118,6 +133,7 @@ enum ProviderName {
   STRIPE
   PAYPAL
   RELOADLY
+  CARD_ISSUER
 }
 
 enum WebhookStatus {
@@ -147,6 +163,7 @@ model User {
 
   mfaEnabled Boolean @default(false)
   mfaSecret  String? // chiffré au repos (voir EncryptionService)
+  transactionPinHash String? // code secret à 4-6 chiffres, hashé (bcrypt) — distinct du mot de passe de connexion
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -160,6 +177,7 @@ model User {
   notifications  Notification[]
   beneficiaries  Beneficiary[]
   qrCode         QrCode? // QR personnel (particulier uniquement)
+  virtualCards   VirtualCard[]
 
   @@index([role])
   @@map("users")
@@ -213,6 +231,7 @@ model Merchant {
   paymentLinks   PaymentLink[]
   kycDossiers    KycDossier[]
   settlements    Settlement[]
+  virtualCards   VirtualCard[]
 
   @@index([status])
   @@index([agentId])
@@ -266,6 +285,11 @@ model KycDossier {
   status       KycStatus @default(PENDING)
   documentType String // ex: "CNI", "Passeport", "RCCM"
   documentRef  String
+  // Pièces jointes (recto/verso pièce d'identité, selfie) encodées en base64 +
+  // géolocalisation de la demande. Simplification MVP : en production, ces
+  // fichiers doivent être stockés sur un service dédié (S3/Cloudinary), jamais
+  // en base — ce champ JSON est un pis-aller assumé pour la démonstration.
+  attachments  Json?
   reviewedBy   String? // adminId
   reviewedAt   DateTime?
   rejectReason String?
@@ -468,6 +492,41 @@ model PaymentLink {
 
   @@index([merchantId])
   @@map("payment_links")
+}
+
+// ---------------------------------------------------------------------------
+// CARTE VIRTUELLE
+// ---------------------------------------------------------------------------
+
+// Carte virtuelle Visa/Mastercard émise via un partenaire externe (Union33,
+// Onafriq, ou autre agrégateur — voir CardProviderAdapter). Modèle PRÉPAYÉ :
+// la carte a son propre solde (`balance`), alimenté depuis le wallet du
+// titulaire (particulier OU marchand) via CARD_LOAD. Aucune donnée de carte
+// sensible (PAN complet, CVV) n'est jamais stockée — uniquement les 4
+// derniers chiffres et la référence opaque côté partenaire.
+model VirtualCard {
+  id     String      @id @default(uuid())
+  ownerUserId     String?
+  ownerUser       User?      @relation(fields: [ownerUserId], references: [id])
+  ownerMerchantId String?
+  ownerMerchant   Merchant?  @relation(fields: [ownerMerchantId], references: [id])
+
+  issuer      CardIssuer
+  providerRef String?    // référence de la carte côté partenaire émetteur
+  maskedPan   String?    // ex: "•••• •••• •••• 4242" — jamais le PAN complet
+  expiryMonth Int?
+  expiryYear  Int?
+  currency    String     @default("XOF")
+  balance     BigInt     @default(0) // solde prépayé sur la carte, en centimes
+  status      CardStatus @default(PENDING)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([ownerUserId])
+  @@index([ownerMerchantId])
+  @@index([status])
+  @@map("virtual_cards")
 }
 
 // ---------------------------------------------------------------------------

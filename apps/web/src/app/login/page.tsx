@@ -29,16 +29,21 @@ export default function LoginPage() {
 
   return (
     <div className="mp-container">
-      <div className="mp-header">
-        <h1 style={{ margin: 0, fontSize: 22 }}>MobilePay CI</h1>
-        <p style={{ margin: '4px 0 0', opacity: 0.8, fontSize: 14 }}>Connexion à votre wallet</p>
+      <div className="mp-header" style={{ paddingBottom: 40, borderRadius: '0 0 32px 32px' }}>
+        <div className="mp-brand-mark">
+          <span className="dot" />
+          MobilePay CI
+        </div>
+        <h1>Bon retour parmi nous</h1>
+        <p>Connectez-vous pour accéder à votre wallet</p>
       </div>
+
       <form className="mp-form" onSubmit={handleSubmit}>
         <label>
           Téléphone
           <input
             className="mp-input"
-            style={{ width: '100%', marginTop: 4 }}
+            style={{ width: '100%', marginTop: 6 }}
             value={phone}
             onChange={(e) => setPhone(e.target.value)}
             placeholder="+2250700000000"
@@ -48,7 +53,7 @@ export default function LoginPage() {
           Mot de passe
           <input
             className="mp-input"
-            style={{ width: '100%', marginTop: 4 }}
+            style={{ width: '100%', marginTop: 6 }}
             type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
@@ -58,8 +63,8 @@ export default function LoginPage() {
         <button className="mp-btn-primary" disabled={submitting} type="submit">
           {submitting ? 'Connexion...' : 'Se connecter'}
         </button>
-        <p style={{ fontSize: 12, color: '#6b7280' }}>
-          Compte de démo (après <code>prisma db seed</code>) : +2250700000001 / Password123!
+        <p style={{ fontSize: 12, color: 'var(--mp-muted)', textAlign: 'center' }}>
+          Compte de démo : +2250700000001 / Password123!
         </p>
       </form>
     </div>

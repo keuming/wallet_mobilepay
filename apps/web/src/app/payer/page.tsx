@@ -1,104 +1,417 @@
 'use client';
 
-import { useState, FormEvent } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { apiFetch, ApiError } from '../../lib/apiClient';
+import StatusModal, { ResultStatus } from '../../components/StatusModal';
+import PaymentMethodBadge, { PaymentMethodId } from '../../components/PaymentMethodBadge';
 
 // Note MVP : la lecture caméra du QR (scan) n'est pas implémentée ici — l'app
 // mobile Flutter branchera un vrai scanner et appellera les mêmes endpoints
 // (`GET /qr/:code` pour résoudre, `POST /qr/:code/pay` pour payer). Cette page
 // web permet de saisir le code manuellement pour tester le flux de bout en bout.
+
+type FundingSource = 'WALLET' | 'MOBILE_MONEY';
+type MomoOperator = 'ORANGE' | 'MOOV' | 'WAVE' | 'MTN';
+
+const MOMO_OPTIONS: Array<{ id: MomoOperator; badge: PaymentMethodId; label: string }> = [
+  { id: 'ORANGE', badge: 'ORANGE', label: 'Orange Money' },
+  { id: 'MOOV', badge: 'MOOV', label: 'Moov Money' },
+  { id: 'WAVE', badge: 'WAVE', label: 'Wave' },
+  { id: 'MTN', badge: 'MTN', label: 'MTN Money' },
+];
+
+interface ResolvedTarget {
+  kind: 'qr' | 'link';
+  ref: string; // code QR ou slug du lien
+  merchantName: string;
+  fixedAmount: number | null;
+}
+
+const STEPS = ['Marchand', 'Montant', 'Paiement', 'Résumé', 'Code secret'];
+
 export default function PayerPage() {
   const router = useRouter();
+  const [step, setStep] = useState(0);
   const [code, setCode] = useState('');
-  const [amount, setAmount] = useState('');
-  const [resolved, setResolved] = useState<any>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [submitting, setSubmitting] = useState(false);
+  const [resolveError, setResolveError] = useState<string | null>(null);
+  const [target, setTarget] = useState<ResolvedTarget | null>(null);
 
-  const handleResolve = async (e: FormEvent) => {
-    e.preventDefault();
-    setError(null);
+  const [amount, setAmount] = useState('');
+  const [fundingSource, setFundingSource] = useState<FundingSource | null>(null);
+  const [momoOperator, setMomoOperator] = useState<MomoOperator | null>(null);
+  const [momoAccount, setMomoAccount] = useState('');
+  const [pin, setPin] = useState('');
+  const [hasPin, setHasPin] = useState<boolean | null>(null);
+
+  const [submitting, setSubmitting] = useState(false);
+  const [result, setResult] = useState<{ status: ResultStatus; message: string } | null>(null);
+
+  useEffect(() => {
+    apiFetch<{ hasPin: boolean }>('/auth/pin/status').then((res) => setHasPin(res.hasPin));
+  }, []);
+
+  const handleResolve = async () => {
+    setResolveError(null);
     try {
-      const qr = await apiFetch(`/qr/${code}`, { auth: false });
-      setResolved(qr);
+      // On tente d'abord comme QR, puis comme Payment Link — l'utilisateur peut
+      // coller l'un ou l'autre indifféremment.
+      try {
+        const qr = await apiFetch<any>(`/qr/${code}`, { auth: false });
+        setTarget({
+          kind: 'qr',
+          ref: code,
+          merchantName: qr.merchant?.businessName ?? 'Marchand',
+          fixedAmount: qr.fixedAmount ?? null,
+        });
+      } catch {
+        const link = await apiFetch<any>(`/payment-links/${code}`, { auth: false });
+        setTarget({
+          kind: 'link',
+          ref: code,
+          merchantName: link.merchant?.businessName ?? 'Marchand',
+          fixedAmount: link.amount ?? null,
+        });
+      }
+      setStep(1);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'QR introuvable.');
+      setResolveError(err instanceof ApiError ? err.message : 'QR ou lien introuvable.');
     }
   };
 
-  const handlePay = async () => {
+  const canGoNext = (): boolean => {
+    switch (step) {
+      case 1:
+        return !!target?.fixedAmount || (!!amount && Number(amount) > 0);
+      case 2:
+        if (fundingSource === 'MOBILE_MONEY') return !!momoOperator && momoAccount.replace(/\D/g, '').length >= 8;
+        return fundingSource === 'WALLET';
+      case 3:
+        return true;
+      case 4:
+        return pin.length >= 4;
+      default:
+        return false;
+    }
+  };
+
+  const effectiveAmount = target?.fixedAmount ?? (amount ? Math.round(Number(amount) * 100) : 0);
+
+  const handleSubmit = async () => {
+    if (!target) return;
     setSubmitting(true);
-    setError(null);
     try {
-      await apiFetch(`/qr/${code}/pay`, {
+      const path = target.kind === 'qr' ? `/qr/${target.ref}/pay` : `/payment-links/${target.ref}/pay`;
+      const response = await apiFetch<{ status?: string }>(path, {
         method: 'POST',
         idempotent: true,
         body: JSON.stringify({
-          amount: resolved.fixedAmount ? undefined : Math.round(Number(amount) * 100),
+          amount: target.fixedAmount ? undefined : effectiveAmount,
+          fundingSource,
+          pin,
+          customerPhone: fundingSource === 'MOBILE_MONEY' ? momoAccount : undefined,
         }),
       });
-      router.push('/dashboard');
+
+      if (response.status === 'SUCCESS') {
+        setResult({
+          status: 'success',
+          message: `${(effectiveAmount / 100).toLocaleString('fr-FR')} FCFA payés à ${target.merchantName}.`,
+        });
+      } else if (response.status === 'PROCESSING' || response.status === 'PENDING') {
+        setResult({
+          status: 'pending',
+          message: 'Votre paiement est en attente de confirmation par votre opérateur Mobile Money.',
+        });
+      } else if (response.status === 'FAILED') {
+        setResult({ status: 'failed', message: 'Le paiement n\'a pas pu être finalisé.' });
+      } else {
+        setResult({ status: 'unknown', message: 'Réponse du serveur incomplète. Vérifiez votre historique.' });
+      }
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Le paiement a échoué.');
+      if (err instanceof ApiError) {
+        setResult({ status: 'failed', message: err.message });
+      } else {
+        setResult({
+          status: 'unknown',
+          message: 'Impossible de contacter le serveur. Vérifiez votre connexion puis consultez votre historique.',
+        });
+      }
     } finally {
       setSubmitting(false);
     }
   };
 
+  const goNext = () => {
+    if (step === STEPS.length - 1) {
+      handleSubmit();
+    } else {
+      setStep((s) => s + 1);
+    }
+  };
+
+  if (hasPin === false) {
+    return (
+      <div className="mp-container">
+        <div className="mp-page-header">
+          <Link href="/dashboard" className="mp-back-link">
+            ← Retour
+          </Link>
+          <h1>🏪 Payer un marchand</h1>
+        </div>
+        <div className="mp-section" style={{ textAlign: 'center' }}>
+          <div style={{ fontSize: 40, marginBottom: 8 }}>🔒</div>
+          <p style={{ fontWeight: 700, color: 'var(--mp-navy)' }}>Code secret requis</p>
+          <p style={{ color: 'var(--mp-muted)', fontSize: 13.5, marginBottom: 16 }}>
+            Vous devez créer un code secret transactionnel avant de pouvoir payer.
+          </p>
+          <Link href="/code-secret" className="mp-btn-primary" style={{ display: 'inline-block' }}>
+            Créer mon code secret
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="mp-container">
-      <div className="mp-header">
-        <Link href="/dashboard" className="mp-link" style={{ color: 'white' }}>
-          ← Retour
-        </Link>
-        <h1 style={{ margin: '8px 0 0', fontSize: 20 }}>Payer un marchand</h1>
+      <div className="mp-page-header">
+        {step === 0 ? (
+          <Link href="/dashboard" className="mp-back-link">
+            ← Retour
+          </Link>
+        ) : (
+          <button onClick={() => setStep((s) => s - 1)} className="mp-back-link">
+            ← Précédent
+          </button>
+        )}
+        <h1>🏪 Payer un marchand</h1>
+        {step > 0 && (
+          <>
+            <div style={{ fontSize: 12, opacity: 0.75, marginTop: 4, position: 'relative' }}>
+              Étape {step + 1}/{STEPS.length} — {STEPS[step]}
+            </div>
+            <div className="mp-step-track">
+              {STEPS.map((_, i) => (
+                <div key={i} className={`mp-step-dot ${i <= step ? 'active' : ''}`} />
+              ))}
+            </div>
+          </>
+        )}
       </div>
 
-      {!resolved ? (
-        <form className="mp-form" onSubmit={handleResolve}>
+      {/* Étape 0 : résolution QR/lien */}
+      {step === 0 && (
+        <div className="mp-form">
+          <p style={{ fontSize: 13.5, color: 'var(--mp-muted)', margin: 0 }}>
+            Scannez le QR du marchand (caméra bientôt disponible sur mobile) ou collez son code / lien
+            de paiement ci-dessous.
+          </p>
           <label>
             Code QR ou lien de paiement
             <input
               className="mp-input"
-              style={{ width: '100%', marginTop: 4 }}
+              style={{ width: '100%', marginTop: 6 }}
               value={code}
               onChange={(e) => setCode(e.target.value)}
               placeholder="MPMDEMOMERCHANT01"
-              required
             />
           </label>
-          {error && <div className="mp-error">{error}</div>}
-          <button className="mp-btn-primary" type="submit">
+          {resolveError && <div className="mp-error">{resolveError}</div>}
+          <button className="mp-btn-primary" disabled={!code} onClick={handleResolve}>
             Continuer
           </button>
-        </form>
-      ) : (
-        <div className="mp-form">
-          <p>
-            Marchand : <strong>{resolved.merchant?.businessName}</strong>
-          </p>
-          {resolved.fixedAmount ? (
-            <p>Montant : {(resolved.fixedAmount / 100).toLocaleString('fr-FR')} FCFA</p>
-          ) : (
-            <label>
-              Montant (FCFA)
+        </div>
+      )}
+
+      <div className="mp-form">
+        {/* Étape 1 : Montant */}
+        {step === 1 && target && (
+          <>
+            <div
+              style={{
+                background: 'var(--mp-surface)',
+                border: '1px solid var(--mp-border)',
+                borderRadius: 14,
+                padding: '14px 16px',
+              }}
+            >
+              <div style={{ fontSize: 12, color: 'var(--mp-muted)', fontWeight: 600 }}>MARCHAND</div>
+              <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--mp-navy)', marginTop: 2 }}>
+                {target.merchantName}
+              </div>
+            </div>
+            {target.fixedAmount ? (
+              <p style={{ fontSize: 15 }}>
+                Montant fixé par le marchand :{' '}
+                <strong>{(target.fixedAmount / 100).toLocaleString('fr-FR')} FCFA</strong>
+              </p>
+            ) : (
+              <label>
+                Montant (FCFA)
+                <input
+                  className="mp-input"
+                  style={{ width: '100%', marginTop: 6 }}
+                  type="number"
+                  value={amount}
+                  onChange={(e) => setAmount(e.target.value)}
+                  autoFocus
+                />
+              </label>
+            )}
+          </>
+        )}
+
+        {/* Étape 2 : Mode de financement */}
+        {step === 2 && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            <button
+              onClick={() => setFundingSource('WALLET')}
+              className={`mp-list-card ${fundingSource === 'WALLET' ? 'selected' : ''}`}
+            >
+              💰 Solde MobilePay (rapide)
+            </button>
+            <div style={{ fontSize: 12.5, color: 'var(--mp-muted)', fontWeight: 600, marginTop: 4 }}>
+              MOBILE MONEY (prélèvement instantané)
+            </div>
+            {MOMO_OPTIONS.map((o) => (
+              <button
+                key={o.id}
+                onClick={() => {
+                  setFundingSource('MOBILE_MONEY');
+                  setMomoOperator(o.id);
+                }}
+                className={`mp-list-card ${fundingSource === 'MOBILE_MONEY' && momoOperator === o.id ? 'selected' : ''}`}
+                style={{ display: 'flex', alignItems: 'center', gap: 10 }}
+              >
+                <PaymentMethodBadge method={o.badge} size={26} />
+                <span>{o.label}</span>
+              </button>
+            ))}
+            {fundingSource === 'MOBILE_MONEY' && (
               <input
                 className="mp-input"
-                style={{ width: '100%', marginTop: 4 }}
-                type="number"
-                value={amount}
-                onChange={(e) => setAmount(e.target.value)}
-                required
+                style={{ width: '100%' }}
+                value={momoAccount}
+                onChange={(e) => setMomoAccount(e.target.value)}
+                placeholder="Numéro Mobile Money"
+              />
+            )}
+          </div>
+        )}
+
+        {/* Étape 3 : Résumé */}
+        {step === 3 && target && (
+          <>
+            <div
+              style={{
+                background: 'var(--mp-surface)',
+                border: '1.5px solid var(--mp-green)',
+                borderRadius: 16,
+                padding: '16px 18px',
+              }}
+            >
+              <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--mp-green-dark)', marginBottom: 10, textTransform: 'uppercase', letterSpacing: 0.4 }}>
+                🔍 Vérifiez avant de continuer
+              </div>
+              <div className="mp-detail-row">
+                <span className="k">Marchand</span>
+                <span className="v">{target.merchantName}</span>
+              </div>
+              <div className="mp-detail-row">
+                <span className="k">Montant</span>
+                <span className="v" style={{ fontSize: 16, color: 'var(--mp-green-dark)' }}>
+                  {(effectiveAmount / 100).toLocaleString('fr-FR')} FCFA
+                </span>
+              </div>
+              <div className="mp-detail-row">
+                <span className="k">Mode de paiement</span>
+                <span className="v">{fundingSource === 'WALLET' ? 'Solde MobilePay' : `Mobile Money — ${momoAccount}`}</span>
+              </div>
+            </div>
+            <button className="mp-btn-primary" onClick={goNext}>
+              ✅ Continuer vers la validation
+            </button>
+            <button className="mp-btn-ghost" onClick={() => setStep(1)}>
+              ✏️ Modifier les informations
+            </button>
+            <button
+              className="mp-btn-ghost"
+              style={{ color: 'var(--mp-red)', borderColor: 'rgba(214, 69, 69, 0.25)' }}
+              onClick={() => router.push('/dashboard')}
+            >
+              ✕ Annuler le paiement
+            </button>
+          </>
+        )}
+
+        {/* Étape 4 : Code secret */}
+        {step === 4 && target && (
+          <>
+            <div
+              style={{
+                background: 'var(--mp-surface)',
+                border: '1px solid var(--mp-border)',
+                borderRadius: 14,
+                padding: '14px 16px',
+                marginBottom: 4,
+              }}
+            >
+              <div className="mp-detail-row">
+                <span className="k">Marchand</span>
+                <span className="v">{target.merchantName}</span>
+              </div>
+              <div className="mp-detail-row">
+                <span className="k">Montant</span>
+                <span className="v">{(effectiveAmount / 100).toLocaleString('fr-FR')} FCFA</span>
+              </div>
+            </div>
+            <label>
+              Code secret
+              <input
+                className="mp-input"
+                style={{ width: '100%', marginTop: 6, letterSpacing: 6, fontSize: 20, textAlign: 'center' }}
+                type="password"
+                inputMode="numeric"
+                maxLength={6}
+                value={pin}
+                onChange={(e) => setPin(e.target.value.replace(/\D/g, ''))}
+                placeholder="••••"
+                autoFocus
               />
             </label>
-          )}
-          {error && <div className="mp-error">{error}</div>}
-          <button className="mp-btn-primary" disabled={submitting} onClick={handlePay}>
-            {submitting ? 'Paiement...' : 'Confirmer le paiement'}
+          </>
+        )}
+
+        {step > 0 && step !== 3 && (
+          <button className="mp-btn-primary" disabled={!canGoNext() || submitting} onClick={goNext}>
+            {submitting ? 'Paiement...' : step === STEPS.length - 1 ? 'Valider et payer' : 'Suivant'}
           </button>
-        </div>
+        )}
+      </div>
+
+      {result && (
+        <StatusModal
+          status={result.status}
+          message={result.message}
+          onClose={() => {
+            setResult(null);
+            if (result.status === 'success') router.push('/dashboard');
+          }}
+          actions={
+            <>
+              {result.status === 'success' && (
+                <button className="mp-btn-primary" onClick={() => router.push('/historique')}>
+                  Voir dans l'historique
+                </button>
+              )}
+              <button className="mp-btn-ghost" onClick={() => router.push('/dashboard')}>
+                Retour à l'accueil
+              </button>
+            </>
+          }
+        />
       )}
     </div>
   );

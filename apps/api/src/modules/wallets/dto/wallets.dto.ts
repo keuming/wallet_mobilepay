@@ -1,4 +1,4 @@
-import { IsInt, IsOptional, IsPhoneNumber, IsPositive, IsString, MaxLength } from 'class-validator';
+import { IsIn, IsInt, IsOptional, IsPhoneNumber, IsPositive, IsString, MaxLength } from 'class-validator';
 
 export class TransferDto {
   @IsPhoneNumber(undefined, { message: 'Numéro du bénéficiaire invalide.' })
@@ -7,6 +7,9 @@ export class TransferDto {
   @IsInt()
   @IsPositive({ message: 'Le montant doit être positif.' })
   amount: number; // en centimes — ex: 500000 = 5 000 FCFA
+
+  @IsString()
+  pin: string;
 
   @IsOptional()
   @IsString()
@@ -19,6 +22,12 @@ export class TopupDto {
   @IsPositive()
   amount: number;
 
+  @IsIn(['ORANGE', 'MOOV', 'WAVE', 'MTN'])
+  operator: 'ORANGE' | 'MOOV' | 'WAVE' | 'MTN';
+
+  @IsPhoneNumber(undefined, { message: 'Numéro de compte invalide.' })
+  accountNumber: string;
+
   @IsString()
-  providerName: 'HUB2'; // seul HUB2 est branché au MVP
+  pin: string;
 }

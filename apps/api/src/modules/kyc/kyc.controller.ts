@@ -1,4 +1,5 @@
-import { IsBoolean, IsOptional, IsString } from 'class-validator';
+import { IsBoolean, IsNumber, IsOptional, IsString, ValidateNested } from 'class-validator';
+import { Type } from 'class-transformer';
 import { Body, Controller, Get, Param, Post, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { KycService } from './kyc.service';
@@ -6,6 +7,28 @@ import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { CurrentUser, AuthenticatedUser } from '../../common/decorators/current-user.decorator';
+
+export class KycAttachmentsDto {
+  @IsOptional()
+  @IsString()
+  rectoBase64?: string;
+
+  @IsOptional()
+  @IsString()
+  versoBase64?: string;
+
+  @IsOptional()
+  @IsString()
+  selfieBase64?: string;
+
+  @IsOptional()
+  @IsNumber()
+  latitude?: number;
+
+  @IsOptional()
+  @IsNumber()
+  longitude?: number;
+}
 
 export class SubmitKycDto {
   @IsOptional()
@@ -17,6 +40,11 @@ export class SubmitKycDto {
 
   @IsString()
   documentRef: string;
+
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => KycAttachmentsDto)
+  attachments?: KycAttachmentsDto;
 }
 
 export class ReviewKycDto {
@@ -42,6 +70,7 @@ export class KycController {
       merchantId: dto.merchantId,
       documentType: dto.documentType,
       documentRef: dto.documentRef,
+      attachments: dto.attachments,
     });
   }
 
