@@ -80,6 +80,8 @@ export class PaymentEngineService {
           description: `Envoi vers ${label} — ${params.accountNumber}`,
           providerName: 'HUB2',
           idempotencyKey,
+          operatorId: params.operator,
+          operatorName: label,
         },
       });
 
@@ -467,7 +469,13 @@ export class PaymentEngineService {
 
       return tx.transaction.update({
         where: { id: transaction.id },
-        data: { status: finalStatus, providerRef: result.providerRef },
+        data: {
+          status: finalStatus,
+          providerRef: result.providerRef,
+          operatorId: params.operatorId,
+          operatorName: result.operatorName,
+          airtimeKind: params.kind,
+        },
       });
     });
   }
@@ -552,7 +560,13 @@ export class PaymentEngineService {
     // en production — hors périmètre du mode simulé local.
     return this.prisma.transaction.update({
       where: { id: transaction.id },
-      data: { status: finalStatus, providerRef: result.providerRef },
+      data: {
+        status: finalStatus,
+        providerRef: result.providerRef,
+        operatorId: params.operatorId,
+        operatorName: result.operatorName,
+        airtimeKind: params.kind,
+      },
     });
   }
 
@@ -577,6 +591,8 @@ export class PaymentEngineService {
         description: `Recharge via ${label} — ${params.accountNumber}`,
         providerName: 'HUB2',
         idempotencyKey: reference,
+        operatorId: params.operator,
+        operatorName: label,
       },
     });
 

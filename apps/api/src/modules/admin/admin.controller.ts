@@ -63,6 +63,12 @@ export class AdminController {
     return this.adminService.getDashboardStats();
   }
 
+  /** Soldes réels HUB2/Reloadly + consommation par opérateur (§ KPIs admin). */
+  @Get('kpis/providers')
+  getProviderKpis() {
+    return this.adminService.getProviderKpis();
+  }
+
   // --- Particuliers ---
   @Get('users')
   listUsers(@Query('page') page?: string, @Query('search') search?: string) {
@@ -113,7 +119,10 @@ export class AdminController {
   // --- Transactions ---
   @Get('transactions')
   listTransactions(@Query() query: TransactionFilterQuery) {
-    return this.adminService.listTransactions({ ...query, page: query.page ? Number(query.page) : 1 });
+    return this.adminService.listTransactions({
+      ...query,
+      page: query.page ? Number(query.page) : 1,
+    });
   }
 
   // --- QR ---
@@ -125,5 +134,11 @@ export class AdminController {
   @Patch('qr/:code/blocked')
   setQrBlocked(@Param('code') code: string, @Body() dto: SetBlockedDto) {
     return this.adminService.setQrBlocked(code, dto.blocked);
+  }
+
+  // --- Providers ---
+  @Get('providers')
+  getProviders() {
+    return this.adminService.getProvidersStatus();
   }
 }

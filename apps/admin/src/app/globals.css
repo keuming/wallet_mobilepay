@@ -5,8 +5,9 @@
   --adm-border: #24304a;
   --adm-text: #e6ecf5;
   --adm-muted: #8a97b3;
-  --adm-accent: #3b82f6;
-  --adm-green: #22c55e;
+  --adm-accent: #0a8f58;
+  --adm-accent-light: #12b374;
+  --adm-green: #0a8f58;
   --adm-red: #ef4444;
   --adm-amber: #f59e0b;
 }
@@ -198,3 +199,196 @@ body {
 }
 .adm-kv { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid var(--adm-border); font-size: 13px; }
 .adm-kv span:first-child { color: var(--adm-muted); }
+
+/* ---------- Section KPIs providers (HUB2 / Reloadly) ---------- */
+
+.adm-section-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--adm-text);
+  margin: 32px 0 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.adm-provider-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.adm-provider-card {
+  background: var(--adm-panel);
+  border: 1px solid var(--adm-border);
+  border-radius: 14px;
+  padding: 20px;
+}
+.adm-provider-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 14px;
+}
+.adm-provider-name {
+  font-weight: 700;
+  font-size: 14px;
+  color: var(--adm-text);
+}
+.adm-provider-badge {
+  font-size: 10.5px;
+  font-weight: 700;
+  padding: 3px 9px;
+  border-radius: 20px;
+}
+.adm-provider-badge.live {
+  background: rgba(10, 143, 88, 0.15);
+  color: var(--adm-accent-light);
+}
+.adm-provider-badge.off {
+  background: rgba(245, 158, 11, 0.15);
+  color: var(--adm-amber);
+}
+
+.adm-provider-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--adm-border);
+  font-size: 13px;
+}
+.adm-provider-row:last-child { border-bottom: none; }
+.adm-provider-row span:first-child { color: var(--adm-muted); }
+.adm-provider-row span:last-child { font-weight: 600; color: var(--adm-text); }
+
+.adm-provider-empty {
+  color: var(--adm-muted);
+  font-size: 12.5px;
+  line-height: 1.6;
+}
+
+.adm-consumption-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+.adm-consumption-card {
+  background: var(--adm-panel);
+  border: 1px solid var(--adm-border);
+  border-radius: 14px;
+  padding: 18px 20px;
+}
+.adm-consumption-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--adm-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  margin-bottom: 12px;
+}
+.adm-operator-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 9px 0;
+  border-bottom: 1px solid var(--adm-border);
+  font-size: 13.5px;
+}
+.adm-operator-row:last-child { border-bottom: none; }
+.adm-operator-amount { font-weight: 700; color: var(--adm-accent-light); }
+
+/* ---------- Cartes de commission (modernes) ---------- */
+
+.adm-commission-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+  margin-bottom: 28px;
+}
+@media (max-width: 1100px) {
+  .adm-commission-grid { grid-template-columns: repeat(2, 1fr); }
+}
+
+.adm-commission-card {
+  background: linear-gradient(155deg, var(--adm-panel) 0%, var(--adm-panel-2) 100%);
+  border: 1px solid var(--adm-border);
+  border-radius: 16px;
+  padding: 18px;
+  display: flex;
+  gap: 12px;
+  position: relative;
+  overflow: hidden;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+.adm-commission-card::before {
+  content: '';
+  position: absolute;
+  inset: -30% -20% auto auto;
+  width: 120px;
+  height: 120px;
+  background: radial-gradient(circle, rgba(10, 143, 88, 0.18) 0%, transparent 70%);
+  pointer-events: none;
+}
+.adm-commission-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 24px -8px rgba(10, 143, 88, 0.3);
+}
+
+.adm-commission-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, var(--adm-accent), var(--adm-accent-light));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  flex-shrink: 0;
+  box-shadow: 0 4px 12px rgba(10, 143, 88, 0.3);
+}
+
+.adm-commission-body { flex: 1; min-width: 0; position: relative; }
+.adm-commission-title { font-size: 13px; font-weight: 700; color: var(--adm-text); }
+.adm-commission-subtitle { font-size: 11px; color: var(--adm-muted); margin-top: 1px; margin-bottom: 8px; }
+.adm-commission-total {
+  font-size: 20px;
+  font-weight: 800;
+  color: var(--adm-accent-light);
+  margin-bottom: 8px;
+  letter-spacing: -0.02em;
+}
+.adm-commission-breakdown {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 10.5px;
+  color: var(--adm-muted);
+  border-top: 1px solid var(--adm-border);
+  padding-top: 6px;
+}
+
+/* ---------- Thème clair (bascule) ---------- */
+
+[data-theme='light'] {
+  --adm-bg: #f4f7f6;
+  --adm-panel: #ffffff;
+  --adm-panel-2: #f8faf9;
+  --adm-border: #e2e8e5;
+  --adm-text: #16211c;
+  --adm-muted: #5a7a72;
+}
+
+.adm-theme-toggle {
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  background: var(--adm-panel-2);
+  border: 1px solid var(--adm-border);
+  color: var(--adm-text);
+  cursor: pointer;
+  font-size: 15px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}

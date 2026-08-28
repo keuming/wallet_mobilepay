@@ -8,7 +8,22 @@ import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 import { ResponseInterceptor } from './common/interceptors/response.interceptor';
 
 async function bootstrap() {
-  const app = await NestFactory.create<NestExpressApplication>(AppModule, { cors: true, rawBody: true });
+  // CORS restreint à une liste blanche d'origines (variable d'env
+  // CORS_ALLOWED_ORIGINS, séparées par des virgules) — indispensable en
+  // production pour ne pas autoriser n'importe quel site à appeler l'API
+  // avec les cookies/credentials. En local, on retombe sur les 3 ports
+  // habituels si la variable n'est pas définie.
+  const allowedOrigins = (
+    process.env.CORS_ALLOWED_ORIGINS ?? 'http://localhost:3001,http://localhost:3002,http://localhost:3003'
+  )
+    .split(',')
+    .map((o) => o.trim())
+    .filter(Boolean);
+
+  const app = await NestFactory.create<NestExpressApplication>(AppModule, {
+    cors: { origin: allowedOrigins, credentials: true },
+    rawBody: true,
+  });
 
   // Limite relevée pour accepter les pièces jointes KYC encodées en base64
   // (recto/verso pièce d'identité + selfie) — le défaut (100kb) est bien trop

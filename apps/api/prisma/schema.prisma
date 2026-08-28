@@ -378,6 +378,16 @@ model Transaction {
   providerRef          String? // référence côté HUB2/Stripe/PayPal
   failureReason        String?
 
+  // Opérateur télécom pour les transactions Airtime/Data (§ KPIs admin) —
+  // champ structuré plutôt que texte libre dans `description`, pour permettre
+  // une agrégation fiable de la consommation par opérateur (Orange/MTN/Moov).
+  operatorId   String?
+  operatorName String?
+  // Distingue crédit d'appel vs forfait data pour une transaction AIRTIME —
+  // le TransactionType n'a qu'une seule valeur AIRTIME pour les deux, ce champ
+  // porte la distinction nécessaire aux KPIs de consommation Reloadly.
+  airtimeKind  String? // 'AIRTIME' | 'DATA'
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 

@@ -9,6 +9,14 @@ import {
   WebhookVerificationResult,
 } from './provider.interface';
 
+export interface Hub2Balances {
+  collectionAvailable: number; // centimes
+  transferAvailable: number;
+  transferReserved: number;
+  currency: string;
+  fetchedAt: string;
+}
+
 /**
  * Adaptateur HUB2 (§26) — fournisseur de paiement mobile-money local
  * (Orange Money, MTN MoMo, Moov, Wave via l'agrégateur HUB2).
@@ -23,12 +31,55 @@ export class Hub2Adapter implements PaymentProviderAdapter {
 
   private readonly baseUrl: string;
   private readonly apiKey: string;
+  private readonly merchantId: string;
+  private readonly environment: 'live' | 'sandbox';
   private readonly webhookSecret: string;
 
   constructor(private config: ConfigService) {
     this.baseUrl = this.config.get('HUB2_BASE_URL', '');
     this.apiKey = this.config.get('HUB2_API_KEY', '');
+    this.merchantId = this.config.get('HUB2_MERCHANT_ID', '');
+    this.environment = this.config.get('HUB2_ENVIRONMENT', 'sandbox');
     this.webhookSecret = this.config.get('HUB2_WEBHOOK_SECRET', '');
+  }
+
+  /**
+   * Solde marchand réel HUB2 (§ KPIs admin) — GET /balance, confirmé contre la
+   * documentation officielle HUB2 : renvoie séparément le solde du compte
+   * collecte (cash-in) et celui du compte transfert (cash-out), avec pour ce
+   * dernier un solde disponible ET un solde réservé (fonds en cours de
+   * traitement). HUB2 n'expose aucune notion de "solde commission" par cet
+   * endpoint — les frais HUB2 apparaissent uniquement paiement par paiement,
+   * jamais comme un solde agrégé consultable via l'API.
+   */
+  async getBalance(): Promise<Hub2Balances | null> {
+    if (!this.apiKey || !this.merchantId) return null; // mode simulé, pas de clé réelle
+
+    const res = await fetch(`${this.baseUrl}/balance`, {
+      method: 'GET',
+      headers: {
+        ApiKey: this.apiKey,
+        MerchantId: this.merchantId,
+        Environment: this.environment,
+      },
+    });
+
+    if (!res.ok) {
+      const text = await res.text();
+      throw new Error(`HUB2 balance API error (${res.status}): ${text}`);
+    }
+
+    const json = await res.json();
+    const collection = json.collectionAccount?.[0];
+    const transfer = json.transferAccount?.[0];
+
+    return {
+      collectionAvailable: Math.round((collection?.availableBalance ?? 0) * 100),
+      transferAvailable: Math.round((transfer?.availableBalance ?? 0) * 100),
+      transferReserved: Math.round((transfer?.reservedBalance ?? 0) * 100),
+      currency: collection?.currency ?? transfer?.currency ?? 'XOF',
+      fetchedAt: new Date().toISOString(),
+    };
   }
 
   async initiateTopup(params: InitiateTopupParams): Promise<ProviderInitiationResult> {
@@ -108,7 +159,7 @@ export class Hub2Adapter implements PaymentProviderAdapter {
   private async request(path: string, body: unknown): Promise<any> {
     // En sandbox sans clé configurée, on simule une réponse pour permettre le
     // développement local sans dépendance externe.
-    if (!this.apiKey) {
+    if (!this.apiKey || !this.merchantId) {
       return { id: `SIMULATED-${crypto.randomUUID()}`, status: 'pending' };
     }
 
@@ -116,7 +167,9 @@ export class Hub2Adapter implements PaymentProviderAdapter {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        Authorization: `Bearer ${this.apiKey}`,
+        ApiKey: this.apiKey,
+        MerchantId: this.merchantId,
+        Environment: this.environment,
       },
       body: JSON.stringify(body),
     });
