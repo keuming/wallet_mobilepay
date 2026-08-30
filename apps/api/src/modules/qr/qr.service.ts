@@ -147,7 +147,9 @@ export class QrService {
         description: dto.description,
       },
     });
-    return { ...link, url: `${this.config.get('QR_LINK_BASE_URL')}/p/${link.slug}` };
+    const url = `${this.config.get('QR_LINK_BASE_URL')}/p/${link.slug}`;
+    const imageDataUrl = await QRCode.toDataURL(url);
+    return { ...link, url, imageDataUrl };
   }
 
   async resolvePaymentLink(slug: string) {

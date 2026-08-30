@@ -5,11 +5,18 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '../../contexts/AuthContext';
 import { apiFetch, ApiError } from '../../lib/apiClient';
 import MerchantSideMenu from '../../components/MerchantSideMenu';
+import QrResultCard from '../../components/QrResultCard';
 
 type Tab = 'static' | 'dynamic' | 'link' | 'request';
 
 interface StaticQr {
   code: string;
+  url: string;
+  imageDataUrl: string;
+}
+
+interface PaymentLinkResult {
+  slug: string;
   url: string;
   imageDataUrl: string;
 }
@@ -95,10 +102,7 @@ function StaticQrPanel({ merchantId }: { merchantId: string }) {
         Le client scanne ce QR fixe puis saisit lui-même le montant à payer.
       </p>
       {qr ? (
-        <div style={{ textAlign: 'center' }}>
-          <img src={qr.imageDataUrl} alt="QR marchand" style={{ width: 220, height: 220 }} />
-          <p style={{ fontSize: 12, color: 'var(--mp-muted)', wordBreak: 'break-all', marginTop: 12 }}>{qr.url}</p>
-        </div>
+        <QrResultCard imageDataUrl={qr.imageDataUrl} url={qr.url} title="QR permanent" filename="mobilepay-qr-permanent" />
       ) : (
         <p>Chargement...</p>
       )}
@@ -147,10 +151,7 @@ function DynamicQrPanel({ merchantId }: { merchantId: string }) {
         {submitting ? 'Génération...' : 'Générer le QR'}
       </button>
       {result && (
-        <div style={{ textAlign: 'center' }}>
-          <img src={result.imageDataUrl} alt="QR dynamique" style={{ width: 200, height: 200 }} />
-          <p style={{ fontSize: 12, color: 'var(--mp-muted)', wordBreak: 'break-all', marginTop: 12 }}>{result.url}</p>
-        </div>
+        <QrResultCard imageDataUrl={result.imageDataUrl} url={result.url} title="QR dynamique" filename="mobilepay-qr-dynamique" />
       )}
     </div>
   );
@@ -159,7 +160,7 @@ function DynamicQrPanel({ merchantId }: { merchantId: string }) {
 function PaymentLinkPanel({ merchantId }: { merchantId: string }) {
   const [amount, setAmount] = useState('');
   const [description, setDescription] = useState('');
-  const [link, setLink] = useState<{ url: string } | null>(null);
+  const [link, setLink] = useState<PaymentLinkResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
@@ -168,7 +169,7 @@ function PaymentLinkPanel({ merchantId }: { merchantId: string }) {
     setError(null);
     setLink(null);
     try {
-      const result = await apiFetch<{ url: string }>(`/merchants/${merchantId}/payment-links`, {
+      const result = await apiFetch<PaymentLinkResult>(`/merchants/${merchantId}/payment-links`, {
         method: 'POST',
         body: JSON.stringify({
           amount: amount ? Math.round(Number(amount) * 100) : undefined,
@@ -201,9 +202,7 @@ function PaymentLinkPanel({ merchantId }: { merchantId: string }) {
         {submitting ? 'Génération...' : 'Créer le lien'}
       </button>
       {link && (
-        <div style={{ padding: 12, background: 'var(--mp-surface)', borderRadius: 10, border: '1px solid var(--mp-border)' }}>
-          <code style={{ fontSize: 13, wordBreak: 'break-all' }}>{link.url}</code>
-        </div>
+        <QrResultCard imageDataUrl={link.imageDataUrl} url={link.url} title="Lien d'encaissement" filename="mobilepay-payment-link" />
       )}
     </div>
   );
