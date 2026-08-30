@@ -527,6 +527,7 @@ model VirtualCard {
   ownerMerchant   Merchant?  @relation(fields: [ownerMerchantId], references: [id])
 
   issuer      CardIssuer
+  network     CardBrand  @default(VISA) // marque affichée sur la carte (VISA/Mastercard)
   providerRef String?    // référence de la carte côté partenaire émetteur
   maskedPan   String?    // ex: "•••• •••• •••• 4242" — jamais le PAN complet
   expiryMonth Int?

@@ -1,7 +1,7 @@
 import { Body, Controller, Get, Headers, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { IsEnum, IsInt, IsOptional, IsPositive, IsString } from 'class-validator';
-import { CardIssuer } from '@prisma/client';
+import { CardIssuer, CardBrand } from '@prisma/client';
 import { CardsService } from './cards.service';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
@@ -19,6 +19,10 @@ export class IssueCardDto {
   @IsOptional()
   @IsEnum(CardIssuer)
   issuer?: CardIssuer;
+
+  @IsOptional()
+  @IsEnum(CardBrand)
+  network?: CardBrand; // VISA (défaut) ou MASTERCARD — marque affichée sur la carte
 }
 
 export class LoadCardDto {
@@ -41,6 +45,7 @@ export class CardsController {
       ownerMerchantId: dto.merchantId,
       holderName: dto.holderName,
       issuer: dto.issuer ?? 'OTHER',
+      network: dto.network,
     });
   }
 

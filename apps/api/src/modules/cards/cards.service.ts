@@ -26,6 +26,7 @@ export class CardsService {
     ownerMerchantId?: string;
     holderName: string;
     issuer: 'UNION33' | 'ONAFRIQ' | 'OTHER';
+    network?: 'VISA' | 'MASTERCARD';
   }) {
     if (!params.ownerUserId && !params.ownerMerchantId) {
       throw new BadRequestException('Une carte doit être rattachée à un utilisateur ou un marchand.');
@@ -42,6 +43,7 @@ export class CardsService {
         ownerUserId: params.ownerUserId,
         ownerMerchantId: params.ownerMerchantId,
         issuer: params.issuer,
+        network: params.network ?? 'VISA',
         providerRef: result.providerRef,
         maskedPan: result.maskedPan,
         expiryMonth: result.expiryMonth,

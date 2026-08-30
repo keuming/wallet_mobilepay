@@ -2,6 +2,7 @@
 
 import { useEffect, useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import Link from 'next/link';
 import { useAuth } from '../../contexts/AuthContext';
 import { apiFetch, ApiError } from '../../lib/apiClient';
 import MerchantSideMenu from '../../components/MerchantSideMenu';
@@ -50,9 +51,14 @@ function EncaisserContent() {
     <div className="mp-container">
       <div className="mp-header mc-business-header">
         <div className="mp-header-row">
-          <button className="mp-icon-btn" onClick={() => setMenuOpen(true)} title="Menu">
-            ☰
-          </button>
+          <div style={{ display: 'flex', gap: 6 }}>
+            <Link href="/dashboard" className="mp-icon-btn" title="Accueil">
+              🏠
+            </Link>
+            <button className="mp-icon-btn" onClick={() => setMenuOpen(true)} title="Menu">
+              ☰
+            </button>
+          </div>
           <span className="mp-brand-mark">
             <span className="dot" />
             Encaissement
