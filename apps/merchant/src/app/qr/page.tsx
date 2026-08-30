@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '../../contexts/AuthContext';
 import { apiFetch } from '../../lib/apiClient';
-import MerchantShell from '../../components/MerchantShell';
+import MerchantSideMenu from '../../components/MerchantSideMenu';
 
 interface QrRow {
   code: string;
@@ -23,19 +23,20 @@ interface LinkRow {
   createdAt: string;
 }
 
-const STATUS_CLASS: Record<string, string> = {
-  ACTIVE: 'green',
-  BLOCKED: 'red',
-  EXPIRED: 'gray',
-  UNASSIGNED: 'gray',
-  ASSIGNED: 'amber',
+const STATUS_LABEL: Record<string, string> = {
+  ACTIVE: 'Actif',
+  BLOCKED: 'Bloqué',
+  EXPIRED: 'Expiré',
+  UNASSIGNED: 'Non assigné',
+  ASSIGNED: 'Assigné',
 };
 
 export default function QrPage() {
-  const { user, loading, activeMerchant } = useAuth();
+  const { user, loading, activeMerchant, logout } = useAuth();
   const router = useRouter();
   const [codes, setCodes] = useState<QrRow[]>([]);
   const [links, setLinks] = useState<LinkRow[]>([]);
+  const [menuOpen, setMenuOpen] = useState(false);
 
   useEffect(() => {
     if (loading) return;
@@ -51,76 +52,70 @@ export default function QrPage() {
   if (loading || !user || !activeMerchant) return null;
 
   return (
-    <MerchantShell title="QR Codes & Payment Links">
-      <div className="mc-panel" style={{ marginBottom: 20 }}>
-        <div className="mc-panel-header">QR Codes</div>
-        <table className="mc-table">
-          <thead>
-            <tr>
-              <th>Code</th>
-              <th>Type</th>
-              <th>Montant fixe</th>
-              <th>Statut</th>
-              <th>Créé le</th>
-            </tr>
-          </thead>
-          <tbody>
-            {codes.length === 0 ? (
-              <tr>
-                <td colSpan={5} style={{ color: '#5a7a94', textAlign: 'center', padding: 20 }}>
-                  Aucun QR généré.
-                </td>
-              </tr>
-            ) : (
-              codes.map((qr) => (
-                <tr key={qr.code}>
-                  <td style={{ fontFamily: 'monospace', fontSize: 12 }}>{qr.code}</td>
-                  <td>{qr.type === 'MERCHANT_STATIC' ? 'Permanent' : 'Dynamique'}</td>
-                  <td>{qr.fixedAmount ? `${(qr.fixedAmount / 100).toLocaleString('fr-FR')} FCFA` : '—'}</td>
-                  <td>
-                    <span className={`mc-badge ${STATUS_CLASS[qr.status] ?? 'gray'}`}>{qr.status}</span>
-                  </td>
-                  <td>{new Date(qr.createdAt).toLocaleDateString('fr-FR')}</td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
+    <div className="mp-container">
+      <div className="mp-header mc-business-header">
+        <div className="mp-header-row">
+          <button className="mp-icon-btn" onClick={() => setMenuOpen(true)} title="Menu">
+            ☰
+          </button>
+          <span className="mp-brand-mark">
+            <span className="dot" />
+            QR & Liens
+            <span className="mc-business-badge">BUSINESS</span>
+          </span>
+          <button onClick={() => logout().then(() => router.push('/login'))} className="mp-icon-btn" title="Déconnexion">
+            ⏻
+          </button>
+        </div>
       </div>
 
-      <div className="mc-panel">
-        <div className="mc-panel-header">Payment Links</div>
-        <table className="mc-table">
-          <thead>
-            <tr>
-              <th>Lien</th>
-              <th>Montant</th>
-              <th>Statut</th>
-              <th>Créé le</th>
-            </tr>
-          </thead>
-          <tbody>
-            {links.length === 0 ? (
-              <tr>
-                <td colSpan={4} style={{ color: '#5a7a94', textAlign: 'center', padding: 20 }}>
-                  Aucun lien créé.
-                </td>
-              </tr>
-            ) : (
-              links.map((link) => (
-                <tr key={link.slug}>
-                  <td style={{ fontFamily: 'monospace', fontSize: 12 }}>{link.url}</td>
-                  <td>{link.amount ? `${(link.amount / 100).toLocaleString('fr-FR')} FCFA` : 'Libre'}</td>
-                  <td>
-                    <span className={`mc-badge ${STATUS_CLASS[link.status] ?? 'gray'}`}>{link.status}</span>
-                  </td>
-                  <td>{new Date(link.createdAt).toLocaleDateString('fr-FR')}</td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
+      <MerchantSideMenu open={menuOpen} onClose={() => setMenuOpen(false)} />
+
+      <div className="mp-section">
+        <h3>📱 QR Codes</h3>
+        {codes.length === 0 && <p style={{ color: 'var(--mp-muted)', fontSize: 14 }}>Aucun QR généré.</p>}
+        <div className="mp-history-list" style={{ padding: 0 }}>
+          {codes.map((qr) => (
+            <div className="mp-history-card" key={qr.code} style={{ cursor: 'default' }}>
+              <div className="mp-history-row">
+                <div className="mp-history-avatar credit">📱</div>
+                <div className="mp-history-main">
+                  <div className="mp-history-name" style={{ fontFamily: 'monospace', fontSize: 12.5 }}>{qr.code}</div>
+                  <div className="mp-history-sub">
+                    {qr.type === 'MERCHANT_STATIC' ? 'Permanent' : 'Dynamique'} · {STATUS_LABEL[qr.status] ?? qr.status}
+                  </div>
+                </div>
+                <div className="mp-history-amount-block">
+                  <div className="mp-history-amount credit">{qr.fixedAmount ? `${(qr.fixedAmount / 100).toLocaleString('fr-FR')} FCFA` : '—'}</div>
+                  <div className="mp-history-time">{new Date(qr.createdAt).toLocaleDateString('fr-FR')}</div>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
-    </MerchantShell>
+
+      <div className="mp-section">
+        <h3>🔗 Payment Links</h3>
+        {links.length === 0 && <p style={{ color: 'var(--mp-muted)', fontSize: 14 }}>Aucun lien créé.</p>}
+        <div className="mp-history-list" style={{ padding: 0 }}>
+          {links.map((link) => (
+            <div className="mp-history-card" key={link.slug} style={{ cursor: 'default' }}>
+              <div className="mp-history-row">
+                <div className="mp-history-avatar credit">🔗</div>
+                <div className="mp-history-main">
+                  <div className="mp-history-name" style={{ fontFamily: 'monospace', fontSize: 11.5 }}>{link.url}</div>
+                  <div className="mp-history-sub">{STATUS_LABEL[link.status] ?? link.status}</div>
+                </div>
+                <div className="mp-history-amount-block">
+                  <div className="mp-history-amount credit">{link.amount ? `${(link.amount / 100).toLocaleString('fr-FR')} FCFA` : 'Libre'}</div>
+                  <div className="mp-history-time">{new Date(link.createdAt).toLocaleDateString('fr-FR')}</div>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
   );
 }

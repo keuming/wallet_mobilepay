@@ -4,7 +4,7 @@ import { useEffect, useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '../../contexts/AuthContext';
 import { apiFetch, ApiError } from '../../lib/apiClient';
-import MerchantShell from '../../components/MerchantShell';
+import MerchantSideMenu from '../../components/MerchantSideMenu';
 
 type Tab = 'static' | 'dynamic' | 'link' | 'request';
 
@@ -15,9 +15,7 @@ interface StaticQr {
 }
 
 // Next.js (App Router) exige que tout composant utilisant useSearchParams()
-// soit enveloppé dans un <Suspense> pour l'export statique en production —
-// sans quoi le build échoue avec "should be wrapped in a suspense boundary"
-// (ne se voit pas en dev local, uniquement au build `next build`).
+// soit enveloppé dans un <Suspense> pour l'export statique en production.
 export default function EncaisserPage() {
   return (
     <Suspense fallback={null}>
@@ -27,11 +25,12 @@ export default function EncaisserPage() {
 }
 
 function EncaisserContent() {
-  const { user, loading, activeMerchant } = useAuth();
+  const { user, loading, activeMerchant, logout } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
   const initialTab = (searchParams.get('tab') as Tab) ?? 'static';
   const [tab, setTab] = useState<Tab>(initialTab);
+  const [menuOpen, setMenuOpen] = useState(false);
 
   useEffect(() => {
     if (loading) return;
@@ -41,27 +40,45 @@ function EncaisserContent() {
   if (loading || !user || !activeMerchant) return null;
 
   return (
-    <MerchantShell title="Encaissement">
-      <div className="mc-tabs">
-        <div className={`mc-tab ${tab === 'static' ? 'active' : ''}`} onClick={() => setTab('static')}>
+    <div className="mp-container">
+      <div className="mp-header mc-business-header">
+        <div className="mp-header-row">
+          <button className="mp-icon-btn" onClick={() => setMenuOpen(true)} title="Menu">
+            ☰
+          </button>
+          <span className="mp-brand-mark">
+            <span className="dot" />
+            Encaissement
+            <span className="mc-business-badge">BUSINESS</span>
+          </span>
+          <button onClick={() => logout().then(() => router.push('/login'))} className="mp-icon-btn" title="Déconnexion">
+            ⏻
+          </button>
+        </div>
+      </div>
+
+      <MerchantSideMenu open={menuOpen} onClose={() => setMenuOpen(false)} />
+
+      <div className="mp-pill-tabs">
+        <button className={`mp-pill-tab ${tab === 'static' ? 'active' : ''}`} onClick={() => setTab('static')}>
           QR permanent
-        </div>
-        <div className={`mc-tab ${tab === 'dynamic' ? 'active' : ''}`} onClick={() => setTab('dynamic')}>
+        </button>
+        <button className={`mp-pill-tab ${tab === 'dynamic' ? 'active' : ''}`} onClick={() => setTab('dynamic')}>
           QR dynamique
-        </div>
-        <div className={`mc-tab ${tab === 'link' ? 'active' : ''}`} onClick={() => setTab('link')}>
+        </button>
+        <button className={`mp-pill-tab ${tab === 'link' ? 'active' : ''}`} onClick={() => setTab('link')}>
           Payment Link
-        </div>
-        <div className={`mc-tab ${tab === 'request' ? 'active' : ''}`} onClick={() => setTab('request')}>
-          Demande de paiement
-        </div>
+        </button>
+        <button className={`mp-pill-tab ${tab === 'request' ? 'active' : ''}`} onClick={() => setTab('request')}>
+          Demande
+        </button>
       </div>
 
       {tab === 'static' && <StaticQrPanel merchantId={activeMerchant.merchantId} />}
       {tab === 'dynamic' && <DynamicQrPanel merchantId={activeMerchant.merchantId} />}
       {tab === 'link' && <PaymentLinkPanel merchantId={activeMerchant.merchantId} />}
       {tab === 'request' && <PaymentRequestPanel merchantId={activeMerchant.merchantId} />}
-    </MerchantShell>
+    </div>
   );
 }
 
@@ -73,15 +90,15 @@ function StaticQrPanel({ merchantId }: { merchantId: string }) {
   }, [merchantId]);
 
   return (
-    <div className="mc-panel" style={{ padding: 24, textAlign: 'center' }}>
-      <p style={{ color: '#5a7a94', fontSize: 13, marginBottom: 16 }}>
-        Le client scanne ce QR fixe puis saisit lui-même le montant à payer (§12 option 1).
+    <div className="mp-form">
+      <p style={{ color: 'var(--mp-muted)', fontSize: 13, margin: 0 }}>
+        Le client scanne ce QR fixe puis saisit lui-même le montant à payer.
       </p>
       {qr ? (
-        <>
+        <div style={{ textAlign: 'center' }}>
           <img src={qr.imageDataUrl} alt="QR marchand" style={{ width: 220, height: 220 }} />
-          <p style={{ fontSize: 12, color: '#5a7a94', wordBreak: 'break-all', marginTop: 12 }}>{qr.url}</p>
-        </>
+          <p style={{ fontSize: 12, color: 'var(--mp-muted)', wordBreak: 'break-all', marginTop: 12 }}>{qr.url}</p>
+        </div>
       ) : (
         <p>Chargement...</p>
       )}
@@ -114,33 +131,25 @@ function DynamicQrPanel({ merchantId }: { merchantId: string }) {
   };
 
   return (
-    <div className="mc-panel" style={{ padding: 24 }}>
-      <p style={{ color: '#5a7a94', fontSize: 13, marginBottom: 16 }}>
-        Montant fixe, QR temporaire à usage unique (§12 option 2 — expire après 15 minutes).
+    <div className="mp-form">
+      <p style={{ color: 'var(--mp-muted)', fontSize: 13, margin: 0 }}>
+        Montant fixe, QR temporaire à usage unique — expire après 15 minutes.
       </p>
-      <div className="mc-form" style={{ padding: 0 }}>
-        <input
-          className="mc-input"
-          placeholder="Montant (FCFA)"
-          type="number"
-          value={amount}
-          onChange={(e) => setAmount(e.target.value)}
-        />
-        <input
-          className="mc-input"
-          placeholder="Description (ex: Course VTC)"
-          value={description}
-          onChange={(e) => setDescription(e.target.value)}
-        />
-        {error && <div className="mc-error">{error}</div>}
-        <button className="mc-btn" disabled={submitting || !amount} onClick={generate}>
-          {submitting ? 'Génération...' : 'Générer le QR'}
-        </button>
-      </div>
+      <input className="mp-input" placeholder="Montant (FCFA)" type="number" value={amount} onChange={(e) => setAmount(e.target.value)} />
+      <input className="mp-input" placeholder="Description (ex: Course VTC)" value={description} onChange={(e) => setDescription(e.target.value)} />
+      {error && <div style={{ color: 'var(--mp-red)', fontSize: 13 }}>{error}</div>}
+      <button
+        className="mp-btn-primary"
+        style={{ background: 'linear-gradient(120deg, var(--mp-navy) 0%, #0a1f3d 100%)' }}
+        disabled={submitting || !amount}
+        onClick={generate}
+      >
+        {submitting ? 'Génération...' : 'Générer le QR'}
+      </button>
       {result && (
-        <div style={{ textAlign: 'center', marginTop: 20 }}>
+        <div style={{ textAlign: 'center' }}>
           <img src={result.imageDataUrl} alt="QR dynamique" style={{ width: 200, height: 200 }} />
-          <p style={{ fontSize: 12, color: '#5a7a94', wordBreak: 'break-all', marginTop: 12 }}>{result.url}</p>
+          <p style={{ fontSize: 12, color: 'var(--mp-muted)', wordBreak: 'break-all', marginTop: 12 }}>{result.url}</p>
         </div>
       )}
     </div>
@@ -175,32 +184,24 @@ function PaymentLinkPanel({ merchantId }: { merchantId: string }) {
   };
 
   return (
-    <div className="mc-panel" style={{ padding: 24 }}>
-      <p style={{ color: '#5a7a94', fontSize: 13, marginBottom: 16 }}>
-        Lien partageable (WhatsApp, SMS...) — laissez le montant vide pour un montant libre saisi par le
-        payeur (§12 option 3).
+    <div className="mp-form">
+      <p style={{ color: 'var(--mp-muted)', fontSize: 13, margin: 0 }}>
+        Lien partageable (WhatsApp, SMS...) — laissez le montant vide pour un montant libre saisi par
+        le payeur.
       </p>
-      <div className="mc-form" style={{ padding: 0 }}>
-        <input
-          className="mc-input"
-          placeholder="Montant (FCFA) — optionnel"
-          type="number"
-          value={amount}
-          onChange={(e) => setAmount(e.target.value)}
-        />
-        <input
-          className="mc-input"
-          placeholder="Description — optionnel"
-          value={description}
-          onChange={(e) => setDescription(e.target.value)}
-        />
-        {error && <div className="mc-error">{error}</div>}
-        <button className="mc-btn" disabled={submitting} onClick={generate}>
-          {submitting ? 'Génération...' : 'Créer le lien'}
-        </button>
-      </div>
+      <input className="mp-input" placeholder="Montant (FCFA) — optionnel" type="number" value={amount} onChange={(e) => setAmount(e.target.value)} />
+      <input className="mp-input" placeholder="Description — optionnel" value={description} onChange={(e) => setDescription(e.target.value)} />
+      {error && <div style={{ color: 'var(--mp-red)', fontSize: 13 }}>{error}</div>}
+      <button
+        className="mp-btn-primary"
+        style={{ background: 'linear-gradient(120deg, var(--mp-navy) 0%, #0a1f3d 100%)' }}
+        disabled={submitting}
+        onClick={generate}
+      >
+        {submitting ? 'Génération...' : 'Créer le lien'}
+      </button>
       {link && (
-        <div style={{ marginTop: 16, padding: 12, background: '#f4f7f6', borderRadius: 8 }}>
+        <div style={{ padding: 12, background: 'var(--mp-surface)', borderRadius: 10, border: '1px solid var(--mp-border)' }}>
           <code style={{ fontSize: 13, wordBreak: 'break-all' }}>{link.url}</code>
         </div>
       )}
@@ -242,36 +243,23 @@ function PaymentRequestPanel({ merchantId }: { merchantId: string }) {
   };
 
   return (
-    <div className="mc-panel" style={{ padding: 24 }}>
-      <p style={{ color: '#5a7a94', fontSize: 13, marginBottom: 16 }}>
-        Le client reçoit une notification et doit confirmer le paiement dans son app (§12 option 4).
+    <div className="mp-form">
+      <p style={{ color: 'var(--mp-muted)', fontSize: 13, margin: 0 }}>
+        Le client reçoit une notification et doit confirmer le paiement dans son app.
       </p>
-      <div className="mc-form" style={{ padding: 0 }}>
-        <input
-          className="mc-input"
-          placeholder="Numéro du client (+225...)"
-          value={customerPhone}
-          onChange={(e) => setCustomerPhone(e.target.value)}
-        />
-        <input
-          className="mc-input"
-          placeholder="Montant (FCFA)"
-          type="number"
-          value={amount}
-          onChange={(e) => setAmount(e.target.value)}
-        />
-        <input
-          className="mc-input"
-          placeholder="Description — optionnel"
-          value={description}
-          onChange={(e) => setDescription(e.target.value)}
-        />
-        {error && <div className="mc-error">{error}</div>}
-        {success && <div className="mc-success">Demande envoyée ✓</div>}
-        <button className="mc-btn" disabled={submitting || !customerPhone || !amount} onClick={send}>
-          {submitting ? 'Envoi...' : 'Envoyer la demande'}
-        </button>
-      </div>
+      <input className="mp-input" placeholder="Numéro du client (+225...)" value={customerPhone} onChange={(e) => setCustomerPhone(e.target.value)} />
+      <input className="mp-input" placeholder="Montant (FCFA)" type="number" value={amount} onChange={(e) => setAmount(e.target.value)} />
+      <input className="mp-input" placeholder="Description — optionnel" value={description} onChange={(e) => setDescription(e.target.value)} />
+      {error && <div style={{ color: 'var(--mp-red)', fontSize: 13 }}>{error}</div>}
+      {success && <div style={{ color: 'var(--mp-green-dark)', fontSize: 13, fontWeight: 600 }}>Demande envoyée ✓</div>}
+      <button
+        className="mp-btn-primary"
+        style={{ background: 'linear-gradient(120deg, var(--mp-navy) 0%, #0a1f3d 100%)' }}
+        disabled={submitting || !customerPhone || !amount}
+        onClick={send}
+      >
+        {submitting ? 'Envoi...' : 'Envoyer la demande'}
+      </button>
     </div>
   );
 }

@@ -431,3 +431,28 @@ body {
   margin-left: 6px;
   vertical-align: middle;
 }
+
+/* Onglets pilule, réutilisés sur plusieurs pages marchand */
+.mp-pill-tabs {
+  display: flex;
+  gap: 8px;
+  padding: 18px 20px 4px;
+  overflow-x: auto;
+}
+.mp-pill-tab {
+  flex-shrink: 0;
+  padding: 8px 14px;
+  border-radius: 20px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--mp-muted);
+  background: var(--mp-surface);
+  border: 1px solid var(--mp-border);
+  cursor: pointer;
+  white-space: nowrap;
+}
+.mp-pill-tab.active {
+  background: var(--mp-navy);
+  color: white;
+  border-color: var(--mp-navy);
+}
