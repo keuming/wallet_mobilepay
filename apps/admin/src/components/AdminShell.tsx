@@ -25,10 +25,10 @@ export default function AdminShell({ title, children }: { title: string; childre
   const pathname = usePathname();
   const router = useRouter();
   const { logout } = useAuth();
-  const [theme, setTheme] = useState<Theme>('dark');
+  const [theme, setTheme] = useState<Theme>('light');
 
   useEffect(() => {
-    const stored = (localStorage.getItem('mp-admin-theme') as Theme) || 'dark';
+    const stored = (localStorage.getItem('mp-admin-theme') as Theme) || 'light';
     setTheme(stored);
     document.documentElement.setAttribute('data-theme', stored);
   }, []);

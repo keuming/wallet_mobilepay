@@ -1,10 +1,10 @@
 :root {
-  --adm-bg: #0b1220;
-  --adm-panel: #131c2e;
-  --adm-panel-2: #1a2540;
-  --adm-border: #24304a;
-  --adm-text: #e6ecf5;
-  --adm-muted: #8a97b3;
+  --adm-bg: #f4f7f6;
+  --adm-panel: #ffffff;
+  --adm-panel-2: #f8faf9;
+  --adm-border: #e2e8e5;
+  --adm-text: #16211c;
+  --adm-muted: #5a7a72;
   --adm-accent: #0a8f58;
   --adm-accent-light: #12b374;
   --adm-green: #0a8f58;
@@ -370,32 +370,42 @@ body {
 
 /* ---------- Thème clair (bascule) ---------- */
 
-[data-theme='light'] {
-  --adm-bg: #f4f7f6;
-  --adm-panel: #ffffff;
-  --adm-panel-2: #f8faf9;
-  --adm-border: #e2e8e5;
-  --adm-text: #16211c;
-  --adm-muted: #5a7a72;
+[data-theme='dark'] {
+  --adm-bg: #0b1220;
+  --adm-panel: #131c2e;
+  --adm-panel-2: #1a2540;
+  --adm-border: #24304a;
+  --adm-text: #e6ecf5;
+  --adm-muted: #8a97b3;
 }
 
-/* Teinte turquoise claire réservée à la sidebar en mode clair — donne du
-   caractère sans nuire à la lisibilité (texte foncé conservé). */
-[data-theme='light'] .adm-sidebar {
+/* Teinte turquoise claire — réservée au mode clair (défaut) ; le mode sombre
+   garde la sidebar sobre d'origine, sans ce dégradé. */
+.adm-sidebar {
   background: linear-gradient(180deg, #e3f6f0 0%, #eefaf6 100%);
   border-right: 1px solid #cdeee3;
 }
-[data-theme='light'] .adm-sidebar-brand {
+[data-theme='dark'] .adm-sidebar {
+  background: var(--adm-panel);
+  border-right: 1px solid var(--adm-border);
+}
+.adm-sidebar-brand {
   border-bottom-color: #cdeee3;
   color: var(--adm-text);
 }
-[data-theme='light'] .adm-nav-link {
+[data-theme='dark'] .adm-sidebar-brand {
+  border-bottom-color: var(--adm-border);
+}
+.adm-nav-link {
   color: #2f5c4f;
 }
-[data-theme='light'] .adm-nav-link:hover {
+[data-theme='dark'] .adm-nav-link {
+  color: var(--adm-muted);
+}
+.adm-nav-link:hover {
   background: rgba(10, 143, 88, 0.08);
 }
-[data-theme='light'] .adm-nav-link.active {
+.adm-nav-link.active {
   background: rgba(10, 143, 88, 0.12);
   color: var(--adm-accent);
   border-left-color: var(--adm-accent);
