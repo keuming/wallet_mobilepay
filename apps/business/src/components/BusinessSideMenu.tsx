@@ -39,6 +39,10 @@ export default function BusinessSideMenu({ open, onClose }: BusinessSideMenuProp
             <span className="icon">💰</span>
             Encaissement
           </Link>
+          <Link href="/transactions" className="mp-menu-item" onClick={onClose}>
+            <span className="icon">📋</span>
+            Historique
+          </Link>
           <Link href="/qr" className="mp-menu-item" onClick={onClose}>
             <span className="icon">📱</span>
             QR Codes

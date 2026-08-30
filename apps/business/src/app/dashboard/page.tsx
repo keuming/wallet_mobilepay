@@ -94,6 +94,14 @@ export default function BusinessHomePage() {
           </div>
           <div className="mp-feature-chevron">→</div>
         </Link>
+        <Link href="/transactions" className="mp-feature-card">
+          <div className="mp-feature-icon">📋</div>
+          <div className="mp-feature-text">
+            <div className="mp-feature-title">Historique</div>
+            <div className="mp-feature-sub">Vérifier qu'un encaissement est bien arrivé</div>
+          </div>
+          <div className="mp-feature-chevron">→</div>
+        </Link>
         <Link href="/qr" className="mp-feature-card">
           <div className="mp-feature-icon">📱</div>
           <div className="mp-feature-text">
