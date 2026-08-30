@@ -457,3 +457,83 @@ body {
   color: white;
   border-color: var(--mp-navy);
 }
+
+/* ---------- Formulaires mp-* (bloc manquant, ajouté suite au diagnostic
+   du 30/08/2026 — ces classes existent depuis le début dans le wallet
+   particulier mais avaient été oubliées lors de la construction du système
+   visuel marchand/business, laissant tous les formulaires sans style) ---------- */
+
+.mp-form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 26px 22px;
+}
+.mp-form label {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--mp-muted);
+  display: block;
+}
+
+.mp-input {
+  padding: 13px 15px;
+  border: 1.5px solid var(--mp-border);
+  background: white;
+  border-radius: var(--mp-radius-sm);
+  font-size: 15px;
+  font-family: inherit;
+  color: var(--mp-text);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  outline: none;
+}
+.mp-input:focus {
+  border-color: var(--mp-green);
+  box-shadow: 0 0 0 4px rgba(10, 143, 88, 0.1);
+}
+
+.mp-btn-primary {
+  background: linear-gradient(120deg, var(--mp-green) 0%, var(--mp-green-dark) 100%);
+  color: white;
+  border: none;
+  border-radius: var(--mp-radius-sm);
+  padding: 15px;
+  font-size: 15px;
+  font-weight: 700;
+  font-family: inherit;
+  cursor: pointer;
+  box-shadow: 0 8px 18px -6px rgba(10, 143, 88, 0.4);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+.mp-btn-primary:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 10px 22px -6px rgba(10, 143, 88, 0.45);
+}
+.mp-btn-primary:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  box-shadow: none;
+  transform: none;
+}
+
+.mp-btn-ghost {
+  background: transparent;
+  border: 1.5px solid var(--mp-border);
+  color: var(--mp-navy);
+  border-radius: var(--mp-radius-sm);
+  padding: 13px;
+  font-weight: 600;
+  font-size: 14px;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.mp-error {
+  color: var(--mp-red);
+  font-size: 13px;
+  background: rgba(214, 69, 69, 0.06);
+  border: 1px solid rgba(214, 69, 69, 0.15);
+  border-radius: 12px;
+  padding: 10px 14px;
+}
+
