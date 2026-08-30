@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '../../contexts/AuthContext';
 import { apiFetch, ApiError } from '../../lib/apiClient';
-import MerchantSideMenu from '../../components/MerchantSideMenu';
+import BusinessSideMenu from '../../components/BusinessSideMenu';
 
 interface Operator {
   operatorId: string;
@@ -105,7 +105,7 @@ export default function VenteCreditPage() {
         </div>
       </div>
 
-      <MerchantSideMenu open={menuOpen} onClose={() => setMenuOpen(false)} />
+      <BusinessSideMenu open={menuOpen} onClose={() => setMenuOpen(false)} />
 
       <div className="mp-form">
         <p style={{ color: 'var(--mp-muted)', fontSize: 13, margin: 0 }}>

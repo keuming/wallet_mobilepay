@@ -4,12 +4,12 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '../contexts/AuthContext';
 
-interface MerchantSideMenuProps {
+interface BusinessSideMenuProps {
   open: boolean;
   onClose: () => void;
 }
 
-export default function MerchantSideMenu({ open, onClose }: MerchantSideMenuProps) {
+export default function BusinessSideMenu({ open, onClose }: BusinessSideMenuProps) {
   const { user, activeMerchant, logout } = useAuth();
   const router = useRouter();
 
@@ -35,24 +35,28 @@ export default function MerchantSideMenu({ open, onClose }: MerchantSideMenuProp
             <span className="icon">🏠</span>
             Accueil
           </Link>
-          <Link href="/wallet" className="mp-menu-item" onClick={onClose}>
-            <span className="icon">💼</span>
-            Wallet
+          <Link href="/encaisser" className="mp-menu-item" onClick={onClose}>
+            <span className="icon">💰</span>
+            Encaissement
           </Link>
-          <Link href="/transactions" className="mp-menu-item" onClick={onClose}>
-            <span className="icon">📋</span>
-            Transactions
+          <Link href="/qr" className="mp-menu-item" onClick={onClose}>
+            <span className="icon">📱</span>
+            QR Codes
           </Link>
-          <Link href="/carte" className="mp-menu-item" onClick={onClose}>
-            <span className="icon">💳</span>
-            Carte virtuelle
+          <Link href="/recharger" className="mp-menu-item" onClick={onClose}>
+            <span className="icon">📞</span>
+            Vente crédit/data
           </Link>
 
           <div className="mp-menu-divider" />
 
-          <a href="https://business.mobilepay-ci.com" className="mp-menu-item" onClick={onClose}>
-            <span className="icon">📲</span>
-            App Business (encaissement)
+          <a
+            href="https://marchand.mobilepay-ci.com"
+            className="mp-menu-item"
+            onClick={onClose}
+          >
+            <span className="icon">📊</span>
+            Dashboard de gestion
           </a>
 
           <div className="mp-menu-divider" />

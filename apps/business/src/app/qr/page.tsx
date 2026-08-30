@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '../../contexts/AuthContext';
 import { apiFetch } from '../../lib/apiClient';
-import MerchantSideMenu from '../../components/MerchantSideMenu';
+import BusinessSideMenu from '../../components/BusinessSideMenu';
 
 interface QrRow {
   code: string;
@@ -75,7 +75,7 @@ export default function QrPage() {
         </div>
       </div>
 
-      <MerchantSideMenu open={menuOpen} onClose={() => setMenuOpen(false)} />
+      <BusinessSideMenu open={menuOpen} onClose={() => setMenuOpen(false)} />
 
       <div className="mp-section">
         <h3>📱 QR Codes</h3>

@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '../../contexts/AuthContext';
 import { apiFetch, ApiError } from '../../lib/apiClient';
-import MerchantSideMenu from '../../components/MerchantSideMenu';
+import BusinessSideMenu from '../../components/BusinessSideMenu';
 import QrResultCard from '../../components/QrResultCard';
 
 type Tab = 'static' | 'dynamic' | 'link' | 'request';
@@ -70,7 +70,7 @@ function EncaisserContent() {
         </div>
       </div>
 
-      <MerchantSideMenu open={menuOpen} onClose={() => setMenuOpen(false)} />
+      <BusinessSideMenu open={menuOpen} onClose={() => setMenuOpen(false)} />
 
       <div className="mp-pill-tabs">
         <button className={`mp-pill-tab ${tab === 'static' ? 'active' : ''}`} onClick={() => setTab('static')}>

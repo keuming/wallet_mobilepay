@@ -124,43 +124,35 @@ export default function DashboardPage() {
         </div>
 
         <div className="mp-actions">
-          <Link href="/encaisser" className="mp-action-btn">
-            <span className="icon">💰</span>
-            Encaisser
-          </Link>
-          <Link href="/qr" className="mp-action-btn">
-            <span className="icon">📱</span>
-            Mes QR
+          <Link href="/wallet" className="mp-action-btn">
+            <span className="icon">💼</span>
+            Wallet
           </Link>
           <Link href="/transactions" className="mp-action-btn">
             <span className="icon">📋</span>
             Historique
           </Link>
-          <Link href="/encaisser?tab=link" className="mp-action-btn">
-            <span className="icon">🔗</span>
-            Lien
+          <Link href="/carte" className="mp-action-btn">
+            <span className="icon">💎</span>
+            Carte
           </Link>
+          <a href="https://business.mobilepay-ci.com" className="mp-action-btn">
+            <span className="icon">📲</span>
+            Encaisser
+          </a>
         </div>
       </div>
 
       {data && (
         <div className="mp-feature-list" style={{ marginTop: 8 }}>
-          <Link href="/recharger" className="mp-feature-card featured">
-            <div className="mp-feature-icon">📞</div>
+          <a href="https://business.mobilepay-ci.com" className="mp-feature-card featured">
+            <div className="mp-feature-icon">📲</div>
             <div className="mp-feature-text">
-              <div className="mp-feature-title">Vente crédit/data</div>
-              <div className="mp-feature-sub">Recharger le téléphone d'un client</div>
+              <div className="mp-feature-title">App Business</div>
+              <div className="mp-feature-sub">Encaisser un client, vendre du crédit/data</div>
             </div>
             <div className="mp-feature-chevron">→</div>
-          </Link>
-          <Link href="/carte" className="mp-feature-card featured">
-            <div className="mp-feature-icon">💎</div>
-            <div className="mp-feature-text">
-              <div className="mp-feature-title">Carte virtuelle</div>
-              <div className="mp-feature-sub">Payer en ligne partout dans le monde</div>
-            </div>
-            <div className="mp-feature-chevron">→</div>
-          </Link>
+          </a>
           <div className="mp-feature-card" style={{ cursor: 'default' }}>
             <div className="mp-feature-icon">⏳</div>
             <div className="mp-feature-text">
