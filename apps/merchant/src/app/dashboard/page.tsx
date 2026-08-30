@@ -145,6 +145,22 @@ export default function DashboardPage() {
 
       {data && (
         <div className="mp-feature-list" style={{ marginTop: 8 }}>
+          <Link href="/recharger" className="mp-feature-card featured">
+            <div className="mp-feature-icon">📞</div>
+            <div className="mp-feature-text">
+              <div className="mp-feature-title">Vente crédit/data</div>
+              <div className="mp-feature-sub">Recharger le téléphone d'un client</div>
+            </div>
+            <div className="mp-feature-chevron">→</div>
+          </Link>
+          <Link href="/carte" className="mp-feature-card featured">
+            <div className="mp-feature-icon">💎</div>
+            <div className="mp-feature-text">
+              <div className="mp-feature-title">Carte virtuelle</div>
+              <div className="mp-feature-sub">Payer en ligne partout dans le monde</div>
+            </div>
+            <div className="mp-feature-chevron">→</div>
+          </Link>
           <div className="mp-feature-card" style={{ cursor: 'default' }}>
             <div className="mp-feature-icon">⏳</div>
             <div className="mp-feature-text">
@@ -161,14 +177,6 @@ export default function DashboardPage() {
               <div className="mp-feature-sub">{formatFcfa(data.monthCollections)} FCFA encaissés ce mois</div>
             </div>
           </div>
-          <Link href="/carte" className="mp-feature-card featured">
-            <div className="mp-feature-icon">💎</div>
-            <div className="mp-feature-text">
-              <div className="mp-feature-title">Carte virtuelle</div>
-              <div className="mp-feature-sub">Payer en ligne partout dans le monde</div>
-            </div>
-            <div className="mp-feature-chevron">→</div>
-          </Link>
         </div>
       )}
 
