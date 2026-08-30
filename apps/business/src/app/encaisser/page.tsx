@@ -8,7 +8,7 @@ import { apiFetch, ApiError } from '../../lib/apiClient';
 import BusinessSideMenu from '../../components/BusinessSideMenu';
 import QrResultCard from '../../components/QrResultCard';
 
-type Tab = 'static' | 'dynamic' | 'link' | 'request' | 'card';
+type Tab = 'static' | 'dynamic' | 'link' | 'request' | 'cash' | 'card';
 
 interface StaticQr {
   code: string;
@@ -89,11 +89,11 @@ function EncaisserContent() {
           <span className="icon">📲</span>
           <span className="label">Débit direct</span>
         </div>
-        <div
-          className={`mp-method-card ${tab === 'card' ? 'active' : ''}`}
-          style={{ gridColumn: '1 / span 2' }}
-          onClick={() => setTab('card')}
-        >
+        <div className={`mp-method-card ${tab === 'cash' ? 'active' : ''}`} onClick={() => setTab('cash')}>
+          <span className="icon">💵</span>
+          <span className="label">Espèce</span>
+        </div>
+        <div className={`mp-method-card ${tab === 'card' ? 'active' : ''}`} onClick={() => setTab('card')}>
           <span className="icon">💳</span>
           <span className="label">Carte</span>
         </div>
@@ -103,7 +103,59 @@ function EncaisserContent() {
       {tab === 'dynamic' && <DynamicQrPanel merchantId={activeMerchant.merchantId} />}
       {tab === 'link' && <PaymentLinkPanel merchantId={activeMerchant.merchantId} />}
       {tab === 'request' && <PaymentRequestPanel merchantId={activeMerchant.merchantId} />}
+      {tab === 'cash' && <CashPanel merchantId={activeMerchant.merchantId} />}
       {tab === 'card' && <CardPanel />}
+    </div>
+  );
+}
+
+function CashPanel({ merchantId }: { merchantId: string }) {
+  const [amount, setAmount] = useState('');
+  const [description, setDescription] = useState('');
+  const [success, setSuccess] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+
+  const record = async () => {
+    setSubmitting(true);
+    setError(null);
+    setSuccess(false);
+    try {
+      await apiFetch(`/merchants/${merchantId}/cash`, {
+        method: 'POST',
+        body: JSON.stringify({
+          amount: Math.round(Number(amount) * 100),
+          description: description || undefined,
+        }),
+      });
+      setSuccess(true);
+      setAmount('');
+      setDescription('');
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Échec de l'enregistrement.");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <div className="mp-form">
+      <p style={{ color: 'var(--mp-muted)', fontSize: 13, margin: 0 }}>
+        Le client paie en liquide — enregistre simplement le montant reçu pour ton suivi de caisse
+        (aucun mouvement d'argent numérique).
+      </p>
+      <input className="mp-input" placeholder="Montant reçu (FCFA)" type="number" value={amount} onChange={(e) => setAmount(e.target.value)} />
+      <input className="mp-input" placeholder="Note — optionnel" value={description} onChange={(e) => setDescription(e.target.value)} />
+      {error && <div className="mp-error">{error}</div>}
+      {success && <div style={{ color: 'var(--mp-green-dark)', fontSize: 13, fontWeight: 600 }}>Encaissement espèce enregistré ✓</div>}
+      <button
+        className="mp-btn-primary"
+        style={{ background: 'linear-gradient(120deg, var(--mp-navy) 0%, #0a1f3d 100%)' }}
+        disabled={submitting || !amount}
+        onClick={record}
+      >
+        {submitting ? 'Enregistrement...' : 'Enregistrer'}
+      </button>
     </div>
   );
 }

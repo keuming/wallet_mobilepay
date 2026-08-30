@@ -1,7 +1,7 @@
 import { Body, Controller, Get, Headers, Param, Post, Query, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { MerchantsService } from './merchants.service';
-import { CreateMerchantDto, CreatePaymentRequestDto, TransferFromMerchantDto, SellAirtimeDto } from './dto/merchants.dto';
+import { CreateMerchantDto, CreatePaymentRequestDto, TransferFromMerchantDto, SellAirtimeDto, RecordCashDto } from './dto/merchants.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { MerchantScopeGuard } from '../../common/guards/merchant-scope.guard';
 import { CurrentUser, AuthenticatedUser } from '../../common/decorators/current-user.decorator';
@@ -68,6 +68,29 @@ export class MerchantsController {
     @Headers('idempotency-key') idempotencyKey: string,
   ) {
     return this.merchantsService.sellAirtime(merchantId, user.userId, dto, idempotencyKey);
+  }
+
+  /** Encaissement en espèces — pur journal de caisse, aucun mouvement de wallet. */
+  @Post(':merchantId/cash')
+  @UseGuards(JwtAuthGuard, MerchantScopeGuard)
+  recordCash(
+    @Param('merchantId') merchantId: string,
+    @CurrentUser() user: AuthenticatedUser,
+    @Body() dto: RecordCashDto,
+  ) {
+    return this.merchantsService.recordCashCollection(merchantId, user.userId, dto);
+  }
+
+  @Get(':merchantId/cash-balance')
+  @UseGuards(JwtAuthGuard, MerchantScopeGuard)
+  getCashBalance(@Param('merchantId') merchantId: string) {
+    return this.merchantsService.getCashBalance(merchantId);
+  }
+
+  @Get(':merchantId/cash')
+  @UseGuards(JwtAuthGuard, MerchantScopeGuard)
+  listCash(@Param('merchantId') merchantId: string) {
+    return this.merchantsService.listCashCollections(merchantId);
   }
 
   /** Vue détaillée pour l'onglet "Wallet" du dashboard marchand (§11). */

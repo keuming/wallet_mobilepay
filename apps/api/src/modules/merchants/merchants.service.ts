@@ -61,6 +61,39 @@ export class MerchantsService {
   }
 
   /**
+   * Encaissement en espèces (§ Phase A Business) — journal de caisse pur,
+   * aucun mouvement de wallet. Sert uniquement au suivi comptable du
+   * marchand (rapprochement caisse physique).
+   */
+  async recordCashCollection(merchantId: string, userId: string, dto: { amount: number; description?: string }) {
+    await this.prisma.merchant.findUniqueOrThrow({ where: { id: merchantId } });
+    return this.prisma.cashCollection.create({
+      data: {
+        merchantId,
+        amount: BigInt(dto.amount),
+        description: dto.description,
+        recordedByUserId: userId,
+      },
+    });
+  }
+
+  async getCashBalance(merchantId: string) {
+    const result = await this.prisma.cashCollection.aggregate({
+      where: { merchantId },
+      _sum: { amount: true },
+    });
+    return { totalCash: Number(result._sum.amount ?? 0n) };
+  }
+
+  async listCashCollections(merchantId: string, take = 20) {
+    return this.prisma.cashCollection.findMany({
+      where: { merchantId },
+      orderBy: { createdAt: 'desc' },
+      take,
+    });
+  }
+
+  /**
    * Transfert depuis le wallet marchand vers un particulier (§ dashboard
    * marchand — parcours Transfert). N'est possible que si l'admin a
    * explicitement autorisé ce marchand (Merchant.transfersEnabled) — sinon

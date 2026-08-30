@@ -89,3 +89,14 @@ export class SellAirtimeDto {
   @IsString()
   operatorName?: string;
 }
+
+export class RecordCashDto {
+  @IsInt()
+  @IsPositive()
+  amount: number;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(140)
+  description?: string;
+}

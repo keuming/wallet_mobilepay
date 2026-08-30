@@ -12,6 +12,10 @@ interface DashboardData {
   todayCollections: number;
 }
 
+interface CashBalance {
+  totalCash: number;
+}
+
 function formatFcfa(amountInCents: number): string {
   return (amountInCents / 100).toLocaleString('fr-FR');
 }
@@ -20,6 +24,7 @@ export default function BusinessHomePage() {
   const { user, loading, activeMerchant, logout } = useAuth();
   const router = useRouter();
   const [data, setData] = useState<DashboardData | null>(null);
+  const [cash, setCash] = useState<CashBalance | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
 
   useEffect(() => {
@@ -30,6 +35,7 @@ export default function BusinessHomePage() {
     }
     if (!activeMerchant) return;
     apiFetch<DashboardData>(`/merchants/${activeMerchant.merchantId}/dashboard`).then(setData);
+    apiFetch<CashBalance>(`/merchants/${activeMerchant.merchantId}/cash-balance`).then(setCash);
   }, [user, loading, activeMerchant, router]);
 
   if (loading || !user) return null;
@@ -75,6 +81,11 @@ export default function BusinessHomePage() {
         <div style={{ fontSize: 12, opacity: 0.8, marginTop: 6, position: 'relative' }}>
           Solde wallet : {data ? formatFcfa(data.availableBalance) : '—'} FCFA
         </div>
+        {cash && cash.totalCash > 0 && (
+          <div style={{ fontSize: 12, opacity: 0.8, marginTop: 2, position: 'relative' }}>
+            💵 Espèce en caisse : {formatFcfa(cash.totalCash)} FCFA
+          </div>
+        )}
       </div>
 
       <div className="mp-feature-list" style={{ marginTop: 8 }}>

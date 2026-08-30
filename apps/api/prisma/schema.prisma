@@ -237,10 +237,30 @@ model Merchant {
   settlements    Settlement[]
   virtualCards   VirtualCard[]
   enterpriseServices EnterpriseServiceClient[]
+  cashCollections CashCollection[]
 
   @@index([status])
   @@index([agentId])
   @@map("merchants")
+}
+
+/**
+ * Encaissement en espèces (§ Phase A Business — le client paie en liquide,
+ * le marchand enregistre simplement le montant pour son suivi comptable).
+ * Aucun mouvement d'argent réel ne transite par MobilePay — c'est un pur
+ * journal de caisse, distinct du wallet et des transactions HUB2.
+ */
+model CashCollection {
+  id                 String   @id @default(uuid())
+  merchantId         String
+  merchant           Merchant @relation(fields: [merchantId], references: [id])
+  amount             BigInt // centimes
+  description        String?
+  recordedByUserId   String
+  createdAt          DateTime @default(now())
+
+  @@index([merchantId])
+  @@map("cash_collections")
 }
 
 // Table de jonction Users <-> Merchants avec un rôle interne par marchand
