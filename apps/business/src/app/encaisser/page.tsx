@@ -72,22 +72,31 @@ function EncaisserContent() {
 
       <BusinessSideMenu open={menuOpen} onClose={() => setMenuOpen(false)} />
 
-      <div className="mp-pill-tabs">
-        <button className={`mp-pill-tab ${tab === 'static' ? 'active' : ''}`} onClick={() => setTab('static')}>
-          📱 QR permanent
-        </button>
-        <button className={`mp-pill-tab ${tab === 'dynamic' ? 'active' : ''}`} onClick={() => setTab('dynamic')}>
-          📱 QR dynamique
-        </button>
-        <button className={`mp-pill-tab ${tab === 'link' ? 'active' : ''}`} onClick={() => setTab('link')}>
-          🔗 Lien (SMS/WhatsApp)
-        </button>
-        <button className={`mp-pill-tab ${tab === 'request' ? 'active' : ''}`} onClick={() => setTab('request')}>
-          📲 Débit direct
-        </button>
-        <button className={`mp-pill-tab ${tab === 'card' ? 'active' : ''}`} onClick={() => setTab('card')}>
-          💳 Carte
-        </button>
+      <div className="mp-method-grid">
+        <div className={`mp-method-card ${tab === 'static' ? 'active' : ''}`} onClick={() => setTab('static')}>
+          <span className="icon">📱</span>
+          <span className="label">QR permanent</span>
+        </div>
+        <div className={`mp-method-card ${tab === 'dynamic' ? 'active' : ''}`} onClick={() => setTab('dynamic')}>
+          <span className="icon">📱</span>
+          <span className="label">QR dynamique</span>
+        </div>
+        <div className={`mp-method-card ${tab === 'link' ? 'active' : ''}`} onClick={() => setTab('link')}>
+          <span className="icon">🔗</span>
+          <span className="label">Lien SMS/WhatsApp</span>
+        </div>
+        <div className={`mp-method-card ${tab === 'request' ? 'active' : ''}`} onClick={() => setTab('request')}>
+          <span className="icon">📲</span>
+          <span className="label">Débit direct</span>
+        </div>
+        <div
+          className={`mp-method-card ${tab === 'card' ? 'active' : ''}`}
+          style={{ gridColumn: '1 / span 2' }}
+          onClick={() => setTab('card')}
+        >
+          <span className="icon">💳</span>
+          <span className="label">Carte</span>
+        </div>
       </div>
 
       {tab === 'static' && <StaticQrPanel merchantId={activeMerchant.merchantId} />}
