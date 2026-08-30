@@ -15,7 +15,6 @@ interface Counterparty {
 }
 
 interface Transaction {
-  id: string;
   reference: string;
   type: string;
   status: string;
