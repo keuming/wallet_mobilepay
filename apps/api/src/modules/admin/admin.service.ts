@@ -1,6 +1,7 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Prisma, MerchantStatus, TransactionStatus } from '@prisma/client';
+import * as bcrypt from 'bcrypt';
 import { PrismaService } from '../../config/prisma.service';
 import { Hub2Adapter } from '../payment-engine/providers/hub2.adapter';
 import { ReloadlyAdapter } from '../payment-engine/providers/reloadly.adapter';
@@ -39,13 +40,260 @@ export class AdminService {
    * propres volumes de transactions réussies (grille tarifaire HUB2 réelle
    * fournie par l'administrateur, pas une donnée fictive).
    */
+  /**
+   * Programme de cartes prépayées (§ page Cartes virtuelles admin) — solde
+   * par marque (VISA/Mastercard) calculé depuis les demandes de rechargement
+   * confirmées (status RECEIVED), et historique complet pour audit.
+   */
+  async createCardFunding(input: {
+    brand?: 'VISA' | 'MASTERCARD';
+    source: 'BANK_TRANSFER' | 'PAYPAL' | 'MANUAL';
+    amount: number;
+    reference?: string;
+    details?: Record<string, unknown>;
+    requestedByAdminId: string;
+  }) {
+    return this.prisma.cardFunding.create({
+      data: {
+        brand: input.brand,
+        source: input.source,
+        amount: BigInt(input.amount),
+        reference: input.reference,
+        details: input.details as Prisma.InputJsonValue,
+        requestedByAdminId: input.requestedByAdminId,
+        status: 'PENDING',
+      },
+    });
+  }
+
+  /** Historique d'un rail de trésorerie indépendant des cartes (§ PayPal, Virement bancaire). */
+  async listFundingsBySource(source: 'PAYPAL' | 'BANK_TRANSFER') {
+    return this.prisma.cardFunding.findMany({
+      where: { source },
+      orderBy: { createdAt: 'desc' },
+      take: 50,
+    });
+  }
+
+  /** Total confirmé pour un rail de trésorerie donné. */
+  async getFundingSourceTotal(source: 'PAYPAL' | 'BANK_TRANSFER') {
+    const result = await this.prisma.cardFunding.aggregate({
+      where: { source, status: 'RECEIVED' },
+      _sum: { amount: true },
+    });
+    return Number(result._sum.amount ?? 0n);
+  }
+
+  async confirmCardFunding(id: string) {
+    const funding = await this.prisma.cardFunding.findUniqueOrThrow({ where: { id } });
+    if (funding.status !== 'PENDING') {
+      throw new BadRequestException('Cette demande a déjà été traitée.');
+    }
+    return this.prisma.cardFunding.update({
+      where: { id },
+      data: { status: 'RECEIVED', confirmedAt: new Date() },
+    });
+  }
+
+  async listCardFundings() {
+    return this.prisma.cardFunding.findMany({ orderBy: { createdAt: 'desc' }, take: 50 });
+  }
+
+  async getCardProgramBalances() {
+    const received = await this.prisma.cardFunding.groupBy({
+      by: ['brand'],
+      where: { status: 'RECEIVED', brand: { not: null } },
+      _sum: { amount: true },
+    });
+    const balances = { VISA: 0, MASTERCARD: 0 };
+    for (const row of received) {
+      if (!row.brand) continue; // garde-fou — exclut PayPal/Virement (sans marque)
+      balances[row.brand] = Number(row._sum.amount ?? 0n);
+    }
+    return balances;
+  }
+
+  /**
+   * Création par un admin (§ boutons "Ajouter" back-office) — chemin
+   * additionnel à l'inscription en libre-service depuis les apps wallet
+   * (particulier/marchand/agent créent normalement leur propre compte).
+   * Mot de passe temporaire à communiquer au titulaire, à changer à la
+   * première connexion (non forcé au MVP, TODO amélioration future).
+   */
+  async createParticulier(dto: { phone: string; firstName: string; lastName: string; password: string }) {
+    const existing = await this.prisma.user.findUnique({ where: { phone: dto.phone } });
+    if (existing) throw new ConflictException('Un compte existe déjà avec ce numéro.');
+
+    const passwordHash = await bcrypt.hash(dto.password, 12);
+    return this.prisma.user.create({
+      data: {
+        phone: dto.phone,
+        firstName: dto.firstName,
+        lastName: dto.lastName,
+        passwordHash,
+        role: 'PARTICULIER',
+        wallet: { create: { type: 'PARTICULIER' } },
+      },
+    });
+  }
+
+  async createAgent(dto: { phone: string; firstName: string; lastName: string; password: string; zone?: string }) {
+    const existing = await this.prisma.user.findUnique({ where: { phone: dto.phone } });
+    if (existing) throw new ConflictException('Un compte existe déjà avec ce numéro.');
+
+    const passwordHash = await bcrypt.hash(dto.password, 12);
+    return this.prisma.$transaction(async (tx) => {
+      const user = await tx.user.create({
+        data: {
+          phone: dto.phone,
+          firstName: dto.firstName,
+          lastName: dto.lastName,
+          passwordHash,
+          role: 'AGENT',
+        },
+      });
+      const agent = await tx.agent.create({ data: { userId: user.id, zone: dto.zone } });
+      return { user, agent };
+    });
+  }
+
+  /**
+   * Création d'un marchand par un admin — mirroir de MerchantsService.create()
+   * (self-service) mais crée aussi le compte titulaire s'il n'existe pas déjà,
+   * puisqu'un admin n'a pas de JWT "propriétaire" à rattacher.
+   */
+  async createMerchant(dto: {
+    businessName: string;
+    category: string;
+    ownerPhone: string;
+    ownerFirstName: string;
+    ownerLastName: string;
+    feeRateBps?: number;
+  }) {
+    let owner = await this.prisma.user.findUnique({ where: { phone: dto.ownerPhone } });
+    const ownerExistedAlready = !!owner; // capturé AVANT toute réaffectation ci-dessous
+    const tempPassword = Math.random().toString(36).slice(-10);
+
+    return this.prisma.$transaction(async (tx) => {
+      if (!owner) {
+        const passwordHash = await bcrypt.hash(tempPassword, 12);
+        owner = await tx.user.create({
+          data: {
+            phone: dto.ownerPhone,
+            firstName: dto.ownerFirstName,
+            lastName: dto.ownerLastName,
+            passwordHash,
+            role: 'MERCHANT_USER',
+          },
+        });
+      }
+
+      const merchant = await tx.merchant.create({
+        data: {
+          businessName: dto.businessName,
+          category: dto.category,
+          status: 'PENDING',
+          feeRateBps: dto.feeRateBps ?? 200,
+        },
+      });
+
+      await tx.wallet.create({ data: { type: 'MERCHANT', merchantId: merchant.id, currency: 'XOF' } });
+      await tx.merchantUser.create({ data: { merchantId: merchant.id, userId: owner!.id, role: 'MERCHANT_ADMIN' } });
+      await tx.qrCode.create({
+        data: {
+          code: `MPM${merchant.id.slice(0, 10).toUpperCase()}`,
+          type: 'MERCHANT_STATIC',
+          status: 'UNASSIGNED',
+          merchantId: merchant.id,
+        },
+      });
+
+      return {
+        merchant,
+        ownerCreated: !ownerExistedAlready,
+        tempPassword: ownerExistedAlready ? undefined : tempPassword,
+      };
+    });
+  }
+
+  async updateUser(id: string, dto: { firstName?: string; lastName?: string }) {
+    return this.prisma.user.update({
+      where: { id },
+      data: { firstName: dto.firstName, lastName: dto.lastName },
+    });
+  }
+
+  async updateMerchant(id: string, dto: { businessName?: string; category?: string; feeRateBps?: number }) {
+    return this.prisma.merchant.update({
+      where: { id },
+      data: { businessName: dto.businessName, category: dto.category, feeRateBps: dto.feeRateBps },
+    });
+  }
+
+  /**
+   * Services B2B "Collecte" et "Bulk Payment" (§ menu admin) — un client est
+   * un marchand existant inscrit à l'un de ces services. L'historique affiché
+   * réutilise directement les transactions réelles de son wallet marchand.
+   */
+  async listEnterpriseClients(serviceType: 'COLLECTE' | 'BULK_PAYMENT') {
+    return this.prisma.enterpriseServiceClient.findMany({
+      where: { serviceType },
+      include: {
+        merchant: { select: { id: true, businessName: true, category: true, status: true, wallet: true } },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+
+  async addEnterpriseClient(serviceType: 'COLLECTE' | 'BULK_PAYMENT', merchantId: string, notes?: string) {
+    const merchant = await this.prisma.merchant.findUnique({ where: { id: merchantId } });
+    if (!merchant) throw new NotFoundException('Marchand introuvable.');
+
+    const existing = await this.prisma.enterpriseServiceClient.findUnique({
+      where: { serviceType_merchantId: { serviceType, merchantId } },
+    });
+    if (existing) throw new ConflictException('Ce marchand est déjà client de ce service.');
+
+    return this.prisma.enterpriseServiceClient.create({
+      data: { serviceType, merchantId, notes },
+      include: { merchant: { select: { businessName: true } } },
+    });
+  }
+
+  async removeEnterpriseClient(id: string) {
+    await this.prisma.enterpriseServiceClient.findUniqueOrThrow({ where: { id } });
+    return this.prisma.enterpriseServiceClient.delete({ where: { id } });
+  }
+
+  /** Historique de transactions du wallet marchand d'un client de service. */
+  async getEnterpriseClientTransactions(id: string) {
+    const client = await this.prisma.enterpriseServiceClient.findUniqueOrThrow({
+      where: { id },
+      include: { merchant: { include: { wallet: true } } },
+    });
+    if (!client.merchant.wallet) return [];
+
+    return this.prisma.ledgerEntry.findMany({
+      where: { walletId: client.merchant.wallet.id },
+      include: { transaction: true },
+      orderBy: { createdAt: 'desc' },
+      take: 50,
+    });
+  }
+
   async getProviderKpis() {
     const hub2DefaultPayout = Number(this.config.get('HUB2_PAYOUT_DEFAULT_BALANCE_CENTS', '0'));
     const reloadlyDefaultBalance = Number(this.config.get('RELOADLY_DEFAULT_BALANCE_CENTS', '0'));
 
     const [hub2Balances, reloadlyBalance, consumptionRows, topupRows, withdrawalRows] = await Promise.all([
-      this.hub2.getBalance().catch(() => null),
-      this.reloadly.getBalance().catch(() => null),
+      this.hub2.getBalance().catch((err) => {
+        console.error('[AdminService] HUB2 getBalance a échoué :', err?.message ?? err);
+        return null;
+      }),
+      this.reloadly.getBalance().catch((err) => {
+        console.error('[AdminService] Reloadly getBalance a échoué :', err?.message ?? err);
+        return null;
+      }),
       this.prisma.transaction.groupBy({
         by: ['operatorName', 'airtimeKind'],
         where: { type: 'AIRTIME', status: 'SUCCESS', providerName: 'RELOADLY', operatorName: { not: null } },

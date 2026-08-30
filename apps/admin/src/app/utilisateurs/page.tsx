@@ -26,6 +26,18 @@ export default function UsersPage() {
   const [fetching, setFetching] = useState(true);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [showCreate, setShowCreate] = useState(false);
+  const [newPhone, setNewPhone] = useState('');
+  const [newFirstName, setNewFirstName] = useState('');
+  const [newLastName, setNewLastName] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [createError, setCreateError] = useState<string | null>(null);
+  const [creating, setCreating] = useState(false);
+  const [editingUser, setEditingUser] = useState<UserRow | null>(null);
+  const [editFirstName, setEditFirstName] = useState('');
+  const [editLastName, setEditLastName] = useState('');
+  const [editError, setEditError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
 
   const load = (p = page, s = search) => {
     setFetching(true);
@@ -69,6 +81,57 @@ export default function UsersPage() {
 
   const totalPages = Math.max(1, Math.ceil(total / 20));
 
+  const resetCreateForm = () => {
+    setNewPhone('');
+    setNewFirstName('');
+    setNewLastName('');
+    setNewPassword('');
+    setCreateError(null);
+  };
+
+  const submitCreate = async () => {
+    setCreating(true);
+    setCreateError(null);
+    try {
+      await apiFetch('/admin/users', {
+        method: 'POST',
+        body: JSON.stringify({ phone: newPhone, firstName: newFirstName, lastName: newLastName, password: newPassword }),
+      });
+      setShowCreate(false);
+      resetCreateForm();
+      load();
+    } catch (err) {
+      setCreateError(err instanceof ApiError ? err.message : 'Échec de la création.');
+    } finally {
+      setCreating(false);
+    }
+  };
+
+  const openEdit = (u: UserRow) => {
+    setEditingUser(u);
+    setEditFirstName(u.firstName);
+    setEditLastName(u.lastName);
+    setEditError(null);
+  };
+
+  const submitEdit = async () => {
+    if (!editingUser) return;
+    setSaving(true);
+    setEditError(null);
+    try {
+      await apiFetch(`/admin/users/${editingUser.id}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ firstName: editFirstName, lastName: editLastName }),
+      });
+      setEditingUser(null);
+      load();
+    } catch (err) {
+      setEditError(err instanceof ApiError ? err.message : 'Échec de la modification.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
   return (
     <AdminShell title="Particuliers">
       <div className="adm-search-bar">
@@ -93,6 +156,9 @@ export default function UsersPage() {
           }}
         >
           Rechercher
+        </button>
+        <button className="adm-btn" onClick={() => setShowCreate(true)}>
+          + Ajouter
         </button>
       </div>
 
@@ -143,6 +209,9 @@ export default function UsersPage() {
                     >
                       {u.isBlocked ? 'Débloquer' : 'Bloquer'}
                     </button>
+                    <button className="adm-btn ghost" style={{ marginLeft: 6 }} onClick={() => openEdit(u)}>
+                      Modifier
+                    </button>
                   </td>
                 </tr>
               ))
@@ -177,6 +246,73 @@ export default function UsersPage() {
           </button>
         </div>
       </div>
+
+      {showCreate && (
+        <div className="adm-modal-overlay" onClick={() => setShowCreate(false)}>
+          <div className="adm-modal-card" onClick={(e) => e.stopPropagation()}>
+            <div className="adm-modal-title">+ Ajouter un particulier</div>
+            <div className="adm-modal-form">
+              <label className="adm-modal-label">
+                Téléphone
+                <input className="adm-input" style={{ width: '100%', marginTop: 4 }} value={newPhone} onChange={(e) => setNewPhone(e.target.value)} placeholder="+2250700000000" />
+              </label>
+              <label className="adm-modal-label">
+                Prénom
+                <input className="adm-input" style={{ width: '100%', marginTop: 4 }} value={newFirstName} onChange={(e) => setNewFirstName(e.target.value)} />
+              </label>
+              <label className="adm-modal-label">
+                Nom
+                <input className="adm-input" style={{ width: '100%', marginTop: 4 }} value={newLastName} onChange={(e) => setNewLastName(e.target.value)} />
+              </label>
+              <label className="adm-modal-label">
+                Mot de passe temporaire (min. 8 caractères)
+                <input className="adm-input" style={{ width: '100%', marginTop: 4 }} type="text" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} />
+              </label>
+              {createError && <div className="adm-error">{createError}</div>}
+              <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+                <button className="adm-btn ghost" style={{ flex: 1 }} onClick={() => setShowCreate(false)}>
+                  Annuler
+                </button>
+                <button
+                  className="adm-btn"
+                  style={{ flex: 1 }}
+                  disabled={creating || !newPhone || !newFirstName || !newLastName || newPassword.length < 8}
+                  onClick={submitCreate}
+                >
+                  {creating ? 'Création...' : 'Créer'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {editingUser && (
+        <div className="adm-modal-overlay" onClick={() => setEditingUser(null)}>
+          <div className="adm-modal-card" onClick={(e) => e.stopPropagation()}>
+            <div className="adm-modal-title">Modifier {editingUser.phone}</div>
+            <div className="adm-modal-form">
+              <label className="adm-modal-label">
+                Prénom
+                <input className="adm-input" style={{ width: '100%', marginTop: 4 }} value={editFirstName} onChange={(e) => setEditFirstName(e.target.value)} />
+              </label>
+              <label className="adm-modal-label">
+                Nom
+                <input className="adm-input" style={{ width: '100%', marginTop: 4 }} value={editLastName} onChange={(e) => setEditLastName(e.target.value)} />
+              </label>
+              {editError && <div className="adm-error">{editError}</div>}
+              <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+                <button className="adm-btn ghost" style={{ flex: 1 }} onClick={() => setEditingUser(null)}>
+                  Annuler
+                </button>
+                <button className="adm-btn" style={{ flex: 1 }} disabled={saving} onClick={submitEdit}>
+                  {saving ? 'Enregistrement...' : 'Enregistrer'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </AdminShell>
   );
 }

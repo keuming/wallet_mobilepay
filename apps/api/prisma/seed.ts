@@ -49,6 +49,22 @@ async function main() {
     },
   });
 
+  // Compte admin par défaut demandé par Toma — mot de passe dédié distinct
+  // du mot de passe partagé de démo ci-dessus.
+  const defaultAdminPasswordHash = await bcrypt.hash('301219', 12);
+  await prisma.user.upsert({
+    where: { phone: '+2250707400716' },
+    update: {},
+    create: {
+      phone: '+2250707400716',
+      firstName: 'Admin',
+      lastName: 'Principal',
+      passwordHash: defaultAdminPasswordHash,
+      role: 'ADMIN',
+      kycLevel: 'LEVEL_3',
+    },
+  });
+
   // --- Marchand actif de démo ---
   const merchantOwner = await prisma.user.upsert({
     where: { phone: '+2250700000003' },

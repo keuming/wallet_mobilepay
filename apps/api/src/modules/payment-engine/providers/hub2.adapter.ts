@@ -17,6 +17,12 @@ export interface Hub2Balances {
   fetchedAt: string;
 }
 
+export interface PaymentIntentResult {
+  id: string;
+  token: string; // JWT à conserver pour l'étape "attempt a payment" (à venir)
+  raw: unknown;
+}
+
 /**
  * Adaptateur HUB2 (§26) — fournisseur de paiement mobile-money local
  * (Orange Money, MTN MoMo, Moov, Wave via l'agrégateur HUB2).
@@ -80,6 +86,56 @@ export class Hub2Adapter implements PaymentProviderAdapter {
       currency: collection?.currency ?? transfer?.currency ?? 'XOF',
       fetchedAt: new Date().toISOString(),
     };
+  }
+
+  /**
+   * Crée un PaymentIntent HUB2 — première étape du circuit PAY-IN (§ carte
+   * bancaire Ecobank, encaissements généraux). Format vérifié contre la
+   * documentation officielle (exemple curl exact, endpoint confirmé).
+   *
+   * ⚠️ ÉTAPE 2 NON IMPLÉMENTÉE : le contrat exact de "Attempt a payment on a
+   * PaymentIntent object" (comment spécifier le circuit carte, la
+   * redirection 3D Secure, etc.) n'a pas pu être confirmé avec certitude
+   * contre la documentation HUB2 accessible publiquement. Ne pas construire
+   * de parcours utilisateur carte tant que ce contrat n'est pas obtenu
+   * directement auprès de HUB2 (collection Postman ou doc API complète) —
+   * un PaymentIntent créé sans pouvoir être finalisé serait un cul-de-sac
+   * pour l'utilisateur. Voir PaymentIntentResult.token, à conserver pour
+   * l'appel d'attempt-payment une fois son contrat connu.
+   */
+  async createPaymentIntent(params: {
+    customerReference: string;
+    purchaseReference: string;
+    amount: bigint; // centimes
+    currency: string;
+  }): Promise<PaymentIntentResult> {
+    if (!this.apiKey || !this.merchantId) {
+      throw new Error('HUB2 non configuré — impossible de créer un PaymentIntent.');
+    }
+
+    const res = await fetch(`${this.baseUrl}/payment-intents`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ApiKey: this.apiKey,
+        MerchantId: this.merchantId,
+        Environment: this.environment,
+      },
+      body: JSON.stringify({
+        customerReference: params.customerReference,
+        purchaseReference: params.purchaseReference,
+        amount: Number(params.amount) / 100,
+        currency: params.currency,
+      }),
+    });
+
+    if (!res.ok) {
+      const text = await res.text();
+      throw new Error(`HUB2 create PaymentIntent error (${res.status}): ${text}`);
+    }
+
+    const json = await res.json();
+    return { id: json.id, token: json.token, raw: json };
   }
 
   async initiateTopup(params: InitiateTopupParams): Promise<ProviderInitiationResult> {

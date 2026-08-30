@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '../../contexts/AuthContext';
 import { apiFetch, ApiError } from '../../lib/apiClient';
@@ -14,7 +14,19 @@ interface StaticQr {
   imageDataUrl: string;
 }
 
+// Next.js (App Router) exige que tout composant utilisant useSearchParams()
+// soit enveloppé dans un <Suspense> pour l'export statique en production —
+// sans quoi le build échoue avec "should be wrapped in a suspense boundary"
+// (ne se voit pas en dev local, uniquement au build `next build`).
 export default function EncaisserPage() {
+  return (
+    <Suspense fallback={null}>
+      <EncaisserContent />
+    </Suspense>
+  );
+}
+
+function EncaisserContent() {
   const { user, loading, activeMerchant } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();

@@ -232,6 +232,7 @@ model Merchant {
   kycDossiers    KycDossier[]
   settlements    Settlement[]
   virtualCards   VirtualCard[]
+  enterpriseServices EnterpriseServiceClient[]
 
   @@index([status])
   @@index([agentId])
@@ -537,6 +538,80 @@ model VirtualCard {
   @@index([ownerMerchantId])
   @@index([status])
   @@map("virtual_cards")
+}
+
+enum CardBrand {
+  VISA
+  MASTERCARD
+}
+
+enum FundingSource {
+  BANK_TRANSFER
+  PAYPAL
+  MANUAL
+}
+
+enum FundingStatus {
+  PENDING
+  RECEIVED
+  REJECTED
+}
+
+// Demande de rechargement du programme de cartes prépayées MobilePay
+// (§ dashboard admin — solde VISA/Mastercard). Aucun des 3 rails (virement
+// bancaire, PayPal, dépôt manuel) n'est intégré via une vraie API pour ce
+// type d'opération — comme dans la réalité, chaque rechargement est
+// enregistré ici en attente, puis confirmé manuellement par un admin une
+// fois l'argent effectivement reçu (relevé bancaire, notification PayPal...).
+model CardFunding {
+  id       String        @id @default(uuid())
+  // Optionnel désormais : PayPal et Virement bancaire sont des rails de
+  // trésorerie indépendants des cartes (§ menu admin), plus liés uniquement
+  // au programme cartes — `brand` n'est renseigné que pour les rechargements
+  // de carte proprement dits.
+  brand    CardBrand?
+  source   FundingSource
+  amount   BigInt // centimes
+  currency String        @default("XOF")
+  reference String?
+  // Champs spécifiques à la source : {bankName, swiftBic, iban} pour un
+  // virement, {paypalEmail} pour PayPal — structure volontairement libre
+  // plutôt que des colonnes dédiées par source.
+  details  Json?
+  status   FundingStatus @default(PENDING)
+
+  requestedByAdminId String?
+  confirmedAt         DateTime?
+  createdAt            DateTime @default(now())
+
+  @@index([brand])
+  @@index([source])
+  @@index([status])
+  @@map("card_fundings")
+}
+
+// Services B2B "Collecte" (encaissement de masse pour le compte d'un tiers,
+// ex: frais scolaires, factures) et "Bulk Payment"/Remittance (versements de
+// masse, ex: salaires, indemnités) — un marchand existant peut être inscrit à
+// l'un ou l'autre (ou les deux). L'historique de transactions affiché pour un
+// client réutilise directement son wallet marchand existant, pas un système
+// parallèle.
+enum EnterpriseServiceType {
+  COLLECTE
+  BULK_PAYMENT
+}
+
+model EnterpriseServiceClient {
+  id          String                @id @default(uuid())
+  serviceType EnterpriseServiceType
+  merchantId  String
+  merchant    Merchant              @relation(fields: [merchantId], references: [id])
+  notes       String?
+  createdAt   DateTime              @default(now())
+
+  @@unique([serviceType, merchantId])
+  @@index([serviceType])
+  @@map("enterprise_service_clients")
 }
 
 // ---------------------------------------------------------------------------

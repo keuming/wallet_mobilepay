@@ -17,6 +17,27 @@ interface DashboardStats {
   qrActivatedCount: number;
 }
 
+interface TxRow {
+  id: string;
+  reference: string;
+  type: string;
+  status: string;
+  amount: number;
+  feeAmount: number;
+  createdAt: string;
+}
+
+const STATUS_CLASS: Record<string, string> = {
+  SUCCESS: 'green',
+  FAILED: 'red',
+  CANCELLED: 'red',
+  EXPIRED: 'gray',
+  PENDING: 'amber',
+  PROCESSING: 'amber',
+  INITIATED: 'amber',
+  REFUNDED: 'gray',
+};
+
 function formatFcfa(cents: number): string {
   return `${(cents / 100).toLocaleString('fr-FR')} FCFA`;
 }
@@ -25,6 +46,7 @@ export default function DashboardPage() {
   const { admin, loading } = useAuth();
   const router = useRouter();
   const [stats, setStats] = useState<DashboardStats | null>(null);
+  const [recentTx, setRecentTx] = useState<TxRow[]>([]);
 
   useEffect(() => {
     if (loading) return;
@@ -33,6 +55,9 @@ export default function DashboardPage() {
       return;
     }
     apiFetch<DashboardStats>('/admin/dashboard').then(setStats);
+    apiFetch<{ transactions: TxRow[] }>('/admin/transactions?page=1').then((res) =>
+      setRecentTx(res.transactions.slice(0, 10)),
+    );
   }, [admin, loading, router]);
 
   if (loading || !admin) return null;
@@ -79,6 +104,44 @@ export default function DashboardPage() {
           </div>
         </div>
       )}
+
+      <div className="adm-section-title">📋 Historique des transactions</div>
+      <div className="adm-panel">
+        <table className="adm-table">
+          <thead>
+            <tr>
+              <th>Référence</th>
+              <th>Type</th>
+              <th>Montant</th>
+              <th>Statut</th>
+              <th>Date</th>
+            </tr>
+          </thead>
+          <tbody>
+            {recentTx.length === 0 ? (
+              <tr>
+                <td colSpan={5} style={{ color: 'var(--adm-muted)', textAlign: 'center', padding: 24 }}>
+                  Aucune transaction pour le moment.
+                </td>
+              </tr>
+            ) : (
+              recentTx.map((tx) => (
+                <tr key={tx.id}>
+                  <td style={{ fontFamily: 'monospace', fontSize: 12 }}>{tx.reference}</td>
+                  <td>{tx.type}</td>
+                  <td>{formatFcfa(tx.amount)}</td>
+                  <td>
+                    <span className={`adm-badge ${STATUS_CLASS[tx.status] ?? 'gray'}`}>{tx.status}</span>
+                  </td>
+                  <td style={{ color: 'var(--adm-muted)', fontSize: 12.5 }}>
+                    {new Date(tx.createdAt).toLocaleString('fr-FR')}
+                  </td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
     </AdminShell>
   );
 }

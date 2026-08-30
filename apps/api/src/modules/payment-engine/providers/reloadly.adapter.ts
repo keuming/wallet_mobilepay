@@ -77,7 +77,7 @@ export class ReloadlyAdapter {
 
     const token = await this.getAccessToken();
     const res = await fetch(`${this.baseUrl}/accounts/balance`, {
-      headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
+      headers: { Authorization: `Bearer ${token}`, Accept: 'application/com.reloadly.topups-v1+json' },
     });
 
     if (!res.ok) {
