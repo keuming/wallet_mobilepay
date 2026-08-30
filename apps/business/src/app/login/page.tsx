@@ -81,9 +81,6 @@ export default function LoginPage() {
           >
             {submitting ? 'Connexion...' : 'Se connecter'}
           </button>
-          <p style={{ fontSize: 11, color: 'var(--mp-muted)', marginTop: 14, textAlign: 'center' }}>
-            Compte marchand de démo : +2250700000003 / Password123!
-          </p>
         </form>
       </div>
     </div>
