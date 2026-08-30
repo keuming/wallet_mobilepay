@@ -537,6 +537,13 @@ export class AdminService {
     });
   }
 
+  /** Autorise ou révoque le droit pour un marchand de transférer de l'argent
+   * depuis son wallet (§ dashboard marchand — nouveau parcours Transfert). */
+  async setMerchantTransfersEnabled(id: string, enabled: boolean) {
+    await this.prisma.merchant.findUniqueOrThrow({ where: { id } });
+    return this.prisma.merchant.update({ where: { id }, data: { transfersEnabled: enabled } });
+  }
+
   // --- Agents (§20) ---
 
   async listAgents(page = 1) {

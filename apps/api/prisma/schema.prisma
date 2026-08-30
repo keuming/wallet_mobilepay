@@ -221,6 +221,10 @@ model Merchant {
   agentId       String?
   agent         Agent?         @relation(fields: [agentId], references: [id])
   feeRateBps    Int            @default(200) // frais MobilePay en points de base (200 = 2%)
+  // Transfert d'argent depuis le wallet marchand (§ dashboard marchand) —
+  // désactivé par défaut, l'admin doit l'activer explicitement pour ce
+  // marchand précis.
+  transfersEnabled Boolean     @default(false)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

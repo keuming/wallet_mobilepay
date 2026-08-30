@@ -17,7 +17,7 @@ const NAV_ITEMS = [
 export default function MerchantShell({ title, children }: { title: string; children: ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
-  const { logout, activeMerchant } = useAuth();
+  const { logout, activeMerchant, merchants, setActiveMerchantId } = useAuth();
 
   return (
     <div className="mc-shell">
@@ -25,7 +25,27 @@ export default function MerchantShell({ title, children }: { title: string; chil
         <div className="mc-sidebar-brand">
           Mobile<span>Pay</span>
         </div>
-        <div className="mc-merchant-name">{activeMerchant?.businessName ?? '—'}</div>
+
+        {/* Sélecteur multi-boutiques (§ un compte peut gérer plusieurs marchands) */}
+        {merchants.length > 1 ? (
+          <select
+            className="mc-merchant-select"
+            value={activeMerchant?.merchantId ?? ''}
+            onChange={(e) => {
+              setActiveMerchantId(e.target.value);
+              router.push('/dashboard');
+            }}
+          >
+            {merchants.map((m) => (
+              <option key={m.merchantId} value={m.merchantId}>
+                {m.businessName}
+              </option>
+            ))}
+          </select>
+        ) : (
+          <div className="mc-merchant-name">{activeMerchant?.businessName ?? '—'}</div>
+        )}
+
         <nav>
           {NAV_ITEMS.map((item) => (
             <Link

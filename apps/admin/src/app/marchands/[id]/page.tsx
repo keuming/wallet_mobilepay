@@ -14,6 +14,7 @@ interface MerchantDetail {
   category: string | null;
   status: 'PENDING' | 'ACTIVE' | 'SUSPENDED' | 'REJECTED';
   feeRateBps: number;
+  transfersEnabled: boolean;
   wallet: { cachedBalance: number; pendingBalance: number } | null;
   agent: { user: { firstName: string; lastName: string; phone: string } } | null;
   kycDossiers: Array<{
@@ -71,6 +72,22 @@ export default function MerchantDetailPage() {
       await apiFetch(`/kyc/${dossierId}/review`, {
         method: 'POST',
         body: JSON.stringify({ approve, rejectReason: approve ? undefined : 'Rejeté par l\'admin' }),
+      });
+      await load();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Action impossible.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const toggleTransfers = async (enabled: boolean) => {
+    setBusy(true);
+    setError(null);
+    try {
+      await apiFetch(`/admin/merchants/${merchantId}/transfers-enabled`, {
+        method: 'PATCH',
+        body: JSON.stringify({ blocked: enabled }),
       });
       await load();
     } catch (err) {
@@ -164,6 +181,20 @@ export default function MerchantDetailPage() {
             <span>Fonds en attente</span>
             <span>{merchant.wallet ? `${(merchant.wallet.pendingBalance / 100).toLocaleString('fr-FR')} FCFA` : '—'}</span>
           </div>
+          <div className="adm-kv">
+            <span>Transferts sortants</span>
+            <span className={`adm-badge ${merchant.transfersEnabled ? 'green' : 'gray'}`}>
+              {merchant.transfersEnabled ? 'Autorisés' : 'Non autorisés'}
+            </span>
+          </div>
+          <button
+            className="adm-btn"
+            style={{ marginTop: 10, width: '100%' }}
+            disabled={busy}
+            onClick={() => toggleTransfers(!merchant.transfersEnabled)}
+          >
+            {merchant.transfersEnabled ? 'Révoquer les transferts' : 'Autoriser les transferts'}
+          </button>
         </div>
       </div>
 

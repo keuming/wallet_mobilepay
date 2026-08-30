@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '../../contexts/AuthContext';
-import { apiFetch } from '../../lib/apiClient';
+import { apiFetch, ApiError } from '../../lib/apiClient';
 import MerchantShell from '../../components/MerchantShell';
 
 interface WalletDetail {
@@ -44,6 +44,21 @@ export default function WalletPage() {
   const router = useRouter();
   const [detail, setDetail] = useState<WalletDetail | null>(null);
   const [movements, setMovements] = useState<LedgerEntry[]>([]);
+  const [showTransfer, setShowTransfer] = useState(false);
+  const [toPhone, setToPhone] = useState('');
+  const [amount, setAmount] = useState('');
+  const [description, setDescription] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
+  const [formSuccess, setFormSuccess] = useState<string | null>(null);
+
+  const load = () => {
+    if (!activeMerchant) return;
+    apiFetch<WalletDetail>(`/merchants/${activeMerchant.merchantId}/wallet-detail`).then(setDetail);
+    apiFetch<{ entries: LedgerEntry[] }>(
+      `/merchants/${activeMerchant.merchantId}/transactions?pageSize=15`,
+    ).then((res) => setMovements(res.entries));
+  };
 
   useEffect(() => {
     if (loading) return;
@@ -51,12 +66,36 @@ export default function WalletPage() {
       router.replace('/login');
       return;
     }
-    if (!activeMerchant) return;
-    apiFetch<WalletDetail>(`/merchants/${activeMerchant.merchantId}/wallet-detail`).then(setDetail);
-    apiFetch<{ entries: LedgerEntry[] }>(
-      `/merchants/${activeMerchant.merchantId}/transactions?pageSize=15`,
-    ).then((res) => setMovements(res.entries));
+    load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, loading, activeMerchant, router]);
+
+  const submitTransfer = async () => {
+    if (!activeMerchant) return;
+    setSubmitting(true);
+    setFormError(null);
+    setFormSuccess(null);
+    try {
+      await apiFetch(`/merchants/${activeMerchant.merchantId}/transfer`, {
+        method: 'POST',
+        idempotent: true,
+        body: JSON.stringify({
+          toPhone,
+          amount: Math.round(Number(amount) * 100),
+          description: description || undefined,
+        }),
+      });
+      setFormSuccess('Transfert effectué ✓');
+      setToPhone('');
+      setAmount('');
+      setDescription('');
+      load();
+    } catch (err) {
+      setFormError(err instanceof ApiError ? err.message : 'Le transfert a échoué.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   if (loading || !user || !activeMerchant) return null;
 
@@ -76,6 +115,68 @@ export default function WalletPage() {
             <div className="mc-stat-label">Frais MobilePay (ce mois)</div>
             <div className="mc-stat-value">{fcfa(detail.feesThisMonth)}</div>
           </div>
+        </div>
+      )}
+
+      {activeMerchant.transfersEnabled ? (
+        <div className="mc-panel" style={{ marginBottom: 20 }}>
+          <div className="mc-panel-header">↗️ Transférer de l'argent</div>
+          {!showTransfer ? (
+            <div style={{ padding: 16 }}>
+              <button className="mc-btn" onClick={() => setShowTransfer(true)}>
+                Nouveau transfert
+              </button>
+            </div>
+          ) : (
+            <div style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 10, maxWidth: 360 }}>
+              <input
+                className="mc-input"
+                placeholder="Numéro du bénéficiaire (+225...)"
+                value={toPhone}
+                onChange={(e) => setToPhone(e.target.value)}
+              />
+              <input
+                className="mc-input"
+                type="number"
+                placeholder="Montant (FCFA)"
+                value={amount}
+                onChange={(e) => setAmount(e.target.value)}
+              />
+              <input
+                className="mc-input"
+                placeholder="Motif (optionnel)"
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+              />
+              {formError && <div className="mc-error">{formError}</div>}
+              {formSuccess && <div style={{ color: 'var(--mc-green)', fontSize: 13, fontWeight: 600 }}>{formSuccess}</div>}
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button
+                  className="mc-btn ghost"
+                  onClick={() => {
+                    setShowTransfer(false);
+                    setFormError(null);
+                  }}
+                >
+                  Annuler
+                </button>
+                <button
+                  className="mc-btn"
+                  disabled={submitting || !toPhone || !amount}
+                  onClick={submitTransfer}
+                >
+                  {submitting ? 'Envoi...' : 'Envoyer'}
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      ) : (
+        <div className="mc-panel" style={{ marginBottom: 20, padding: 16 }}>
+          <p style={{ color: 'var(--mc-muted)', fontSize: 13, margin: 0 }}>
+            🔒 Le transfert d'argent depuis ce wallet n'est pas autorisé pour le moment. Contactez un
+            administrateur MobilePay pour l'activer.
+          </p>
         </div>
       )}
 

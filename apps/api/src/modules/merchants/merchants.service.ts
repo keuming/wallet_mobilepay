@@ -1,10 +1,17 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../config/prisma.service';
+import { LedgerService } from '../ledger/ledger.service';
 import { CreateMerchantDto } from './dto/merchants.dto';
+
+const MAX_SERIALIZATION_RETRIES = 3;
 
 @Injectable()
 export class MerchantsService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private ledger: LedgerService,
+  ) {}
 
   /**
    * Crée le marchand + son wallet marchand + le rattache à l'utilisateur créateur
@@ -49,6 +56,89 @@ export class MerchantsService {
     const wallet = await this.prisma.wallet.findUnique({ where: { merchantId } });
     if (!wallet) throw new NotFoundException('Wallet marchand introuvable.');
     return wallet;
+  }
+
+  /**
+   * Transfert depuis le wallet marchand vers un particulier (§ dashboard
+   * marchand — parcours Transfert). N'est possible que si l'admin a
+   * explicitement autorisé ce marchand (Merchant.transfersEnabled) — sinon
+   * refus immédiat, quel que soit le rôle de l'utilisateur qui l'initie.
+   */
+  async transferFromMerchant(
+    merchantId: string,
+    initiatedByUserId: string,
+    dto: { toPhone: string; amount: number; description?: string },
+    idempotencyKey: string,
+  ) {
+    const existing = await this.prisma.transaction.findUnique({ where: { idempotencyKey } });
+    if (existing) return existing;
+
+    const merchant = await this.prisma.merchant.findUniqueOrThrow({ where: { id: merchantId } });
+    if (!merchant.transfersEnabled) {
+      throw new BadRequestException(
+        "Le transfert d'argent n'est pas autorisé pour ce marchand — contactez un administrateur MobilePay.",
+      );
+    }
+    if (merchant.status !== 'ACTIVE') {
+      throw new BadRequestException('Ce marchand doit être actif pour effectuer un transfert.');
+    }
+
+    const recipientUser = await this.prisma.user.findUnique({ where: { phone: dto.toPhone } });
+    if (!recipientUser) {
+      throw new NotFoundException('Aucun compte MobilePay associé à ce numéro.');
+    }
+
+    const amount = BigInt(dto.amount);
+
+    return this.runSerializable(async (tx) => {
+      const merchantWallet = await tx.wallet.findUniqueOrThrow({ where: { merchantId } });
+      const recipientWallet = await tx.wallet.findUniqueOrThrow({ where: { userId: recipientUser.id } });
+
+      if (merchantWallet.cachedBalance < amount) {
+        throw new BadRequestException('Solde insuffisant.');
+      }
+
+      const description = dto.description ?? `Transfert vers ${recipientUser.firstName}`;
+
+      const transaction = await tx.transaction.create({
+        data: {
+          type: 'TRANSFER',
+          status: 'SUCCESS',
+          amount,
+          sourceWalletId: merchantWallet.id,
+          destWalletId: recipientWallet.id,
+          initiatedByUserId,
+          description,
+          idempotencyKey,
+        },
+      });
+
+      await this.ledger.postDoubleEntry(tx, {
+        transactionId: transaction.id,
+        fromWalletId: merchantWallet.id,
+        toWalletId: recipientWallet.id,
+        amount,
+        description,
+      });
+
+      return transaction;
+    });
+  }
+
+  private async runSerializable<T>(fn: (tx: Prisma.TransactionClient) => Promise<T>): Promise<T> {
+    for (let attempt = 1; attempt <= MAX_SERIALIZATION_RETRIES; attempt++) {
+      try {
+        return await this.prisma.$transaction(fn, {
+          isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
+        });
+      } catch (err: any) {
+        const isConflict = err?.code === 'P2034' || err?.meta?.code === '40001';
+        if (isConflict && attempt < MAX_SERIALIZATION_RETRIES) continue;
+        if (isConflict) throw new ConflictException('Conflit de transaction, veuillez réessayer.');
+        throw err;
+      }
+    }
+    throw new ConflictException('Échec après plusieurs tentatives.');
   }
 
   /**
@@ -98,6 +188,7 @@ export class MerchantsService {
       role: link.role,
       businessName: link.merchant.businessName,
       status: link.merchant.status,
+      transfersEnabled: link.merchant.transfersEnabled,
     }));
   }
 

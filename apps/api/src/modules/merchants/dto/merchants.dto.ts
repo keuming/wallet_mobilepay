@@ -55,3 +55,17 @@ export class CreatePaymentLinkDto {
   @MaxLength(140)
   description?: string;
 }
+
+export class TransferFromMerchantDto {
+  @IsPhoneNumber(undefined, { message: 'Numéro du bénéficiaire invalide.' })
+  toPhone: string;
+
+  @IsInt()
+  @IsPositive()
+  amount: number;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(140)
+  description?: string;
+}

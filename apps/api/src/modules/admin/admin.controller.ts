@@ -278,6 +278,11 @@ export class AdminController {
     return this.adminService.setMerchantStatus(id, dto.status);
   }
 
+  @Patch('merchants/:id/transfers-enabled')
+  setMerchantTransfersEnabled(@Param('id') id: string, @Body() dto: SetBlockedDto) {
+    return this.adminService.setMerchantTransfersEnabled(id, dto.blocked);
+  }
+
   // --- Agents ---
   @Get('agents')
   listAgents(@Query('page') page?: string) {

@@ -16,6 +16,7 @@ interface MyMerchant {
   role: string;
   businessName: string;
   status: string;
+  transfersEnabled: boolean;
 }
 
 interface AuthContextValue {
