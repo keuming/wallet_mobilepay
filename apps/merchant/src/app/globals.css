@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap');
+
 :root {
   --mc-navy: #0f2d52;
   --mc-green: #0a8f58;
@@ -259,7 +261,6 @@ body {
    conservent leur propre mise en page desktop (mc-*) pour l'instant.
    ===================================================================== */
 
-@import url('https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap');
 
 :root {
   --mp-green: #0a8f58;
