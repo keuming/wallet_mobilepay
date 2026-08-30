@@ -412,3 +412,22 @@ body {
 .mp-menu-item.danger { color: var(--mp-red); }
 .mp-menu-divider { height: 1px; background: var(--mp-border); margin: 8px 20px; }
 .mp-menu-close { position: absolute; top: 18px; right: 16px; width: 30px; height: 30px; border-radius: 10px; background: rgba(255, 255, 255, 0.14); border: none; color: white; cursor: pointer; font-size: 14px; }
+
+/* Touche "Business" — différencie visuellement le marchand du particulier :
+   en-tête teinté bleu marine (au lieu du vert du wallet particulier) et
+   badge BUSINESS ; le solde reste vert (cohérence de marque sur l'argent). */
+.mc-business-header {
+  background: linear-gradient(160deg, #e8edf5 0%, #f4f7fb 100%) !important;
+}
+.mc-business-badge {
+  display: inline-block;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.6px;
+  color: white;
+  background: var(--mp-navy);
+  padding: 2px 7px;
+  border-radius: 6px;
+  margin-left: 6px;
+  vertical-align: middle;
+}

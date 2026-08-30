@@ -1,4 +1,4 @@
-import { IsInt, IsOptional, IsPhoneNumber, IsPositive, IsString, MaxLength, Min, MinLength } from 'class-validator';
+import { IsIn, IsInt, IsOptional, IsPhoneNumber, IsPositive, IsString, MaxLength, Min, MinLength } from 'class-validator';
 
 export class CreateMerchantDto {
   @IsString()
@@ -68,4 +68,24 @@ export class TransferFromMerchantDto {
   @IsString()
   @MaxLength(140)
   description?: string;
+}
+
+export class SellAirtimeDto {
+  @IsPhoneNumber(undefined, { message: 'Numéro du client invalide.' })
+  phoneNumber: string;
+
+  @IsInt()
+  @IsPositive()
+  amount: number;
+
+  @IsIn(['AIRTIME', 'DATA'])
+  kind: 'AIRTIME' | 'DATA';
+
+  @IsOptional()
+  @IsString()
+  operatorId?: string;
+
+  @IsOptional()
+  @IsString()
+  operatorName?: string;
 }

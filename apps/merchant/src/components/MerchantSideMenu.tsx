@@ -43,6 +43,10 @@ export default function MerchantSideMenu({ open, onClose }: MerchantSideMenuProp
             <span className="icon">💰</span>
             Encaissement
           </Link>
+          <Link href="/recharger" className="mp-menu-item" onClick={onClose}>
+            <span className="icon">📞</span>
+            Vente crédit/data
+          </Link>
           <Link href="/qr" className="mp-menu-item" onClick={onClose}>
             <span className="icon">📱</span>
             QR Codes

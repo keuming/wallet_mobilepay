@@ -77,7 +77,7 @@ export default function DashboardPage() {
 
   return (
     <div className="mp-container">
-      <div className="mp-header">
+      <div className="mp-header mc-business-header">
         <div className="mp-header-row">
           <button className="mp-icon-btn" onClick={() => setMenuOpen(true)} title="Menu">
             ☰
@@ -85,6 +85,7 @@ export default function DashboardPage() {
           <span className="mp-brand-mark">
             <span className="dot" />
             {activeMerchant.businessName}
+            <span className="mc-business-badge">BUSINESS</span>
           </span>
           <button
             onClick={() => logout().then(() => router.push('/login'))}

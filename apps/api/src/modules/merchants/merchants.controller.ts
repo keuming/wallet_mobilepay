@@ -1,7 +1,7 @@
 import { Body, Controller, Get, Headers, Param, Post, Query, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { MerchantsService } from './merchants.service';
-import { CreateMerchantDto, CreatePaymentRequestDto, TransferFromMerchantDto } from './dto/merchants.dto';
+import { CreateMerchantDto, CreatePaymentRequestDto, TransferFromMerchantDto, SellAirtimeDto } from './dto/merchants.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { MerchantScopeGuard } from '../../common/guards/merchant-scope.guard';
 import { CurrentUser, AuthenticatedUser } from '../../common/decorators/current-user.decorator';
@@ -56,6 +56,18 @@ export class MerchantsController {
     @Headers('idempotency-key') idempotencyKey: string,
   ) {
     return this.merchantsService.transferFromMerchant(merchantId, user.userId, dto, idempotencyKey);
+  }
+
+  /** Vente de crédit d'appel/data à un client, financée par le wallet marchand. */
+  @Post(':merchantId/airtime')
+  @UseGuards(JwtAuthGuard, MerchantScopeGuard)
+  sellAirtime(
+    @Param('merchantId') merchantId: string,
+    @CurrentUser() user: AuthenticatedUser,
+    @Body() dto: SellAirtimeDto,
+    @Headers('idempotency-key') idempotencyKey: string,
+  ) {
+    return this.merchantsService.sellAirtime(merchantId, user.userId, dto, idempotencyKey);
   }
 
   /** Vue détaillée pour l'onglet "Wallet" du dashboard marchand (§11). */

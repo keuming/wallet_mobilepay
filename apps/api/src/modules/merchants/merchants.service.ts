@@ -2,6 +2,7 @@ import { BadRequestException, ConflictException, Injectable, NotFoundException }
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../config/prisma.service';
 import { LedgerService } from '../ledger/ledger.service';
+import { ReloadlyAdapter } from '../payment-engine/providers/reloadly.adapter';
 import { CreateMerchantDto } from './dto/merchants.dto';
 
 const MAX_SERIALIZATION_RETRIES = 3;
@@ -11,6 +12,7 @@ export class MerchantsService {
   constructor(
     private prisma: PrismaService,
     private ledger: LedgerService,
+    private reloadly: ReloadlyAdapter,
   ) {}
 
   /**
@@ -122,6 +124,83 @@ export class MerchantsService {
       });
 
       return transaction;
+    });
+  }
+
+  /**
+   * Vente de crédit d'appel/data à un client, payée depuis le wallet marchand
+   * (§ dashboard marchand — kiosque agent). Le marchand avance le montant, le
+   * client reçoit directement le crédit sur son téléphone via Reloadly — même
+   * logique que le parcours "Recharger" du wallet particulier, mais financée
+   * par le wallet marchand plutôt que celui du client.
+   */
+  async sellAirtime(
+    merchantId: string,
+    initiatedByUserId: string,
+    dto: { phoneNumber: string; amount: number; kind: 'AIRTIME' | 'DATA'; operatorId?: string; operatorName?: string },
+    idempotencyKey: string,
+  ) {
+    const existing = await this.prisma.transaction.findUnique({ where: { idempotencyKey } });
+    if (existing) return existing;
+
+    const merchant = await this.prisma.merchant.findUniqueOrThrow({ where: { id: merchantId } });
+    if (merchant.status !== 'ACTIVE') {
+      throw new BadRequestException('Ce marchand doit être actif pour vendre du crédit.');
+    }
+
+    const amount = BigInt(dto.amount);
+    const merchantWallet = await this.getWallet(merchantId);
+    if (merchantWallet.cachedBalance < amount) {
+      throw new BadRequestException('Solde insuffisant pour cette vente.');
+    }
+
+    const description = `Vente ${dto.kind === 'DATA' ? 'data' : 'crédit'} — ${dto.phoneNumber}`;
+
+    // Transaction créée PENDING puis mise à jour selon le résultat Reloadly —
+    // même schéma que PaymentEngineService.purchaseAirtimeFromWallet, adapté
+    // pour débiter un wallet marchand plutôt qu'un wallet particulier.
+    const transaction = await this.runSerializable(async (tx) => {
+      const created = await tx.transaction.create({
+        data: {
+          type: 'AIRTIME',
+          status: 'PROCESSING',
+          amount,
+          sourceWalletId: merchantWallet.id,
+          initiatedByUserId,
+          description,
+          providerName: 'RELOADLY',
+          idempotencyKey,
+          operatorId: dto.operatorId,
+          airtimeKind: dto.kind,
+        },
+      });
+
+      await this.ledger.postDoubleEntry(tx, {
+        transactionId: created.id,
+        fromWalletId: merchantWallet.id,
+        toWalletId: null,
+        amount,
+        description,
+      });
+
+      return created;
+    });
+
+    const result = await this.reloadly.purchaseAirtime({
+      phoneNumber: dto.phoneNumber,
+      operatorId: dto.operatorId,
+      amount,
+      kind: dto.kind,
+      reference: transaction.id,
+    });
+
+    return this.prisma.transaction.update({
+      where: { id: transaction.id },
+      data: {
+        status: result.status,
+        providerRef: result.providerRef,
+        operatorName: result.operatorName ?? dto.operatorName,
+      },
     });
   }
 
