@@ -1,6 +1,6 @@
 'use client';
 
-import { ReactNode } from 'react';
+import { ReactNode, useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useAuth } from '../contexts/AuthContext';
@@ -18,12 +18,25 @@ export default function MerchantShell({ title, children }: { title: string; chil
   const pathname = usePathname();
   const router = useRouter();
   const { logout, activeMerchant, merchants, setActiveMerchantId } = useAuth();
+  const [menuOpen, setMenuOpen] = useState(false);
+
+  // Ferme le tiroir mobile automatiquement dès qu'on change de page.
+  useEffect(() => {
+    setMenuOpen(false);
+  }, [pathname]);
 
   return (
     <div className="mc-shell">
-      <aside className="mc-sidebar">
+      <div className={`mc-sidebar-overlay ${menuOpen ? 'open' : ''}`} onClick={() => setMenuOpen(false)} />
+
+      <aside className={`mc-sidebar ${menuOpen ? 'open' : ''}`}>
         <div className="mc-sidebar-brand">
-          Mobile<span>Pay</span>
+          <span style={{ color: 'white' }}>
+            Mobile<span style={{ color: '#4ade80' }}>Pay</span>
+          </span>
+          <button className="mc-sidebar-close" onClick={() => setMenuOpen(false)} aria-label="Fermer le menu">
+            ✕
+          </button>
         </div>
 
         {/* Sélecteur multi-boutiques (§ un compte peut gérer plusieurs marchands) */}
@@ -60,6 +73,9 @@ export default function MerchantShell({ title, children }: { title: string; chil
       </aside>
       <main className="mc-main">
         <div className="mc-topbar">
+          <button className="mc-menu-toggle" onClick={() => setMenuOpen(true)} aria-label="Ouvrir le menu">
+            ☰
+          </button>
           <h1>{title}</h1>
           <button className="mc-logout-btn" onClick={() => logout().then(() => router.push('/login'))}>
             Déconnexion

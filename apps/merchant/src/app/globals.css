@@ -35,8 +35,20 @@ body {
   font-size: 16px;
   border-bottom: 1px solid rgba(255,255,255,.15);
   margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
 }
 .mc-sidebar-brand span { color: #4ade80; }
+.mc-sidebar-close {
+  display: none;
+  background: none;
+  border: none;
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 20px;
+  cursor: pointer;
+  padding: 0 4px;
+}
 .mc-merchant-name {
   padding: 0 20px 16px;
   font-size: 12px;
@@ -77,10 +89,25 @@ body {
   font-weight: 600;
 }
 
-.mc-main { flex: 1; padding: 28px 32px; max-width: 1100px; }
+.mc-main { flex: 1; padding: 28px 32px; max-width: 1100px; min-width: 0; }
 
-.mc-topbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; }
+.mc-topbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; gap: 12px; }
 .mc-topbar h1 { font-size: 20px; margin: 0; color: var(--mc-navy); }
+.mc-menu-toggle {
+  display: none;
+  background: none;
+  border: 1px solid var(--mc-border);
+  color: var(--mc-navy);
+  width: 38px;
+  height: 38px;
+  border-radius: 8px;
+  font-size: 18px;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.mc-sidebar-overlay {
+  display: none;
+}
 .mc-logout-btn {
   background: none;
   border: 1px solid var(--mc-border);
@@ -158,3 +185,68 @@ body {
 .mc-tab.active { background: var(--mc-navy); color: white; border-color: var(--mc-navy); }
 
 .mc-form { display: flex; flex-direction: column; gap: 12px; padding: 20px; max-width: 400px; }
+
+/* ---------- Version mobile (§ dashboard marchand accessible au téléphone,
+   même exigence que le wallet particulier) ---------- */
+
+@media (max-width: 768px) {
+  .mc-menu-toggle { display: block; }
+  .mc-sidebar-close { display: block; }
+
+  .mc-sidebar {
+    position: fixed;
+    inset: 0 auto 0 0;
+    z-index: 50;
+    width: 260px;
+    transform: translateX(-100%);
+    transition: transform 0.2s ease;
+    overflow-y: auto;
+  }
+  .mc-sidebar.open {
+    transform: translateX(0);
+  }
+
+  .mc-sidebar-overlay.open {
+    display: block;
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.45);
+    z-index: 40;
+  }
+
+  .mc-main {
+    padding: 16px;
+    max-width: 100%;
+  }
+
+  .mc-topbar h1 {
+    font-size: 17px;
+    flex: 1;
+    text-align: center;
+  }
+
+  .mc-stats-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 10px;
+  }
+  .mc-stat-value { font-size: 18px; }
+
+  .mc-quick-actions {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+
+  /* Les tableaux défilent horizontalement plutôt que d'écraser les colonnes */
+  .mc-panel {
+    overflow-x: auto;
+  }
+  .mc-table {
+    min-width: 480px;
+  }
+}
+
+@media (max-width: 420px) {
+  .mc-stats-grid,
+  .mc-quick-actions {
+    grid-template-columns: 1fr !important;
+  }
+}
