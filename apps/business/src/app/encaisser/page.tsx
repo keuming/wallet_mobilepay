@@ -8,7 +8,7 @@ import { apiFetch, ApiError } from '../../lib/apiClient';
 import BusinessSideMenu from '../../components/BusinessSideMenu';
 import QrResultCard from '../../components/QrResultCard';
 
-type Tab = 'static' | 'dynamic' | 'link' | 'request';
+type Tab = 'static' | 'dynamic' | 'link' | 'request' | 'card';
 
 interface StaticQr {
   code: string;
@@ -74,16 +74,19 @@ function EncaisserContent() {
 
       <div className="mp-pill-tabs">
         <button className={`mp-pill-tab ${tab === 'static' ? 'active' : ''}`} onClick={() => setTab('static')}>
-          QR permanent
+          📱 QR permanent
         </button>
         <button className={`mp-pill-tab ${tab === 'dynamic' ? 'active' : ''}`} onClick={() => setTab('dynamic')}>
-          QR dynamique
+          📱 QR dynamique
         </button>
         <button className={`mp-pill-tab ${tab === 'link' ? 'active' : ''}`} onClick={() => setTab('link')}>
-          Payment Link
+          🔗 Lien (SMS/WhatsApp)
         </button>
         <button className={`mp-pill-tab ${tab === 'request' ? 'active' : ''}`} onClick={() => setTab('request')}>
-          Demande
+          📲 Débit direct
+        </button>
+        <button className={`mp-pill-tab ${tab === 'card' ? 'active' : ''}`} onClick={() => setTab('card')}>
+          💳 Carte
         </button>
       </div>
 
@@ -91,6 +94,33 @@ function EncaisserContent() {
       {tab === 'dynamic' && <DynamicQrPanel merchantId={activeMerchant.merchantId} />}
       {tab === 'link' && <PaymentLinkPanel merchantId={activeMerchant.merchantId} />}
       {tab === 'request' && <PaymentRequestPanel merchantId={activeMerchant.merchantId} />}
+      {tab === 'card' && <CardPanel />}
+    </div>
+  );
+}
+
+function CardPanel() {
+  return (
+    <div className="mp-form">
+      <div
+        style={{
+          background: 'var(--mp-surface)',
+          border: '1px solid var(--mp-border)',
+          borderRadius: 16,
+          padding: 20,
+          textAlign: 'center',
+        }}
+      >
+        <div style={{ fontSize: 32, marginBottom: 10 }}>🔒</div>
+        <div style={{ fontWeight: 700, color: 'var(--mp-navy)', marginBottom: 6 }}>
+          Bientôt disponible
+        </div>
+        <p style={{ color: 'var(--mp-muted)', fontSize: 13, margin: 0 }}>
+          Le paiement par carte nécessite une connexion sécurisée directe avec HUB2 (aucune donnée
+          de carte ne doit jamais transiter par cet appareil, par exigence de sécurité des réseaux
+          Visa/Mastercard). Cette intégration est en cours de finalisation.
+        </p>
+      </div>
     </div>
   );
 }
@@ -250,7 +280,8 @@ function PaymentRequestPanel({ merchantId }: { merchantId: string }) {
   return (
     <div className="mp-form">
       <p style={{ color: 'var(--mp-muted)', fontSize: 13, margin: 0 }}>
-        Le client reçoit une notification et doit confirmer le paiement dans son app.
+        Saisis le numéro et le montant à débiter — le client reçoit une notification et doit
+        confirmer le paiement dans son app MobilePay (moyen de paiement : solde MobilePay).
       </p>
       <input className="mp-input" placeholder="Numéro du client (+225...)" value={customerPhone} onChange={(e) => setCustomerPhone(e.target.value)} />
       <input className="mp-input" placeholder="Montant (FCFA)" type="number" value={amount} onChange={(e) => setAmount(e.target.value)} />
