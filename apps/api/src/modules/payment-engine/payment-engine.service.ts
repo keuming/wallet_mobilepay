@@ -301,6 +301,75 @@ export class PaymentEngineService {
     return { ...transaction, providerRef: result.providerRef };
   }
 
+  /**
+   * Débit direct initié par un marchand (§ app Business — Phase A) : collecte
+   * HUB2 directement sur le Mobile Money du client, sans exiger que celui-ci
+   * soit déjà utilisateur MobilePay ni saisisse de code secret — le client
+   * confirme via le prompt USSD/PIN de son propre opérateur, hors MobilePay.
+   * C'est le marchand (initiatedByUserId) qui déclenche la demande.
+   */
+  async debitDirect(
+    params: {
+      merchantId: string;
+      customerPhone: string;
+      amount: bigint;
+      description: string;
+      initiatedByUserId: string;
+    },
+    idempotencyKey: string,
+  ) {
+    const existing = await this.prisma.transaction.findUnique({ where: { idempotencyKey } });
+    if (existing) return existing;
+
+    const merchant = await this.prisma.merchant.findUniqueOrThrow({ where: { id: params.merchantId } });
+    if (merchant.status !== 'ACTIVE') {
+      throw new BadRequestException('Ce marchand n\'est pas actif et ne peut pas encaisser.');
+    }
+
+    const feeAmount = this.ledger.computeFee(params.amount, merchant.feeRateBps);
+    const merchantWallet = await this.prisma.wallet.findUniqueOrThrow({
+      where: { merchantId: params.merchantId },
+    });
+
+    const transaction = await this.prisma.transaction.create({
+      data: {
+        type: 'PAYMENT',
+        status: 'PROCESSING',
+        amount: params.amount,
+        feeAmount,
+        destWalletId: merchantWallet.id,
+        initiatedByUserId: params.initiatedByUserId,
+        description: params.description,
+        providerName: 'HUB2',
+        idempotencyKey,
+      },
+    });
+
+    const result = await this.hub2.initiateTopup({
+      walletId: '',
+      amount: params.amount,
+      currency: 'XOF',
+      customerPhone: params.customerPhone,
+      reference: transaction.id,
+    });
+
+    await this.prisma.transaction.update({
+      where: { id: transaction.id },
+      data: { providerRef: result.providerRef },
+    });
+    await this.prisma.paymentAttempt.create({
+      data: {
+        transactionId: transaction.id,
+        providerName: 'HUB2',
+        status: 'PROCESSING',
+        providerRef: result.providerRef,
+        rawResponse: result.raw as Prisma.InputJsonValue,
+      },
+    });
+
+    return { ...transaction, providerRef: result.providerRef };
+  }
+
   /** Finalise un paiement marchand externe depuis le webhook HUB2. */
   async completeExternalMerchantPayment(transactionId: string, success: boolean, failureReason?: string) {
     return this.runSerializable(async (tx) => {

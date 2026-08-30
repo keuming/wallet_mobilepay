@@ -486,6 +486,18 @@ body {
 }
 .mp-method-card.active .label { color: white; }
 
+/* Teinte propre à chaque méthode — donne du relief à la grille */
+.mp-method-card.tint-qr .icon { color: #0a8f58; }
+.mp-method-card.tint-qr:not(.active) { background: rgba(10, 143, 88, 0.07); border-color: rgba(10, 143, 88, 0.18); }
+.mp-method-card.tint-link .icon { color: #0d9488; }
+.mp-method-card.tint-link:not(.active) { background: rgba(13, 148, 136, 0.07); border-color: rgba(13, 148, 136, 0.18); }
+.mp-method-card.tint-debit .icon { color: #0f2d52; }
+.mp-method-card.tint-debit:not(.active) { background: rgba(15, 45, 82, 0.06); border-color: rgba(15, 45, 82, 0.16); }
+.mp-method-card.tint-cash .icon { color: #b8790a; }
+.mp-method-card.tint-cash:not(.active) { background: rgba(184, 121, 10, 0.08); border-color: rgba(184, 121, 10, 0.2); }
+.mp-method-card.tint-card .icon { color: #6b3fa0; }
+.mp-method-card.tint-card:not(.active) { background: rgba(107, 63, 160, 0.07); border-color: rgba(107, 63, 160, 0.18); }
+
 /* ---------- Formulaires mp-* (bloc manquant, ajouté suite au diagnostic
    du 30/08/2026 — ces classes existent depuis le début dans le wallet
    particulier mais avaient été oubliées lors de la construction du système

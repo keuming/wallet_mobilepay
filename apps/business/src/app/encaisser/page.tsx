@@ -73,27 +73,27 @@ function EncaisserContent() {
       <BusinessSideMenu open={menuOpen} onClose={() => setMenuOpen(false)} />
 
       <div className="mp-method-grid">
-        <div className={`mp-method-card ${tab === 'static' ? 'active' : ''}`} onClick={() => setTab('static')}>
+        <div className={`mp-method-card tint-qr ${tab === 'static' ? 'active' : ''}`} onClick={() => setTab('static')}>
           <span className="icon">📱</span>
           <span className="label">QR permanent</span>
         </div>
-        <div className={`mp-method-card ${tab === 'dynamic' ? 'active' : ''}`} onClick={() => setTab('dynamic')}>
+        <div className={`mp-method-card tint-qr ${tab === 'dynamic' ? 'active' : ''}`} onClick={() => setTab('dynamic')}>
           <span className="icon">📱</span>
           <span className="label">QR dynamique</span>
         </div>
-        <div className={`mp-method-card ${tab === 'link' ? 'active' : ''}`} onClick={() => setTab('link')}>
+        <div className={`mp-method-card tint-link ${tab === 'link' ? 'active' : ''}`} onClick={() => setTab('link')}>
           <span className="icon">🔗</span>
           <span className="label">Lien SMS/WhatsApp</span>
         </div>
-        <div className={`mp-method-card ${tab === 'request' ? 'active' : ''}`} onClick={() => setTab('request')}>
+        <div className={`mp-method-card tint-debit ${tab === 'request' ? 'active' : ''}`} onClick={() => setTab('request')}>
           <span className="icon">📲</span>
           <span className="label">Débit direct</span>
         </div>
-        <div className={`mp-method-card ${tab === 'cash' ? 'active' : ''}`} onClick={() => setTab('cash')}>
+        <div className={`mp-method-card tint-cash ${tab === 'cash' ? 'active' : ''}`} onClick={() => setTab('cash')}>
           <span className="icon">💵</span>
           <span className="label">Espèce</span>
         </div>
-        <div className={`mp-method-card ${tab === 'card' ? 'active' : ''}`} onClick={() => setTab('card')}>
+        <div className={`mp-method-card tint-card ${tab === 'card' ? 'active' : ''}`} onClick={() => setTab('card')}>
           <span className="icon">💳</span>
           <span className="label">Carte</span>
         </div>
@@ -309,16 +309,16 @@ function PaymentRequestPanel({ merchantId }: { merchantId: string }) {
   const [customerPhone, setCustomerPhone] = useState('');
   const [amount, setAmount] = useState('');
   const [description, setDescription] = useState('');
-  const [success, setSuccess] = useState(false);
+  const [result, setResult] = useState<{ status: string; message: string } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
   const send = async () => {
     setSubmitting(true);
     setError(null);
-    setSuccess(false);
+    setResult(null);
     try {
-      await apiFetch(`/merchants/${merchantId}/payment-requests`, {
+      const res = await apiFetch<{ status: string }>(`/merchants/${merchantId}/debit-direct`, {
         method: 'POST',
         idempotent: true,
         body: JSON.stringify({
@@ -327,12 +327,19 @@ function PaymentRequestPanel({ merchantId }: { merchantId: string }) {
           description: description || undefined,
         }),
       });
-      setSuccess(true);
+      if (res.status === 'SUCCESS') {
+        setResult({ status: 'success', message: 'Paiement confirmé ✓' });
+      } else {
+        setResult({
+          status: 'pending',
+          message: 'Prompt envoyé — le client doit valider avec son code Mobile Money sur son téléphone.',
+        });
+      }
       setCustomerPhone('');
       setAmount('');
       setDescription('');
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Échec de l\'envoi.');
+      setError(err instanceof ApiError ? err.message : "Échec de l'envoi.");
     } finally {
       setSubmitting(false);
     }
@@ -341,14 +348,25 @@ function PaymentRequestPanel({ merchantId }: { merchantId: string }) {
   return (
     <div className="mp-form">
       <p style={{ color: 'var(--mp-muted)', fontSize: 13, margin: 0 }}>
-        Saisis le numéro et le montant à débiter — le client reçoit une notification et doit
-        confirmer le paiement dans son app MobilePay (moyen de paiement : solde MobilePay).
+        Saisis le numéro et le montant à débiter — un prompt Mobile Money (USSD) s'affiche
+        directement sur le téléphone du client via son opérateur (Orange/MTN/Moov/Wave). Aucune
+        app MobilePay requise côté client.
       </p>
       <input className="mp-input" placeholder="Numéro du client (+225...)" value={customerPhone} onChange={(e) => setCustomerPhone(e.target.value)} />
       <input className="mp-input" placeholder="Montant (FCFA)" type="number" value={amount} onChange={(e) => setAmount(e.target.value)} />
       <input className="mp-input" placeholder="Description — optionnel" value={description} onChange={(e) => setDescription(e.target.value)} />
-      {error && <div style={{ color: 'var(--mp-red)', fontSize: 13 }}>{error}</div>}
-      {success && <div style={{ color: 'var(--mp-green-dark)', fontSize: 13, fontWeight: 600 }}>Demande envoyée ✓</div>}
+      {error && <div className="mp-error">{error}</div>}
+      {result && (
+        <div
+          style={{
+            fontSize: 13,
+            fontWeight: 600,
+            color: result.status === 'success' ? 'var(--mp-green-dark)' : '#b8790a',
+          }}
+        >
+          {result.message}
+        </div>
+      )}
       <button
         className="mp-btn-primary"
         style={{ background: 'linear-gradient(120deg, var(--mp-navy) 0%, #0a1f3d 100%)' }}

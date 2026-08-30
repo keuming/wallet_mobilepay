@@ -1,7 +1,7 @@
 import { Body, Controller, Get, Headers, Param, Post, Query, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { MerchantsService } from './merchants.service';
-import { CreateMerchantDto, CreatePaymentRequestDto, TransferFromMerchantDto, SellAirtimeDto, RecordCashDto } from './dto/merchants.dto';
+import { CreateMerchantDto, CreatePaymentRequestDto, TransferFromMerchantDto, SellAirtimeDto, RecordCashDto, DebitDirectDto } from './dto/merchants.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { MerchantScopeGuard } from '../../common/guards/merchant-scope.guard';
 import { CurrentUser, AuthenticatedUser } from '../../common/decorators/current-user.decorator';
@@ -91,6 +91,28 @@ export class MerchantsController {
   @UseGuards(JwtAuthGuard, MerchantScopeGuard)
   listCash(@Param('merchantId') merchantId: string) {
     return this.merchantsService.listCashCollections(merchantId);
+  }
+
+  /** Débit direct via HUB2 (§ app Business — Phase A) — collecte Mobile Money
+   * directe sur le numéro du client, sans exiger qu'il soit utilisateur MobilePay. */
+  @Post(':merchantId/debit-direct')
+  @UseGuards(JwtAuthGuard, MerchantScopeGuard)
+  debitDirect(
+    @Param('merchantId') merchantId: string,
+    @CurrentUser() user: AuthenticatedUser,
+    @Body() dto: DebitDirectDto,
+    @Headers('idempotency-key') idempotencyKey: string,
+  ) {
+    return this.paymentEngine.debitDirect(
+      {
+        merchantId,
+        customerPhone: dto.customerPhone,
+        amount: BigInt(dto.amount),
+        description: dto.description ?? 'Débit direct',
+        initiatedByUserId: user.userId,
+      },
+      idempotencyKey,
+    );
   }
 
   /** Vue détaillée pour l'onglet "Wallet" du dashboard marchand (§11). */

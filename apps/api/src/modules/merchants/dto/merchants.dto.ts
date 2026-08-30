@@ -100,3 +100,17 @@ export class RecordCashDto {
   @MaxLength(140)
   description?: string;
 }
+
+export class DebitDirectDto {
+  @IsPhoneNumber(undefined, { message: 'Numéro du client invalide.' })
+  customerPhone: string;
+
+  @IsInt()
+  @IsPositive()
+  amount: number;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(140)
+  description?: string;
+}
