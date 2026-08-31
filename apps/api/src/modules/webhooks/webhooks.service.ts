@@ -49,6 +49,8 @@ export class WebhooksService {
       console.log(
         `[NEXTACTION DEBUG] provider=${envelope.data.provider} type=${envelope.data.nextAction.type} message=${envelope.data.nextAction.message}`,
       );
+      // eslint-disable-next-line no-console
+      console.log('[NEXTACTION DEBUG] objet complet:', JSON.stringify(envelope.data.nextAction));
     }
 
     const transaction = await this.prisma.transaction.findFirst({
@@ -87,7 +89,11 @@ export class WebhooksService {
       if (nextAction) {
         await this.prisma.transaction.update({
           where: { id: transaction.id },
-          data: { nextActionType: nextAction.type, nextActionMessage: nextAction.message },
+          data: {
+            nextActionType: nextAction.type,
+            nextActionMessage: nextAction.message,
+            nextActionUrl: nextAction.data?.url,
+          },
         });
       }
       this.logger.log(`Webhook HUB2 : événement intermédiaire (${verification.eventType}) — transaction non finalisée.`);
