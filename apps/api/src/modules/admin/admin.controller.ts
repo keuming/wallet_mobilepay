@@ -308,6 +308,11 @@ export class AdminController {
     });
   }
 
+  @Get('transactions/:id')
+  getTransactionDetail(@Param('id') id: string) {
+    return this.adminService.getTransactionDetail(id);
+  }
+
   // --- QR ---
   @Get('qr')
   listQr(@Query('page') page?: string, @Query('status') status?: string) {

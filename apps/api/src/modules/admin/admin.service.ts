@@ -580,7 +580,15 @@ export class AdminService {
   }) {
     const page = params.page ?? 1;
     const where: Prisma.TransactionWhereInput = {
-      ...(params.reference ? { reference: { contains: params.reference, mode: 'insensitive' } } : {}),
+      ...(params.reference
+        ? {
+            OR: [
+              { reference: { contains: params.reference, mode: 'insensitive' } },
+              { id: { contains: params.reference, mode: 'insensitive' } },
+              { providerRef: { contains: params.reference, mode: 'insensitive' } },
+            ],
+          }
+        : {}),
       ...(params.status ? { status: params.status } : {}),
       ...(params.type ? { type: params.type as any } : {}),
       ...(params.dateFrom || params.dateTo
@@ -604,6 +612,60 @@ export class AdminService {
     ]);
 
     return { transactions, total, page, pageSize: PAGE_SIZE_DEFAULT };
+  }
+
+  /**
+   * Détail complet d'une transaction (§ utile en cas de litige) — numéro du
+   * payeur (wallet MobilePay ou Mobile Money externe selon le circuit),
+   * marchand destinataire, toutes les tentatives de paiement associées.
+   */
+  async getTransactionDetail(id: string) {
+    const tx = await this.prisma.transaction.findUniqueOrThrow({
+      where: { id },
+      include: { paymentAttempts: { orderBy: { createdAt: 'asc' } } },
+    });
+
+    const [initiatedByUser, sourceWallet, destWallet] = await Promise.all([
+      this.prisma.user.findUnique({
+        where: { id: tx.initiatedByUserId },
+        select: { phone: true, firstName: true, lastName: true },
+      }),
+      tx.sourceWalletId
+        ? this.prisma.wallet.findUnique({
+            where: { id: tx.sourceWalletId },
+            include: {
+              user: { select: { phone: true, firstName: true, lastName: true } },
+              merchant: { select: { businessName: true } },
+            },
+          })
+        : null,
+      tx.destWalletId
+        ? this.prisma.wallet.findUnique({
+            where: { id: tx.destWalletId },
+            include: {
+              user: { select: { phone: true, firstName: true, lastName: true } },
+              merchant: { select: { businessName: true } },
+            },
+          })
+        : null,
+    ]);
+
+    // Pour un paiement Mobile Money externe (HUB2, sans wallet source — le
+    // client n'a pas forcément de compte MobilePay), le vrai numéro payeur
+    // se trouve dans la tentative de paiement, pas sur un wallet.
+    const lastAttempt = tx.paymentAttempts[tx.paymentAttempts.length - 1];
+    const externalPayerPhone =
+      (lastAttempt?.rawResponse as any)?.payments?.[0]?.number ??
+      (lastAttempt?.rawResponse as any)?.customerReference ??
+      null;
+
+    return {
+      ...tx,
+      initiatedByUser,
+      sourceWallet,
+      destWallet,
+      externalPayerPhone,
+    };
   }
 
   // --- QR (§21) ---
