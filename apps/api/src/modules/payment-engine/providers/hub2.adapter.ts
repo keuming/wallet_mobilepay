@@ -322,14 +322,17 @@ export class Hub2Adapter implements PaymentProviderAdapter {
     const envelope = JSON.parse(rawBody);
     const payload = envelope.data ?? envelope;
 
-    // Schéma réel confirmé via la doc officielle (objet Payment) — statuts :
-    // created | failed | pending | successful. La cause d'échec est nichée
-    // sous `failure.code` / `failure.message`, pas un champ plat comme
-    // deviné initialement.
+    // Schéma réel confirmé via la doc officielle. Deux vocabulaires
+    // coexistent selon le type d'événement :
+    //  - objet Payment (PAY-IN) : created | pending | successful | failed
+    //  - objet Transfer (PAY-OUT) : created | processing | succeeded | failed
+    // On couvre les deux pour que le même décodeur serve aux deux flux.
     const statusMap: Record<string, 'SUCCESS' | 'FAILED' | 'PENDING'> = {
       successful: 'SUCCESS',
+      succeeded: 'SUCCESS',
       created: 'PENDING',
       pending: 'PENDING',
+      processing: 'PENDING',
       failed: 'FAILED',
     };
 
