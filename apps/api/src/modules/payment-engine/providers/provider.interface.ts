@@ -26,6 +26,8 @@ export interface ProviderInitiationResult {
   providerRef: string;
   status: 'PENDING' | 'PROCESSING';
   redirectUrl?: string; // pour les providers qui nécessitent une étape web (Stripe, PayPal)
+  nextActionType?: 'ussd' | 'otp' | 'redirection'; // § type de confirmation attendu côté client
+  nextActionMessage?: string;
   raw: unknown;
 }
 

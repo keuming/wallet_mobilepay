@@ -40,6 +40,17 @@ export class WebhooksService {
       throw new UnauthorizedException('Signature invalide.');
     }
 
+    // Diagnostic temporaire (§ vérifier le vrai type de nextAction — ussd,
+    // otp, ou redirection — renvoyé par chaque opérateur, avant de construire
+    // l'étape d'authentification OTP à l'aveugle).
+    const envelope = this.safeParse(rawBody) as any;
+    if (envelope?.data?.nextAction) {
+      // eslint-disable-next-line no-console
+      console.log(
+        `[NEXTACTION DEBUG] provider=${envelope.data.provider} type=${envelope.data.nextAction.type} message=${envelope.data.nextAction.message}`,
+      );
+    }
+
     const transaction = await this.prisma.transaction.findFirst({
       where: { providerRef: verification.providerRef, providerName: 'HUB2' },
     });
@@ -58,6 +69,21 @@ export class WebhooksService {
     if (!transaction) {
       this.logger.warn(`Webhook HUB2 : aucune transaction pour providerRef=${verification.providerRef}`);
       return { received: true, matched: false };
+    }
+
+    // On ne finalise QUE sur un statut final réel (SUCCESS ou FAILED) — les
+    // événements intermédiaires (ex: "payment.pending", "payment.action_required",
+    // statut PENDING) ne doivent jamais clôturer la transaction. Bug corrigé
+    // ici : avant, tout événement ≠ SUCCESS était traité comme un échec
+    // immédiat, clôturant la transaction en FAILED dès le premier webhook
+    // reçu, avant même que le client ait pu confirmer son paiement.
+    if (verification.status === 'PENDING') {
+      this.logger.log(`Webhook HUB2 : événement intermédiaire (${verification.eventType}) — transaction non finalisée.`);
+      await this.prisma.webhookEvent.update({
+        where: { id: event.id },
+        data: { status: 'PROCESSED', processedAt: new Date() },
+      });
+      return { received: true, matched: true, final: false };
     }
 
     if (transaction.type === 'TOPUP') {

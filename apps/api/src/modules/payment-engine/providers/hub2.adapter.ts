@@ -221,8 +221,32 @@ export class Hub2Adapter implements PaymentProviderAdapter {
       providerRef: payment?.id ?? response.id ?? intent.id,
       status: 'PENDING',
       redirectUrl: paymentLink,
+      nextActionType: nextAction?.type,
+      nextActionMessage: nextAction?.message,
       raw: response,
     };
+  }
+
+  /**
+   * Authentifie un paiement nécessitant un code OTP (§ nextAction.type ===
+   * 'otp') — le client génère ce code via son opérateur, puis le transmet
+   * pour finaliser le paiement. Ne s'applique QUE si l'intention précédente
+   * a renvoyé un nextAction de type "otp" — pour "ussd" (confirmation directe
+   * sur le téléphone) ou "redirection" (Wave, lien), cette étape ne s'utilise
+   * jamais.
+   */
+  async authenticatePayment(intentId: string, token: string, confirmationCode: string): Promise<unknown> {
+    const res = await fetch(`${this.baseUrl}/payment-intents/${intentId}/authentication`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token, confirmationCode }),
+    });
+
+    const rawText = await res.text();
+    if (!res.ok) {
+      throw new Error(`HUB2 authenticate payment error (${res.status}): ${rawText}`);
+    }
+    return JSON.parse(rawText);
   }
 
   async initiateWithdrawal(params: InitiateWithdrawalParams): Promise<ProviderInitiationResult> {
