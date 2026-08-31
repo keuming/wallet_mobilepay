@@ -178,20 +178,18 @@ export class Hub2Adapter implements PaymentProviderAdapter {
       onFailedRedirectionUrl: 'https://business.mobilepay-ci.com/encaisser',
     };
     // eslint-disable-next-line no-console
-    console.log('[HUB2 DEBUG] Tentative de paiement (sync) — corps envoyé:', JSON.stringify(attemptBody));
+    console.log('[HUB2 DEBUG] Tentative de paiement (async) — corps envoyé:', JSON.stringify(attemptBody));
 
-    // Endpoint SYNCHRONE (confirmé disponible pour ce compte marchand par le
-    // support HUB2) — attend la réponse du fournisseur et renvoie le lien de
-    // paiement (nextAction) directement dans la réponse, plutôt que de
-    // dépendre d'un webhook "payment.action_required" pour l'obtenir.
-    const res = await fetch(`${this.baseUrl}/payment-intents/${intent.id}/payments/sync`, {
+    // Endpoint ASYNCHRONE — l'endpoint synchrone (/sync) a été testé et
+    // rejeté par HUB2 (401 "Unable to proceed with synchronous payment with
+    // the requested provider") : non disponible pour cet opérateur sur ce
+    // compte, malgré l'indication du support. Le lien de paiement doit donc
+    // être récupéré via webhook, événement "payment.action_required" (§
+    // reste à confirmer qu'un webhook est bien enregistré côté HUB2 pointant
+    // vers /api/webhooks/hub2 — sans ça, cet événement n'arrivera jamais).
+    const res = await fetch(`${this.baseUrl}/payment-intents/${intent.id}/payments`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        ApiKey: this.apiKey,
-        MerchantId: this.merchantId,
-        Environment: this.environment,
-      },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(attemptBody),
     });
 
