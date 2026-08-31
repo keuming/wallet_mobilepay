@@ -131,21 +131,21 @@ export default function DashboardPage() {
         </div>
 
         <div className="mp-actions">
+          <Link href="/recevoir" className="mp-action-btn">
+            <span className="icon">💰</span>
+            Dépôt
+          </Link>
           <Link href="/envoyer" className="mp-action-btn">
             <span className="icon">↗️</span>
-            Envoyer
-          </Link>
-          <Link href="/recevoir" className="mp-action-btn">
-            <span className="icon">📥</span>
-            Encaisser
+            Transfert
           </Link>
           <Link href="/payer" className="mp-action-btn">
             <span className="icon">🏪</span>
             Payer
           </Link>
           <Link href="/recharger" className="mp-action-btn">
-            <span className="icon">💰</span>
-            Recharger
+            <span className="icon">📶</span>
+            Crédit & Data
           </Link>
         </div>
       </div>

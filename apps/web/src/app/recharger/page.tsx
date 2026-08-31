@@ -144,7 +144,7 @@ export default function RechargerPage() {
             ← Précédent
           </button>
         )}
-        <h1>🔄 Recharger</h1>
+        <h1>📶 Crédit & Data</h1>
         <div style={{ fontSize: 12, opacity: 0.75, marginTop: 4, position: 'relative' }}>
           Étape {step + 1}/{STEPS.length} — {STEPS[step]}
         </div>

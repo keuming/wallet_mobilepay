@@ -182,7 +182,7 @@ export default function RechargerWalletPage() {
           <Link href="/recevoir" className="mp-back-link">
             ← Retour
           </Link>
-          <h1>💰 Recharger mon wallet</h1>
+          <h1>💰 Alimenter mon wallet</h1>
         </div>
         <div className="mp-section" style={{ textAlign: 'center' }}>
           <div style={{ fontSize: 40, marginBottom: 8 }}>🔒</div>
@@ -210,7 +210,7 @@ export default function RechargerWalletPage() {
             ← Précédent
           </button>
         )}
-        <h1>💰 Recharger mon wallet</h1>
+        <h1>💰 Alimenter mon wallet</h1>
         <div style={{ fontSize: 12, opacity: 0.75, marginTop: 4, position: 'relative' }}>
           Étape {step + 1}/{STEPS.length} — {STEPS[step]}
         </div>
