@@ -97,6 +97,7 @@ export default function RechargerPage() {
           kind,
           operatorId: operator?.operatorId,
           paymentMethod,
+          momoProvider: paymentMethod === 'MOBILE_MONEY' ? momoOperator : undefined,
         }),
       });
 

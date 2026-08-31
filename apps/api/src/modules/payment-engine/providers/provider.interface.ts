@@ -11,6 +11,7 @@ export interface InitiateTopupParams {
   currency: string;
   customerPhone: string;
   reference: string; // référence interne MobilePay à faire revenir dans le webhook
+  provider: string; // 'orange' | 'mtn' | 'moov' | 'wave' — exigé par le vrai flux PAY-IN HUB2
 }
 
 export interface InitiateWithdrawalParams {

@@ -27,6 +27,10 @@ export class PurchaseAirtimeDto {
 
   @IsOptional()
   @IsString()
+  momoProvider?: string; // opérateur du PAYEUR (Mobile Money) — distinct d'operatorId (opérateur du destinataire)
+
+  @IsOptional()
+  @IsString()
   cardId?: string; // requis si paymentMethod === 'CARD'
 }
 
@@ -122,6 +126,7 @@ export class AirtimeController {
         kind: dto.kind,
         paymentMethod: dto.paymentMethod,
         cardId: dto.cardId,
+        momoProvider: dto.momoProvider,
       },
       idempotencyKey,
     );

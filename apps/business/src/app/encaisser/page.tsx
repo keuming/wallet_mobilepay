@@ -305,8 +305,16 @@ function PaymentLinkPanel({ merchantId }: { merchantId: string }) {
   );
 }
 
+const MOMO_PROVIDERS = [
+  { id: 'orange', label: 'Orange Money' },
+  { id: 'mtn', label: 'MTN MoMo' },
+  { id: 'moov', label: 'Moov Money' },
+  { id: 'wave', label: 'Wave' },
+];
+
 function PaymentRequestPanel({ merchantId }: { merchantId: string }) {
   const [customerPhone, setCustomerPhone] = useState('');
+  const [provider, setProvider] = useState('');
   const [amount, setAmount] = useState('');
   const [description, setDescription] = useState('');
   const [result, setResult] = useState<{ status: string; message: string } | null>(null);
@@ -323,6 +331,7 @@ function PaymentRequestPanel({ merchantId }: { merchantId: string }) {
         idempotent: true,
         body: JSON.stringify({
           customerPhone,
+          provider,
           amount: Math.round(Number(amount) * 100),
           description: description || undefined,
         }),
@@ -348,11 +357,19 @@ function PaymentRequestPanel({ merchantId }: { merchantId: string }) {
   return (
     <div className="mp-form">
       <p style={{ color: 'var(--mp-muted)', fontSize: 13, margin: 0 }}>
-        Saisis le numéro et le montant à débiter — un prompt Mobile Money (USSD) s'affiche
-        directement sur le téléphone du client via son opérateur (Orange/MTN/Moov/Wave). Aucune
-        app MobilePay requise côté client.
+        Saisis le numéro, choisis l'opérateur et le montant à débiter — un prompt Mobile Money
+        (USSD) s'affiche directement sur le téléphone du client. Aucune app MobilePay requise
+        côté client.
       </p>
       <input className="mp-input" placeholder="Numéro du client (+225...)" value={customerPhone} onChange={(e) => setCustomerPhone(e.target.value)} />
+      <select className="mp-input" value={provider} onChange={(e) => setProvider(e.target.value)}>
+        <option value="">Opérateur du client...</option>
+        {MOMO_PROVIDERS.map((p) => (
+          <option key={p.id} value={p.id}>
+            {p.label}
+          </option>
+        ))}
+      </select>
       <input className="mp-input" placeholder="Montant (FCFA)" type="number" value={amount} onChange={(e) => setAmount(e.target.value)} />
       <input className="mp-input" placeholder="Description — optionnel" value={description} onChange={(e) => setDescription(e.target.value)} />
       {error && <div className="mp-error">{error}</div>}
@@ -370,7 +387,7 @@ function PaymentRequestPanel({ merchantId }: { merchantId: string }) {
       <button
         className="mp-btn-primary"
         style={{ background: 'linear-gradient(120deg, var(--mp-navy) 0%, #0a1f3d 100%)' }}
-        disabled={submitting || !customerPhone || !amount}
+        disabled={submitting || !customerPhone || !provider || !amount}
         onClick={send}
       >
         {submitting ? 'Envoi...' : 'Envoyer la demande'}

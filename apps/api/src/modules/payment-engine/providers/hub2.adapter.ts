@@ -138,19 +138,50 @@ export class Hub2Adapter implements PaymentProviderAdapter {
     return { id: json.id, token: json.token, raw: json };
   }
 
+  /**
+   * Collecte Mobile Money réelle via HUB2 — vrai flux PAY-IN en 2 étapes,
+   * conforme à la documentation officielle (vérifié via exemple curl exact) :
+   *   1. Créer un PaymentIntent (montant/devise/référence)
+   *   2. Tenter le paiement sur ce PaymentIntent avec paymentMethod
+   *      "mobile_money", en précisant l'opérateur (provider) et le numéro
+   *      (msisdn) — c'est cette étape qui déclenche le prompt USSD/PIN sur
+   *      le téléphone du client via son propre opérateur.
+   * Remplace l'ancien appel à `/collections`, un chemin deviné qui n'a
+   * jamais existé côté HUB2 (d'où les transactions bloquées en PROCESSING).
+   */
   async initiateTopup(params: InitiateTopupParams): Promise<ProviderInitiationResult> {
-    const body = {
-      amount: Number(params.amount) / 100, // HUB2 attend un montant décimal, pas des centimes
+    const intent = await this.createPaymentIntent({
+      customerReference: params.customerPhone,
+      purchaseReference: params.reference,
+      amount: params.amount,
       currency: params.currency,
-      customer: { phone: params.customerPhone },
-      reference: params.reference,
-      callback_url: `${this.config.get('API_BASE_URL')}/api/webhooks/hub2`,
-    };
+    });
 
-    const response = await this.request('/collections', body);
+    if (!this.apiKey || !this.merchantId) {
+      throw new Error('HUB2 non configuré — impossible de tenter un paiement.');
+    }
+
+    const res = await fetch(`${this.baseUrl}/payment-intents/${intent.id}/payments`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        token: intent.token,
+        paymentMethod: 'mobile_money',
+        country: 'CI',
+        provider: params.provider.toLowerCase(),
+        mobileMoney: { msisdn: params.customerPhone },
+      }),
+    });
+
+    if (!res.ok) {
+      const text = await res.text();
+      throw new Error(`HUB2 attempt payment error (${res.status}): ${text}`);
+    }
+
+    const response = await res.json();
 
     return {
-      providerRef: response.id ?? response.transaction_id ?? params.reference,
+      providerRef: response.id ?? intent.id,
       status: 'PENDING',
       raw: response,
     };

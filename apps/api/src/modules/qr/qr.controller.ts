@@ -71,9 +71,10 @@ export class QrController {
     @Body('fundingSource') fundingSource: 'WALLET' | 'MOBILE_MONEY',
     @Body('pin') pin: string,
     @Body('customerPhone') customerPhone: string | undefined,
+    @Body('provider') provider: string | undefined,
     @Headers('idempotency-key') idempotencyKey: string,
   ) {
-    return this.qrService.payQr(user.userId, code, amount, fundingSource, pin, idempotencyKey, customerPhone);
+    return this.qrService.payQr(user.userId, code, amount, fundingSource, pin, idempotencyKey, customerPhone, provider);
   }
 
   @Post('payment-links/:slug/pay')
@@ -85,8 +86,9 @@ export class QrController {
     @Body('fundingSource') fundingSource: 'WALLET' | 'MOBILE_MONEY',
     @Body('pin') pin: string,
     @Body('customerPhone') customerPhone: string | undefined,
+    @Body('provider') provider: string | undefined,
     @Headers('idempotency-key') idempotencyKey: string,
   ) {
-    return this.qrService.payPaymentLink(user.userId, slug, amount, fundingSource, pin, idempotencyKey, customerPhone);
+    return this.qrService.payPaymentLink(user.userId, slug, amount, fundingSource, pin, idempotencyKey, customerPhone, provider);
   }
 }

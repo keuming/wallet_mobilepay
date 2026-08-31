@@ -109,6 +109,9 @@ export class DebitDirectDto {
   @IsPositive()
   amount: number;
 
+  @IsIn(['orange', 'mtn', 'moov', 'wave'], { message: 'Opérateur Mobile Money invalide.' })
+  provider: string;
+
   @IsOptional()
   @IsString()
   @MaxLength(140)

@@ -245,6 +245,7 @@ export class PaymentEngineService {
     amount: bigint;
     description: string;
     customerPhone: string;
+    provider: string;
     pin: string;
   }, idempotencyKey: string) {
     const existing = await this.prisma.transaction.findUnique({ where: { idempotencyKey } });
@@ -282,6 +283,7 @@ export class PaymentEngineService {
       currency: 'XOF',
       customerPhone: params.customerPhone,
       reference: transaction.id,
+      provider: params.provider,
     });
 
     await this.prisma.transaction.update({
@@ -312,6 +314,7 @@ export class PaymentEngineService {
     params: {
       merchantId: string;
       customerPhone: string;
+      provider: string;
       amount: bigint;
       description: string;
       initiatedByUserId: string;
@@ -351,6 +354,7 @@ export class PaymentEngineService {
       currency: 'XOF',
       customerPhone: params.customerPhone,
       reference: transaction.id,
+      provider: params.provider,
     });
 
     await this.prisma.transaction.update({
@@ -452,6 +456,7 @@ export class PaymentEngineService {
       kind: 'AIRTIME' | 'DATA';
       paymentMethod: 'WALLET' | 'MOBILE_MONEY' | 'CARD';
       cardId?: string;
+      momoProvider?: string;
     },
     idempotencyKey: string,
   ) {
@@ -567,9 +572,13 @@ export class PaymentEngineService {
       operatorId?: string;
       amount: bigint;
       kind: 'AIRTIME' | 'DATA';
+      momoProvider?: string;
     },
     idempotencyKey: string,
   ) {
+    if (!params.momoProvider) {
+      throw new BadRequestException("L'opérateur Mobile Money du payeur est requis.");
+    }
     const label = params.kind === 'DATA' ? 'Forfait data' : 'Recharge crédit';
     const user = await this.prisma.user.findUniqueOrThrow({ where: { id: userId } });
 
@@ -591,6 +600,7 @@ export class PaymentEngineService {
       currency: 'XOF',
       customerPhone: user.phone,
       reference: transaction.id,
+      provider: params.momoProvider,
     });
 
     await this.prisma.paymentAttempt.create({
@@ -671,6 +681,7 @@ export class PaymentEngineService {
       currency: wallet.currency,
       customerPhone: params.accountNumber,
       reference: transaction.id,
+      provider: params.operator.toLowerCase(),
     });
 
     await this.prisma.transaction.update({

@@ -110,6 +110,7 @@ export class MerchantsController {
         amount: BigInt(dto.amount),
         description: dto.description ?? 'Débit direct',
         initiatedByUserId: user.userId,
+        provider: dto.provider,
       },
       idempotencyKey,
     );

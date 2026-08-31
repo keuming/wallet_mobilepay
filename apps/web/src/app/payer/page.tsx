@@ -111,6 +111,7 @@ export default function PayerPage() {
           fundingSource,
           pin,
           customerPhone: fundingSource === 'MOBILE_MONEY' ? momoAccount : undefined,
+          provider: fundingSource === 'MOBILE_MONEY' ? momoOperator : undefined,
         }),
       });
 

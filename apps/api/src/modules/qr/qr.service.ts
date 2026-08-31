@@ -106,6 +106,7 @@ export class QrService {
     pin: string,
     idempotencyKey: string,
     customerPhone?: string,
+    provider?: string,
   ) {
     const qr = await this.resolveQr(code);
 
@@ -122,8 +123,9 @@ export class QrService {
 
     if (fundingSource === 'MOBILE_MONEY') {
       if (!customerPhone) throw new BadRequestException('Le numéro Mobile Money est requis.');
+      if (!provider) throw new BadRequestException("L'opérateur Mobile Money est requis.");
       return this.paymentEngine.collectForMerchantFromExternal(
-        { payerUserId, merchantId: qr.merchantId, amount: finalAmount, description, customerPhone, pin },
+        { payerUserId, merchantId: qr.merchantId, amount: finalAmount, description, customerPhone, provider, pin },
         idempotencyKey,
       );
     }
@@ -173,6 +175,7 @@ export class QrService {
     pin: string,
     idempotencyKey: string,
     customerPhone?: string,
+    provider?: string,
   ) {
     const link = await this.resolvePaymentLink(slug);
     const finalAmount = link.amount ?? (amount ? BigInt(amount) : null);
@@ -181,8 +184,9 @@ export class QrService {
 
     if (fundingSource === 'MOBILE_MONEY') {
       if (!customerPhone) throw new BadRequestException('Le numéro Mobile Money est requis.');
+      if (!provider) throw new BadRequestException("L'opérateur Mobile Money est requis.");
       return this.paymentEngine.collectForMerchantFromExternal(
-        { payerUserId, merchantId: link.merchantId, amount: finalAmount, description, customerPhone, pin },
+        { payerUserId, merchantId: link.merchantId, amount: finalAmount, description, customerPhone, provider, pin },
         idempotencyKey,
       );
     }
