@@ -117,3 +117,17 @@ export class DebitDirectDto {
   @MaxLength(140)
   description?: string;
 }
+
+/** Paiement public (sans connexion) via Mobile Money externe — § pay.mobilepay.ci */
+export class PayExternalDto {
+  @IsOptional()
+  @IsInt()
+  @IsPositive()
+  amount?: number; // absent si le QR/lien a déjà un montant fixe
+
+  @IsPhoneNumber('CI', { message: 'Numéro invalide.' })
+  customerPhone: string;
+
+  @IsIn(['orange', 'mtn', 'moov', 'wave'], { message: 'Opérateur Mobile Money invalide.' })
+  provider: string;
+}

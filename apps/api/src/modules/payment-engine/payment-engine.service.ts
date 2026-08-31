@@ -8,6 +8,7 @@ import {
 import { Prisma } from '@prisma/client';
 import { nanoid } from 'nanoid';
 import * as bcrypt from 'bcrypt';
+import * as crypto from 'crypto';
 import { PrismaService } from '../../config/prisma.service';
 import { LedgerService } from '../ledger/ledger.service';
 import { Hub2Adapter } from './providers/hub2.adapter';
@@ -372,6 +373,54 @@ export class PaymentEngineService {
     });
 
     return { ...transaction, providerRef: result.providerRef, paymentLink: result.redirectUrl };
+  }
+
+  /**
+   * Utilisateur système "invité" (§ page de paiement publique pay.mobilepay.ci)
+   * — sert de valeur pour `initiatedByUserId` (champ requis) lorsqu'un client
+   * SANS compte MobilePay paie via Mobile Money externe. Créé une seule fois,
+   * réutilisé ensuite (jamais de mot de passe fonctionnel, jamais connecté).
+   */
+  private async getOrCreateGuestUser() {
+    const GUEST_PHONE = '+225000000GUEST';
+    let guest = await this.prisma.user.findUnique({ where: { phone: GUEST_PHONE } });
+    if (!guest) {
+      guest = await this.prisma.user.create({
+        data: {
+          phone: GUEST_PHONE,
+          firstName: 'Client',
+          lastName: 'Anonyme',
+          passwordHash: await bcrypt.hash(crypto.randomUUID(), 4),
+          role: 'PARTICULIER',
+          isBlocked: true, // ne doit jamais pouvoir se connecter
+        },
+      });
+    }
+    return guest;
+  }
+
+  /**
+   * Paiement public d'un marchand via Mobile Money externe (§ pay.mobilepay.ci)
+   * — pour un client SANS compte MobilePay, scannant un QR ou ouvrant un lien.
+   * Même mécanique que `debitDirect`, mais initiée par le CLIENT lui-même
+   * (page publique, sans connexion), pas par le marchand.
+   */
+  async payMerchantAnonymously(
+    params: { merchantId: string; customerPhone: string; provider: string; amount: bigint; description: string },
+    idempotencyKey: string,
+  ) {
+    const guest = await this.getOrCreateGuestUser();
+    return this.debitDirect(
+      {
+        merchantId: params.merchantId,
+        customerPhone: params.customerPhone,
+        provider: params.provider,
+        amount: params.amount,
+        description: params.description,
+        initiatedByUserId: guest.id,
+      },
+      idempotencyKey,
+    );
   }
 
   /** Finalise un paiement marchand externe depuis le webhook HUB2. */

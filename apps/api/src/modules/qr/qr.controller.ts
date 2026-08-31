@@ -1,7 +1,7 @@
 import { Body, Controller, Get, Headers, Param, Post, Query, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { QrService } from './qr.service';
-import { CreateDynamicQrDto, CreatePaymentLinkDto } from '../merchants/dto/merchants.dto';
+import { CreateDynamicQrDto, CreatePaymentLinkDto, PayExternalDto } from '../merchants/dto/merchants.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { MerchantScopeGuard } from '../../common/guards/merchant-scope.guard';
 import { CurrentUser, AuthenticatedUser } from '../../common/decorators/current-user.decorator';
@@ -90,5 +90,25 @@ export class QrController {
     @Headers('idempotency-key') idempotencyKey: string,
   ) {
     return this.qrService.payPaymentLink(user.userId, slug, amount, fundingSource, pin, idempotencyKey, customerPhone, provider);
+  }
+
+  // --- Paiement PUBLIC, sans connexion (§ pay.mobilepay.ci) — client sans
+  // compte MobilePay, via Mobile Money externe uniquement. ---
+  @Post('qr/:code/pay-external')
+  payQrExternal(
+    @Param('code') code: string,
+    @Body() dto: PayExternalDto,
+    @Headers('idempotency-key') idempotencyKey: string,
+  ) {
+    return this.qrService.payQrExternal(code, dto.amount, dto.customerPhone, dto.provider, idempotencyKey);
+  }
+
+  @Post('payment-links/:slug/pay-external')
+  payPaymentLinkExternal(
+    @Param('slug') slug: string,
+    @Body() dto: PayExternalDto,
+    @Headers('idempotency-key') idempotencyKey: string,
+  ) {
+    return this.qrService.payPaymentLinkExternal(slug, dto.amount, dto.customerPhone, dto.provider, idempotencyKey);
   }
 }

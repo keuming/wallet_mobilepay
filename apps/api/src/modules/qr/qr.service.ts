@@ -200,4 +200,61 @@ export class QrService {
       pin,
     });
   }
+
+  /**
+   * Paiement PUBLIC (sans connexion) d'un QR marchand — pour un client sans
+   * compte MobilePay, via Mobile Money externe (§ pay.mobilepay.ci).
+   */
+  async payQrExternal(
+    code: string,
+    amount: number | undefined,
+    customerPhone: string,
+    provider: string,
+    idempotencyKey: string,
+  ) {
+    const qr = await this.resolveQr(code);
+    if (qr.type === 'PARTICULIER' || !qr.merchantId) {
+      throw new BadRequestException('Ce QR n\'accepte pas ce mode de paiement.');
+    }
+    const finalAmount = qr.fixedAmount ?? (amount ? BigInt(amount) : null);
+    if (!finalAmount) throw new BadRequestException('Un montant est requis pour ce QR.');
+
+    return this.paymentEngine.payMerchantAnonymously(
+      {
+        merchantId: qr.merchantId,
+        customerPhone,
+        provider,
+        amount: finalAmount,
+        description: qr.description ?? `Paiement QR ${qr.code}`,
+      },
+      idempotencyKey,
+    );
+  }
+
+  /**
+   * Paiement PUBLIC (sans connexion) d'un lien de paiement — même principe
+   * que payQrExternal, pour les liens partagés (§ pay.mobilepay.ci).
+   */
+  async payPaymentLinkExternal(
+    slug: string,
+    amount: number | undefined,
+    customerPhone: string,
+    provider: string,
+    idempotencyKey: string,
+  ) {
+    const link = await this.resolvePaymentLink(slug);
+    const finalAmount = link.amount ?? (amount ? BigInt(amount) : null);
+    if (!finalAmount) throw new BadRequestException('Un montant est requis pour ce lien.');
+
+    return this.paymentEngine.payMerchantAnonymously(
+      {
+        merchantId: link.merchantId,
+        customerPhone,
+        provider,
+        amount: finalAmount,
+        description: link.description ?? `Paiement lien ${link.slug}`,
+      },
+      idempotencyKey,
+    );
+  }
 }

@@ -1,7 +1,7 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useEffect, useState, Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { apiFetch, ApiError } from '../../lib/apiClient';
 import StatusModal, { ResultStatus } from '../../components/StatusModal';
@@ -31,8 +31,19 @@ interface ResolvedTarget {
 
 const STEPS = ['Marchand', 'Montant', 'Paiement', 'Résumé', 'Code secret'];
 
+// Next.js exige que tout composant utilisant useSearchParams() soit
+// enveloppé dans un <Suspense> pour l'export statique en production.
 export default function PayerPage() {
+  return (
+    <Suspense fallback={null}>
+      <PayerContent />
+    </Suspense>
+  );
+}
+
+function PayerContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [step, setStep] = useState(0);
   const [code, setCode] = useState('');
   const [resolveError, setResolveError] = useState<string | null>(null);
@@ -52,24 +63,25 @@ export default function PayerPage() {
     apiFetch<{ hasPin: boolean }>('/auth/pin/status').then((res) => setHasPin(res.hasPin));
   }, []);
 
-  const handleResolve = async () => {
+  const handleResolve = async (overrideCode?: string) => {
+    const codeToResolve = overrideCode ?? code;
     setResolveError(null);
     try {
       // On tente d'abord comme QR, puis comme Payment Link — l'utilisateur peut
       // coller l'un ou l'autre indifféremment.
       try {
-        const qr = await apiFetch<any>(`/qr/${code}`, { auth: false });
+        const qr = await apiFetch<any>(`/qr/${codeToResolve}`, { auth: false });
         setTarget({
           kind: 'qr',
-          ref: code,
+          ref: codeToResolve,
           merchantName: qr.merchant?.businessName ?? 'Marchand',
           fixedAmount: qr.fixedAmount ?? null,
         });
       } catch {
-        const link = await apiFetch<any>(`/payment-links/${code}`, { auth: false });
+        const link = await apiFetch<any>(`/payment-links/${codeToResolve}`, { auth: false });
         setTarget({
           kind: 'link',
-          ref: code,
+          ref: codeToResolve,
           merchantName: link.merchant?.businessName ?? 'Marchand',
           fixedAmount: link.amount ?? null,
         });
@@ -79,6 +91,20 @@ export default function PayerPage() {
       setResolveError(err instanceof ApiError ? err.message : 'QR ou lien introuvable.');
     }
   };
+
+  // Préremplissage automatique depuis pay.mobilepay.ci (§ page publique) —
+  // le client a choisi "Payer avec MobilePay" et arrive ici avec le QR/lien
+  // déjà identifié, pas besoin de le ressaisir.
+  useEffect(() => {
+    const qrCode = searchParams.get('qr');
+    const linkSlug = searchParams.get('link');
+    const autoTarget = qrCode ?? linkSlug;
+    if (autoTarget) {
+      setCode(autoTarget);
+      handleResolve(autoTarget);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams]);
 
   const canGoNext = (): boolean => {
     switch (step) {
