@@ -33,6 +33,7 @@ export default function CodeSecretPage() {
   const [currentPin, setCurrentPin] = useState('');
   const [newPin, setNewPin] = useState('');
   const [confirmPin, setConfirmPin] = useState('');
+  const [forgotMode, setForgotMode] = useState(false);
 
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
@@ -49,17 +50,20 @@ export default function CodeSecretPage() {
 
   if (loading || !user || hasPin === null) return null;
 
+  const useReset = hasPin && forgotMode;
   const mismatch = newPin.length > 0 && confirmPin.length > 0 && newPin !== confirmPin;
   const canSubmit =
     newPin.length >= 4 &&
     newPin === confirmPin &&
-    (hasPin ? currentPin.length >= 4 : password.length > 0);
+    (hasPin && !forgotMode ? currentPin.length >= 4 : password.length > 0);
 
   const handleSubmit = async () => {
     setError(null);
     setSubmitting(true);
     try {
-      if (hasPin) {
+      if (useReset) {
+        await apiFetch('/auth/pin/reset', { method: 'POST', body: JSON.stringify({ password, pin: newPin }) });
+      } else if (hasPin) {
         await apiFetch('/auth/pin', { method: 'PATCH', body: JSON.stringify({ currentPin, newPin }) });
       } else {
         await apiFetch('/auth/pin', { method: 'POST', body: JSON.stringify({ password, pin: newPin }) });
@@ -79,7 +83,7 @@ export default function CodeSecretPage() {
         <Link href="/dashboard" className="mp-back-link">
           ← Retour
         </Link>
-        <h1>🔒 {hasPin ? 'Modifier mon code secret' : 'Créer mon code secret'}</h1>
+        <h1>🔒 {useReset ? 'Réinitialiser mon code secret' : hasPin ? 'Modifier mon code secret' : 'Créer mon code secret'}</h1>
       </div>
 
       <div className="mp-section" style={{ paddingBottom: 0 }}>
@@ -91,8 +95,17 @@ export default function CodeSecretPage() {
       </div>
 
       <div className="mp-form">
-        {hasPin ? (
-          <PinInput value={currentPin} onChange={setCurrentPin} label="Code secret actuel" />
+        {hasPin && !forgotMode ? (
+          <>
+            <PinInput value={currentPin} onChange={setCurrentPin} label="Code secret actuel" />
+            <button
+              type="button"
+              onClick={() => setForgotMode(true)}
+              style={{ background: 'none', border: 'none', color: 'var(--mp-green-dark)', fontSize: 12.5, fontWeight: 600, textAlign: 'left', padding: 0, cursor: 'pointer' }}
+            >
+              Code oublié ?
+            </button>
+          </>
         ) : (
           <label>
             Mot de passe de connexion
@@ -115,7 +128,7 @@ export default function CodeSecretPage() {
         {success && <div className="mp-success">Code secret enregistré ✓</div>}
 
         <button className="mp-btn-primary" disabled={submitting || !canSubmit} onClick={handleSubmit}>
-          {submitting ? 'Enregistrement...' : hasPin ? 'Modifier le code' : 'Créer le code'}
+          {submitting ? 'Enregistrement...' : useReset ? 'Réinitialiser le code' : hasPin ? 'Modifier le code' : 'Créer le code'}
         </button>
       </div>
     </div>

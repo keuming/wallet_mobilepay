@@ -123,6 +123,24 @@ export class AuthService {
     return { message: 'Code secret créé avec succès.' };
   }
 
+  /**
+   * Réinitialise le code secret en cas d'oubli (§ contrairement à changePin,
+   * ne nécessite PAS l'ancien code — vérifie le mot de passe de connexion à
+   * la place, que l'utilisateur connaît forcément puisqu'il est authentifié).
+   */
+  async resetPin(userId: string, password: string, newPin: string) {
+    this.assertValidPinFormat(newPin);
+    const user = await this.prisma.user.findUniqueOrThrow({ where: { id: userId } });
+
+    if (!(await bcrypt.compare(password, user.passwordHash))) {
+      throw new UnauthorizedException('Mot de passe incorrect.');
+    }
+
+    const transactionPinHash = await bcrypt.hash(newPin, BCRYPT_ROUNDS);
+    await this.prisma.user.update({ where: { id: userId }, data: { transactionPinHash } });
+    return { message: 'Code secret réinitialisé avec succès.' };
+  }
+
   /** Changement du code secret existant — nécessite l'ancien code. */
   async changePin(userId: string, currentPin: string, newPin: string) {
     this.assertValidPinFormat(newPin);

@@ -60,6 +60,13 @@ export class AuthController {
     return this.authService.setInitialPin(user.userId, dto.password, dto.pin);
   }
 
+  /** Réinitialisation en cas d'oubli — vérifie le mot de passe, pas l'ancien code. */
+  @Post('pin/reset')
+  @UseGuards(JwtAuthGuard)
+  resetPin(@CurrentUser() user: AuthenticatedUser, @Body() dto: SetInitialPinDto) {
+    return this.authService.resetPin(user.userId, dto.password, dto.pin);
+  }
+
   @Patch('pin')
   @UseGuards(JwtAuthGuard)
   changePin(@CurrentUser() user: AuthenticatedUser, @Body() dto: ChangePinDto) {
