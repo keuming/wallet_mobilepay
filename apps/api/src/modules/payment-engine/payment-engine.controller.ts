@@ -47,6 +47,10 @@ export class SendExternalDto {
 
   @IsString()
   pin: string;
+
+  @IsOptional()
+  @IsString()
+  recipientName?: string;
 }
 
 @ApiTags('wallets')
@@ -85,7 +89,7 @@ export class PaymentEngineController {
   ) {
     return this.paymentEngine.sendToExternalAccount(
       user.userId,
-      { operator: dto.operator, accountNumber: dto.accountNumber, amount: BigInt(dto.amount), pin: dto.pin },
+      { operator: dto.operator, accountNumber: dto.accountNumber, amount: BigInt(dto.amount), pin: dto.pin, recipientName: dto.recipientName },
       idempotencyKey,
     );
   }

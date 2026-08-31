@@ -40,18 +40,7 @@ export class WebhooksService {
       throw new UnauthorizedException('Signature invalide.');
     }
 
-    // Diagnostic temporaire (§ vérifier le vrai type de nextAction — ussd,
-    // otp, ou redirection — renvoyé par chaque opérateur, avant de construire
-    // l'étape d'authentification OTP à l'aveugle).
     const envelope = this.safeParse(rawBody) as any;
-    if (envelope?.data?.nextAction) {
-      // eslint-disable-next-line no-console
-      console.log(
-        `[NEXTACTION DEBUG] provider=${envelope.data.provider} type=${envelope.data.nextAction.type} message=${envelope.data.nextAction.message}`,
-      );
-      // eslint-disable-next-line no-console
-      console.log('[NEXTACTION DEBUG] objet complet:', JSON.stringify(envelope.data.nextAction));
-    }
 
     const transaction = await this.prisma.transaction.findFirst({
       where: { providerRef: verification.providerRef, providerName: 'HUB2' },

@@ -156,8 +156,6 @@ export class Hub2Adapter implements PaymentProviderAdapter {
       amount: params.amount,
       currency: params.currency,
     });
-    // eslint-disable-next-line no-console
-    console.log('[HUB2 DEBUG] PaymentIntent créé:', JSON.stringify(intent.raw));
 
     if (!this.apiKey || !this.merchantId) {
       throw new Error('HUB2 non configuré — impossible de tenter un paiement.');
@@ -173,22 +171,16 @@ export class Hub2Adapter implements PaymentProviderAdapter {
         // Exigé par HUB2 pour certains circuits (Wave notamment, qui
         // redirige le client vers sa propre interface avant de revenir) —
         // doivent être imbriqués DANS mobileMoney (schéma officiel
-        // PayMobileMoneyDto), pas au niveau racine du corps — erreur
-        // corrigée après un premier essai raté au mauvais niveau.
+        // PayMobileMoneyDto), pas au niveau racine du corps.
         onSuccessRedirectionUrl: 'https://business.mobilepay-ci.com/transactions',
         onFailedRedirectionUrl: 'https://business.mobilepay-ci.com/encaisser',
       },
     };
-    // eslint-disable-next-line no-console
-    console.log('[HUB2 DEBUG] Tentative de paiement (async) — corps envoyé:', JSON.stringify(attemptBody));
 
-    // Endpoint ASYNCHRONE — l'endpoint synchrone (/sync) a été testé et
-    // rejeté par HUB2 (401 "Unable to proceed with synchronous payment with
-    // the requested provider") : non disponible pour cet opérateur sur ce
-    // compte, malgré l'indication du support. Le lien de paiement doit donc
-    // être récupéré via webhook, événement "payment.action_required" (§
-    // reste à confirmer qu'un webhook est bien enregistré côté HUB2 pointant
-    // vers /api/webhooks/hub2 — sans ça, cet événement n'arrivera jamais).
+    // Endpoint ASYNCHRONE — l'endpoint synchrone (/sync) est rejeté (401)
+    // pour les opérateurs de ce compte. Le résultat final (succès/échec,
+    // type d'action requise) arrive via webhook, événement
+    // "payment.action_required" puis "payment.succeeded"/"payment.failed".
     const res = await fetch(`${this.baseUrl}/payment-intents/${intent.id}/payments`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -196,8 +188,6 @@ export class Hub2Adapter implements PaymentProviderAdapter {
     });
 
     const rawText = await res.text();
-    // eslint-disable-next-line no-console
-    console.log('[HUB2 DEBUG] Réponse tentative de paiement — statut', res.status, '— corps:', rawText);
 
     if (!res.ok) {
       throw new Error(`HUB2 attempt payment error (${res.status}): ${rawText}`);
@@ -249,19 +239,52 @@ export class Hub2Adapter implements PaymentProviderAdapter {
     return JSON.parse(rawText);
   }
 
+  /**
+   * PAY-OUT — envoi d'argent vers un compte Mobile Money externe. Endpoint
+   * et corps confirmés via la doc officielle HUB2 (POST /transfers), après
+   * découverte que l'ancien /disbursements deviné n'a jamais existé — même
+   * défaut que /collections corrigé plus tôt pour le PAY-IN.
+   */
   async initiateWithdrawal(params: InitiateWithdrawalParams): Promise<ProviderInitiationResult> {
+    if (!this.apiKey || !this.merchantId) {
+      // Mode simulé (pas de clé réelle configurée) — permet le développement
+      // local sans dépendance externe.
+      return { providerRef: `SIMULATED-${crypto.randomUUID()}`, status: 'PENDING', raw: null };
+    }
+
     const body = {
+      reference: params.reference.replace(/[^A-Za-z0-9\-_. ]/g, ''), // HUB2 rejette les caractères spéciaux
       amount: Number(params.amount) / 100,
       currency: params.currency,
-      customer: { phone: params.customerPhone },
-      reference: params.reference,
-      callback_url: `${this.config.get('API_BASE_URL')}/api/webhooks/hub2`,
+      description: `MobilePay — envoi vers ${params.recipientName}`,
+      destination: {
+        type: 'mobile_money',
+        country: 'CI',
+        msisdn: params.customerPhone,
+        provider: params.provider.toLowerCase(),
+        recipientName: params.recipientName,
+      },
     };
 
-    const response = await this.request('/disbursements', body);
+    const res = await fetch(`${this.baseUrl}/transfers`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ApiKey: this.apiKey,
+        MerchantId: this.merchantId,
+        Environment: this.environment,
+      },
+      body: JSON.stringify(body),
+    });
+
+    const rawText = await res.text();
+    if (!res.ok) {
+      throw new Error(`HUB2 transfer error (${res.status}): ${rawText}`);
+    }
+    const response = JSON.parse(rawText);
 
     return {
-      providerRef: response.id ?? response.transaction_id ?? params.reference,
+      providerRef: response.id ?? params.reference,
       status: 'PENDING',
       raw: response,
     };
@@ -285,17 +308,6 @@ export class Hub2Adapter implements PaymentProviderAdapter {
     const providedSignature = parts['s1'];
 
     const expected = crypto.createHmac('sha256', this.webhookSecret).update(rawBody).digest('hex');
-
-    // eslint-disable-next-line no-console
-    console.log('[WEBHOOK DEBUG] en-tête brut reçu:', JSON.stringify(signatureHeader));
-    // eslint-disable-next-line no-console
-    console.log('[WEBHOOK DEBUG] s1 extrait:', providedSignature);
-    // eslint-disable-next-line no-console
-    console.log('[WEBHOOK DEBUG] secret utilisé (10 premiers caractères):', this.webhookSecret.slice(0, 10));
-    // eslint-disable-next-line no-console
-    console.log('[WEBHOOK DEBUG] signature attendue (calculée par nous):', expected);
-    // eslint-disable-next-line no-console
-    console.log('[WEBHOOK DEBUG] corps brut reçu (100 premiers caractères):', rawBody.slice(0, 100));
 
     const isValid =
       !!providedSignature &&

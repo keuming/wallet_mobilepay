@@ -58,7 +58,7 @@ export class PaymentEngineService {
    */
   async sendToExternalAccount(
     userId: string,
-    params: { operator: 'ORANGE' | 'MOOV' | 'WAVE' | 'MTN'; accountNumber: string; amount: bigint; pin: string },
+    params: { operator: 'ORANGE' | 'MOOV' | 'WAVE' | 'MTN'; accountNumber: string; amount: bigint; pin: string; recipientName?: string },
     idempotencyKey: string,
   ) {
     const existing = await this.prisma.transaction.findUnique({ where: { idempotencyKey } });
@@ -102,6 +102,10 @@ export class PaymentEngineService {
       amount: params.amount,
       currency: 'XOF',
       customerPhone: params.accountNumber,
+      provider: params.operator.toLowerCase(),
+      // § Le formulaire "Envoyer" ne collecte pas encore le nom du
+      // bénéficiaire — à ajouter à terme. Repli générique en attendant.
+      recipientName: params.recipientName ?? 'Bénéficiaire',
       reference: transaction.id,
     });
 
@@ -133,6 +137,8 @@ export class PaymentEngineService {
       if (transaction.status === 'SUCCESS' || transaction.status === 'FAILED') {
         return transaction; // déjà traité — idempotence webhook
       }
+
+      await this.updateLatestPaymentAttemptStatus(tx, transactionId, success ? 'SUCCESS' : 'FAILED');
 
       if (success) {
         return tx.transaction.update({ where: { id: transactionId }, data: { status: 'SUCCESS' } });
@@ -524,6 +530,8 @@ export class PaymentEngineService {
         return transaction; // déjà traité — idempotence webhook
       }
 
+      await this.updateLatestPaymentAttemptStatus(tx, transactionId, success ? 'SUCCESS' : 'FAILED');
+
       if (!success) {
         return tx.transaction.update({
           where: { id: transactionId },
@@ -542,6 +550,25 @@ export class PaymentEngineService {
 
       return tx.transaction.update({ where: { id: transactionId }, data: { status: 'SUCCESS' } });
     });
+  }
+
+  /**
+   * Met à jour le statut de la dernière tentative de paiement (§ cohérence
+   * historique) — auparavant, seule la Transaction passait à SUCCESS/FAILED,
+   * la PaymentAttempt associée restait bloquée en PROCESSING pour toujours.
+   */
+  private async updateLatestPaymentAttemptStatus(
+    tx: Prisma.TransactionClient,
+    transactionId: string,
+    status: 'SUCCESS' | 'FAILED',
+  ) {
+    const attempt = await tx.paymentAttempt.findFirst({
+      where: { transactionId },
+      orderBy: { createdAt: 'desc' },
+    });
+    if (attempt) {
+      await tx.paymentAttempt.update({ where: { id: attempt.id }, data: { status } });
+    }
   }
 
   /**
@@ -853,6 +880,8 @@ export class PaymentEngineService {
       if (transaction.status === 'SUCCESS' || transaction.status === 'FAILED') {
         return transaction; // déjà traité — idempotence webhook
       }
+
+      await this.updateLatestPaymentAttemptStatus(tx, transactionId, success ? 'SUCCESS' : 'FAILED');
 
       if (!success) {
         return tx.transaction.update({

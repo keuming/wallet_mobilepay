@@ -19,6 +19,8 @@ export interface InitiateWithdrawalParams {
   amount: bigint;
   currency: string;
   customerPhone: string;
+  provider: string; // 'orange' | 'mtn' | 'moov' | 'wave'
+  recipientName: string;
   reference: string;
 }
 
