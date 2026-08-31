@@ -231,6 +231,17 @@ export class AdminService {
     return { message: 'Mot de passe réinitialisé avec succès.' };
   }
 
+  /** Change le numéro de téléphone d'un utilisateur — vérifie qu'aucun autre compte ne l'utilise déjà. */
+  async updateUserPhone(id: string, newPhoneRaw: string) {
+    const newPhone = normalizePhoneCI(newPhoneRaw);
+    const existing = await this.prisma.user.findUnique({ where: { phone: newPhone } });
+    if (existing && existing.id !== id) {
+      throw new ConflictException('Ce numéro est déjà utilisé par un autre compte.');
+    }
+    await this.prisma.user.update({ where: { id }, data: { phone: newPhone } });
+    return { message: 'Numéro de téléphone mis à jour avec succès.' };
+  }
+
   async updateMerchant(id: string, dto: { businessName?: string; category?: string; feeRateBps?: number }) {
     return this.prisma.merchant.update({
       where: { id },

@@ -102,6 +102,11 @@ export class ResetPasswordDto {
   newPassword: string;
 }
 
+export class UpdatePhoneDto {
+  @IsPhoneNumber('CI', { message: 'Numéro de téléphone invalide.' })
+  newPhone: string;
+}
+
 export class UpdateMerchantDto {
   @IsOptional()
   @IsString()
@@ -253,6 +258,12 @@ export class AdminController {
   @Patch('users/:id/password')
   resetUserPassword(@Param('id') id: string, @Body() dto: ResetPasswordDto) {
     return this.adminService.resetUserPassword(id, dto.newPassword);
+  }
+
+  /** Change le numéro de téléphone d'un utilisateur. */
+  @Patch('users/:id/phone')
+  updateUserPhone(@Param('id') id: string, @Body() dto: UpdatePhoneDto) {
+    return this.adminService.updateUserPhone(id, dto.newPhone);
   }
 
   @Patch('users/:id/blocked')
