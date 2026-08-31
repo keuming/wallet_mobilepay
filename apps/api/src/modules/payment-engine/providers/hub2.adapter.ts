@@ -262,6 +262,17 @@ export class Hub2Adapter implements PaymentProviderAdapter {
 
     const expected = crypto.createHmac('sha256', this.webhookSecret).update(rawBody).digest('hex');
 
+    // eslint-disable-next-line no-console
+    console.log('[WEBHOOK DEBUG] en-tête brut reçu:', JSON.stringify(signatureHeader));
+    // eslint-disable-next-line no-console
+    console.log('[WEBHOOK DEBUG] s1 extrait:', providedSignature);
+    // eslint-disable-next-line no-console
+    console.log('[WEBHOOK DEBUG] secret utilisé (10 premiers caractères):', this.webhookSecret.slice(0, 10));
+    // eslint-disable-next-line no-console
+    console.log('[WEBHOOK DEBUG] signature attendue (calculée par nous):', expected);
+    // eslint-disable-next-line no-console
+    console.log('[WEBHOOK DEBUG] corps brut reçu (100 premiers caractères):', rawBody.slice(0, 100));
+
     const isValid =
       !!providedSignature &&
       providedSignature.length === expected.length &&
