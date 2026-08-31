@@ -178,11 +178,20 @@ export class Hub2Adapter implements PaymentProviderAdapter {
       onFailedRedirectionUrl: 'https://business.mobilepay-ci.com/encaisser',
     };
     // eslint-disable-next-line no-console
-    console.log('[HUB2 DEBUG] Tentative de paiement — corps envoyé:', JSON.stringify(attemptBody));
+    console.log('[HUB2 DEBUG] Tentative de paiement (sync) — corps envoyé:', JSON.stringify(attemptBody));
 
-    const res = await fetch(`${this.baseUrl}/payment-intents/${intent.id}/payments`, {
+    // Endpoint SYNCHRONE (confirmé disponible pour ce compte marchand par le
+    // support HUB2) — attend la réponse du fournisseur et renvoie le lien de
+    // paiement (nextAction) directement dans la réponse, plutôt que de
+    // dépendre d'un webhook "payment.action_required" pour l'obtenir.
+    const res = await fetch(`${this.baseUrl}/payment-intents/${intent.id}/payments/sync`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        ApiKey: this.apiKey,
+        MerchantId: this.merchantId,
+        Environment: this.environment,
+      },
       body: JSON.stringify(attemptBody),
     });
 
@@ -196,9 +205,22 @@ export class Hub2Adapter implements PaymentProviderAdapter {
 
     const response = JSON.parse(rawText);
 
+    // La référence à retenir est celle du PAIEMENT individuel (pay_...),
+    // pas celle du PaymentIntent (pi_...) — c'est le paiement, pas
+    // l'intention, que le webhook référence lors des mises à jour de statut.
+    const payment = response.payments?.[response.payments.length - 1];
+
+    // Le "lien de paiement" que le client doit ouvrir pour confirmer (§
+    // confirmé par le support HUB2 — sans ce lien, rien n'arrive jamais
+    // côté client, même si HUB2 accepte la requête). Peut se trouver sur le
+    // paiement individuel ou sur l'intention selon le circuit.
+    const nextAction = payment?.nextAction ?? response.nextAction;
+    const paymentLink: string | undefined = nextAction?.data?.url;
+
     return {
-      providerRef: response.id ?? intent.id,
+      providerRef: payment?.id ?? response.id ?? intent.id,
       status: 'PENDING',
+      redirectUrl: paymentLink,
       raw: response,
     };
   }
@@ -242,20 +264,27 @@ export class Hub2Adapter implements PaymentProviderAdapter {
     }
 
     const payload = JSON.parse(rawBody);
+    // Schéma réel confirmé via la doc officielle (objet Payment) — statuts :
+    // created | failed | pending | successful. La cause d'échec est nichée
+    // sous `failure.code` / `failure.message`, pas un champ plat comme
+    // deviné initialement.
     const statusMap: Record<string, 'SUCCESS' | 'FAILED' | 'PENDING'> = {
       successful: 'SUCCESS',
-      completed: 'SUCCESS',
-      failed: 'FAILED',
-      cancelled: 'FAILED',
+      created: 'PENDING',
       pending: 'PENDING',
+      failed: 'FAILED',
     };
+
+    const failureMessage = payload.failure?.message
+      ? `${payload.failure.code ?? ''}: ${payload.failure.message}`.trim()
+      : undefined;
 
     return {
       isValid: true,
       eventType: payload.event ?? 'payment.status_update',
-      providerRef: payload.id ?? payload.transaction_id,
+      providerRef: payload.id,
       status: statusMap[payload.status] ?? 'PENDING',
-      failureReason: payload.failure_reason,
+      failureReason: failureMessage,
     };
   }
 

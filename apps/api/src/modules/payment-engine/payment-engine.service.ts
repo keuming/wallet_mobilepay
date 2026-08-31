@@ -371,7 +371,7 @@ export class PaymentEngineService {
       },
     });
 
-    return { ...transaction, providerRef: result.providerRef };
+    return { ...transaction, providerRef: result.providerRef, paymentLink: result.redirectUrl };
   }
 
   /** Finalise un paiement marchand externe depuis le webhook HUB2. */

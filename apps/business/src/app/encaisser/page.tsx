@@ -317,7 +317,7 @@ function PaymentRequestPanel({ merchantId }: { merchantId: string }) {
   const [provider, setProvider] = useState('');
   const [amount, setAmount] = useState('');
   const [description, setDescription] = useState('');
-  const [result, setResult] = useState<{ status: string; message: string } | null>(null);
+  const [result, setResult] = useState<{ status: string; message: string; link?: string } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
@@ -326,7 +326,7 @@ function PaymentRequestPanel({ merchantId }: { merchantId: string }) {
     setError(null);
     setResult(null);
     try {
-      const res = await apiFetch<{ status: string }>(`/merchants/${merchantId}/debit-direct`, {
+      const res = await apiFetch<{ status: string; paymentLink?: string }>(`/merchants/${merchantId}/debit-direct`, {
         method: 'POST',
         idempotent: true,
         body: JSON.stringify({
@@ -338,6 +338,12 @@ function PaymentRequestPanel({ merchantId }: { merchantId: string }) {
       });
       if (res.status === 'SUCCESS') {
         setResult({ status: 'success', message: 'Paiement confirmé ✓' });
+      } else if (res.paymentLink) {
+        setResult({
+          status: 'pending',
+          message: `Envoie ce lien au ${customerPhone} — le client doit l'ouvrir pour confirmer le paiement.`,
+          link: res.paymentLink,
+        });
       } else {
         setResult({
           status: 'pending',
@@ -384,6 +390,7 @@ function PaymentRequestPanel({ merchantId }: { merchantId: string }) {
           {result.message}
         </div>
       )}
+      {result?.link && <PaymentLinkResult link={result.link} />}
       <button
         className="mp-btn-primary"
         style={{ background: 'linear-gradient(120deg, var(--mp-navy) 0%, #0a1f3d 100%)' }}
@@ -392,6 +399,72 @@ function PaymentRequestPanel({ merchantId }: { merchantId: string }) {
       >
         {submitting ? 'Envoi...' : 'Envoyer la demande'}
       </button>
+    </div>
+  );
+}
+
+function PaymentLinkResult({ link }: { link: string }) {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(link);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      // ignore
+    }
+  };
+
+  const handleShare = async () => {
+    try {
+      if (navigator.share) {
+        await navigator.share({ title: 'Lien de paiement MobilePay', url: link });
+      } else {
+        await handleCopy();
+      }
+    } catch {
+      // l'utilisateur a annulé le partage
+    }
+  };
+
+  return (
+    <div
+      style={{
+        background: 'var(--mp-surface)',
+        border: '1px solid var(--mp-border)',
+        borderRadius: 14,
+        padding: 14,
+      }}
+    >
+      <div
+        style={{
+          fontSize: 12,
+          fontFamily: 'monospace',
+          color: 'var(--mp-muted)',
+          wordBreak: 'break-all',
+          marginBottom: 10,
+        }}
+      >
+        {link}
+      </div>
+      <div style={{ display: 'flex', gap: 8 }}>
+        <button
+          onClick={handleCopy}
+          className="mp-btn-primary"
+          style={{ flex: 1, background: 'transparent', border: '1px solid var(--mp-border)', color: 'var(--mp-text)', boxShadow: 'none', padding: '10px 6px', fontSize: 12.5 }}
+        >
+          📋 Copier
+        </button>
+        <button
+          onClick={handleShare}
+          className="mp-btn-primary"
+          style={{ flex: 1, background: 'linear-gradient(120deg, var(--mp-navy) 0%, #0a1f3d 100%)', padding: '10px 6px', fontSize: 12.5 }}
+        >
+          📤 Partager
+        </button>
+      </div>
+      {copied && <div style={{ marginTop: 8, fontSize: 12, color: 'var(--mp-green-dark)', fontWeight: 600 }}>Lien copié ✓</div>}
     </div>
   );
 }
