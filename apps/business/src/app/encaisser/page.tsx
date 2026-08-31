@@ -427,11 +427,27 @@ function PaymentRequestPanel({ merchantId }: { merchantId: string }) {
             status: 'pending',
             message: `Demande envoyée au ${phoneLabel} — dis au client de vérifier son téléphone et de valider avec son code Mobile Money pour finaliser le paiement.`,
           });
+        } else if (status.nextActionType === 'redirection') {
+          clearInterval(interval);
+          setResult({
+            status: 'pending',
+            message: `Le client va recevoir un SMS de son opérateur (${phoneLabel}) avec un lien à ouvrir pour confirmer le paiement — rien d'autre à faire de ton côté.`,
+          });
         }
       } catch {
         // on retente au prochain tick
       }
-      if (attempts >= maxAttempts) clearInterval(interval);
+      if (attempts >= maxAttempts) {
+        clearInterval(interval);
+        setResult((prev) =>
+          prev?.status === 'pending' && prev.message.includes('vérification en cours')
+            ? {
+                status: 'pending',
+                message: `Toujours en attente de confirmation pour ${phoneLabel} — vérifie l'historique dans quelques instants.`,
+              }
+            : prev,
+        );
+      }
     }, 2000);
   };
 
