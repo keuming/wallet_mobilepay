@@ -117,6 +117,16 @@ export class MerchantsController {
     );
   }
 
+  /** Authentifie un Débit direct par code OTP (§ nextAction.type === 'otp', ex: Orange). */
+  @Post(':merchantId/debit-direct/:transactionId/authenticate')
+  @UseGuards(JwtAuthGuard, MerchantScopeGuard)
+  authenticateDebitDirect(
+    @Param('transactionId') transactionId: string,
+    @Body('confirmationCode') confirmationCode: string,
+  ) {
+    return this.paymentEngine.authenticateDebitDirect(transactionId, confirmationCode);
+  }
+
   /** Vue détaillée pour l'onglet "Wallet" du dashboard marchand (§11). */
   @Get(':merchantId/wallet-detail')
   @UseGuards(JwtAuthGuard, MerchantScopeGuard)

@@ -372,7 +372,35 @@ export class PaymentEngineService {
       },
     });
 
-    return { ...transaction, providerRef: result.providerRef, paymentLink: result.redirectUrl };
+    return {
+      ...transaction,
+      providerRef: result.providerRef,
+      paymentLink: result.redirectUrl,
+      nextActionType: result.nextActionType,
+      nextActionMessage: result.nextActionMessage,
+    };
+  }
+
+  /**
+   * Authentifie un Débit direct nécessitant un code OTP (§ nextAction.type
+   * === 'otp', ex: Orange) — le client dicte le code généré via son
+   * opérateur, le marchand le saisit dans l'app Business pour finaliser.
+   */
+  async authenticateDebitDirect(transactionId: string, confirmationCode: string) {
+    const attempt = await this.prisma.paymentAttempt.findFirst({
+      where: { transactionId, providerName: 'HUB2' },
+      orderBy: { createdAt: 'desc' },
+    });
+    if (!attempt) throw new NotFoundException('Aucune tentative de paiement trouvée pour cette transaction.');
+
+    const raw = attempt.rawResponse as any;
+    const intentId: string | undefined = raw?.id;
+    const token: string | undefined = raw?.token;
+    if (!intentId || !token) {
+      throw new BadRequestException('Cette transaction ne peut pas être authentifiée par code (données manquantes).');
+    }
+
+    return this.hub2.authenticatePayment(intentId, token, confirmationCode);
   }
 
   /**

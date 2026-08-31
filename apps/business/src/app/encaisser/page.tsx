@@ -322,10 +322,18 @@ function PaymentRequestPanel({ merchantId }: { merchantId: string }) {
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
+  // Étape OTP (§ Orange notamment) — le client dicte le code généré via son
+  // opérateur, le marchand le saisit ici pour finaliser le paiement.
+  const [otpTransactionId, setOtpTransactionId] = useState<string | null>(null);
+  const [otpMessage, setOtpMessage] = useState<string | null>(null);
+  const [otpCode, setOtpCode] = useState('');
+  const [otpSubmitting, setOtpSubmitting] = useState(false);
+
   const send = async () => {
     setSubmitting(true);
     setError(null);
     setResult(null);
+    setOtpTransactionId(null);
     try {
       if (provider === 'mobilepay') {
         // Le client paie depuis son propre solde MobilePay — confirmation
@@ -344,7 +352,13 @@ function PaymentRequestPanel({ merchantId }: { merchantId: string }) {
           message: `Demande envoyée au ${customerPhone} — le client doit confirmer dans son app MobilePay (solde MobilePay).`,
         });
       } else {
-        const res = await apiFetch<{ status: string; paymentLink?: string }>(`/merchants/${merchantId}/debit-direct`, {
+        const res = await apiFetch<{
+          id: string;
+          status: string;
+          paymentLink?: string;
+          nextActionType?: 'ussd' | 'otp' | 'redirection';
+          nextActionMessage?: string;
+        }>(`/merchants/${merchantId}/debit-direct`, {
           method: 'POST',
           idempotent: true,
           body: JSON.stringify({
@@ -356,6 +370,15 @@ function PaymentRequestPanel({ merchantId }: { merchantId: string }) {
         });
         if (res.status === 'SUCCESS') {
           setResult({ status: 'success', message: 'Paiement confirmé ✓' });
+        } else if (res.nextActionType === 'otp') {
+          // Le client doit générer un code via son opérateur et le dicter au
+          // marchand pour finaliser — étape supplémentaire requise.
+          setOtpTransactionId(res.id);
+          setOtpMessage(res.nextActionMessage ?? 'Demande au client son code de confirmation.');
+          setResult({
+            status: 'pending',
+            message: `Demande envoyée au ${customerPhone} — un code de confirmation est requis pour finaliser.`,
+          });
         } else if (res.paymentLink) {
           setResult({
             status: 'pending',
@@ -376,6 +399,25 @@ function PaymentRequestPanel({ merchantId }: { merchantId: string }) {
       setError(err instanceof ApiError ? err.message : "Échec de l'envoi.");
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const submitOtp = async () => {
+    if (!otpTransactionId) return;
+    setOtpSubmitting(true);
+    setError(null);
+    try {
+      await apiFetch(`/merchants/${merchantId}/debit-direct/${otpTransactionId}/authenticate`, {
+        method: 'POST',
+        body: JSON.stringify({ confirmationCode: otpCode }),
+      });
+      setResult({ status: 'pending', message: 'Code transmis — finalisation en cours...' });
+      setOtpTransactionId(null);
+      setOtpCode('');
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Échec de l'authentification.");
+    } finally {
+      setOtpSubmitting(false);
     }
   };
 
@@ -410,6 +452,32 @@ function PaymentRequestPanel({ merchantId }: { merchantId: string }) {
         </div>
       )}
       {result?.link && <PaymentLinkResult link={result.link} />}
+      {otpTransactionId && (
+        <div
+          style={{
+            background: 'rgba(184, 121, 10, 0.08)',
+            border: '1px solid rgba(184, 121, 10, 0.2)',
+            borderRadius: 14,
+            padding: 14,
+          }}
+        >
+          <p style={{ fontSize: 12.5, color: '#8a5a06', margin: '0 0 10px' }}>{otpMessage}</p>
+          <input
+            className="mp-input"
+            placeholder="Code dicté par le client"
+            value={otpCode}
+            onChange={(e) => setOtpCode(e.target.value)}
+          />
+          <button
+            className="mp-btn-primary"
+            style={{ marginTop: 8, background: 'linear-gradient(120deg, #b8790a 0%, #8a5a06 100%)' }}
+            disabled={otpSubmitting || !otpCode}
+            onClick={submitOtp}
+          >
+            {otpSubmitting ? 'Validation...' : 'Valider le code'}
+          </button>
+        </div>
+      )}
       <button
         className="mp-btn-primary"
         style={{ background: 'linear-gradient(120deg, var(--mp-navy) 0%, #0a1f3d 100%)' }}
