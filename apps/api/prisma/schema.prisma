@@ -244,12 +244,10 @@ model Merchant {
   @@map("merchants")
 }
 
-/**
- * Encaissement en espèces (§ Phase A Business — le client paie en liquide,
- * le marchand enregistre simplement le montant pour son suivi comptable).
- * Aucun mouvement d'argent réel ne transite par MobilePay — c'est un pur
- * journal de caisse, distinct du wallet et des transactions HUB2.
- */
+// Encaissement en espèces (§ Phase A Business — le client paie en liquide,
+// le marchand enregistre simplement le montant pour son suivi comptable).
+// Aucun mouvement d'argent réel ne transite par MobilePay — c'est un pur
+// journal de caisse, distinct du wallet et des transactions HUB2.
 model CashCollection {
   id                 String   @id @default(uuid())
   merchantId         String
