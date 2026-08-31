@@ -34,9 +34,74 @@ export default function RechargerWalletPage() {
   const [submitting, setSubmitting] = useState(false);
   const [result, setResult] = useState<{ status: ResultStatus; message: string } | null>(null);
 
+  // Action requise côté client (§ OTP/USSD/redirection) — découverte de
+  // façon asynchrone via webhook, jamais dans la réponse immédiate.
+  const [pendingTransactionId, setPendingTransactionId] = useState<string | null>(null);
+  const [nextAction, setNextAction] = useState<{ type: 'ussd' | 'otp' | 'redirection'; message: string; url?: string } | null>(null);
+  const [otpCode, setOtpCode] = useState('');
+  const [otpSubmitting, setOtpSubmitting] = useState(false);
+
   useEffect(() => {
     apiFetch<{ hasPin: boolean }>('/auth/pin/status').then((res) => setHasPin(res.hasPin));
   }, []);
+
+  const pollTransactionStatus = (transactionId: string) => {
+    let attempts = 0;
+    const maxAttempts = 15;
+    const interval = setInterval(async () => {
+      attempts += 1;
+      try {
+        const tx = await apiFetch<{
+          status: string;
+          nextActionType?: 'ussd' | 'otp' | 'redirection';
+          nextActionMessage?: string;
+          nextActionUrl?: string;
+          failureReason?: string;
+        }>(`/transactions/${transactionId}`);
+
+        if (tx.status === 'SUCCESS') {
+          clearInterval(interval);
+          setPendingTransactionId(null);
+          setNextAction(null);
+          setResult({ status: 'success', message: `${Number(amount).toLocaleString('fr-FR')} FCFA ajoutés à votre wallet.` });
+        } else if (tx.status === 'FAILED') {
+          clearInterval(interval);
+          setPendingTransactionId(null);
+          setNextAction(null);
+          setResult({ status: 'failed', message: tx.failureReason ?? "La recharge n'a pas pu être finalisée." });
+        } else if (tx.nextActionType && !nextAction) {
+          clearInterval(interval);
+          setResult(null);
+          setNextAction({
+            type: tx.nextActionType,
+            message: tx.nextActionMessage ?? '',
+            url: tx.nextActionUrl,
+          });
+        }
+      } catch {
+        // on retente au prochain tick
+      }
+      if (attempts >= maxAttempts) clearInterval(interval);
+    }, 2000);
+  };
+
+  const submitOtp = async () => {
+    if (!pendingTransactionId) return;
+    setOtpSubmitting(true);
+    try {
+      await apiFetch(`/transactions/${pendingTransactionId}/authenticate`, {
+        method: 'POST',
+        body: JSON.stringify({ confirmationCode: otpCode }),
+      });
+      setNextAction(null);
+      setOtpCode('');
+      pollTransactionStatus(pendingTransactionId);
+    } catch (err) {
+      setResult({ status: 'failed', message: err instanceof ApiError ? err.message : "Échec de l'authentification." });
+    } finally {
+      setOtpSubmitting(false);
+    }
+  };
 
   const canGoNext = (): boolean => {
     switch (step) {
@@ -61,7 +126,7 @@ export default function RechargerWalletPage() {
     if (!operator) return;
     setSubmitting(true);
     try {
-      const response = await apiFetch<{ status?: string }>('/wallets/topup', {
+      const response = await apiFetch<{ status?: string; transactionId?: string }>('/wallets/topup', {
         method: 'POST',
         idempotent: true,
         body: JSON.stringify({
@@ -75,9 +140,13 @@ export default function RechargerWalletPage() {
       if (response.status === 'SUCCESS') {
         setResult({ status: 'success', message: `${Number(amount).toLocaleString('fr-FR')} FCFA ajoutés à votre wallet.` });
       } else if (response.status === 'PROCESSING' || response.status === 'PENDING') {
+        if (response.transactionId) {
+          setPendingTransactionId(response.transactionId);
+          pollTransactionStatus(response.transactionId);
+        }
         setResult({
           status: 'pending',
-          message: 'Une demande de confirmation a été envoyée sur votre téléphone. Votre solde sera mis à jour dès validation.',
+          message: 'Vérification en cours...',
         });
       } else if (response.status === 'FAILED') {
         setResult({ status: 'failed', message: 'La recharge n\'a pas pu être finalisée.' });
@@ -306,6 +375,64 @@ export default function RechargerWalletPage() {
           </button>
         )}
       </div>
+
+      {nextAction?.type === 'ussd' && (
+        <div className="mp-section" style={{ paddingTop: 0 }}>
+          <div className="mp-success" style={{ textAlign: 'left' }}>
+            Vérifie ton téléphone et valide avec ton code Mobile Money pour finaliser la recharge.
+          </div>
+        </div>
+      )}
+
+      {nextAction?.type === 'otp' && (
+        <div className="mp-section" style={{ paddingTop: 0 }}>
+          <div
+            style={{
+              background: 'rgba(184, 121, 10, 0.08)',
+              border: '1px solid rgba(184, 121, 10, 0.2)',
+              borderRadius: 14,
+              padding: 14,
+            }}
+          >
+            <p style={{ fontSize: 12.5, color: '#8a5a06', margin: '0 0 10px' }}>{nextAction.message}</p>
+            <input
+              className="mp-input"
+              style={{ width: '100%' }}
+              placeholder="Code de confirmation"
+              value={otpCode}
+              onChange={(e) => setOtpCode(e.target.value)}
+            />
+            <button
+              className="mp-btn-primary"
+              style={{ marginTop: 8, width: '100%', background: 'linear-gradient(120deg, #b8790a 0%, #8a5a06 100%)' }}
+              disabled={otpSubmitting || !otpCode}
+              onClick={submitOtp}
+            >
+              {otpSubmitting ? 'Validation...' : 'Valider le code'}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {nextAction?.type === 'redirection' && nextAction.url && (
+        <div className="mp-section" style={{ paddingTop: 0 }}>
+          <div
+            style={{
+              background: 'var(--mp-surface)',
+              border: '1px solid var(--mp-border)',
+              borderRadius: 14,
+              padding: 14,
+            }}
+          >
+            <p style={{ fontSize: 12.5, color: 'var(--mp-muted)', margin: '0 0 10px' }}>
+              Ouvre ce lien pour confirmer ta recharge :
+            </p>
+            <a href={nextAction.url} target="_blank" rel="noreferrer" className="mp-btn-primary" style={{ display: 'block', textAlign: 'center', textDecoration: 'none' }}>
+              Ouvrir le lien de confirmation
+            </a>
+          </div>
+        </div>
+      )}
 
       {result && (
         <StatusModal
