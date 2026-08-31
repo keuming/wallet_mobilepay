@@ -213,7 +213,10 @@ export class QrService {
     idempotencyKey: string,
   ) {
     const qr = await this.resolveQr(code);
-    if (qr.type === 'PARTICULIER' || !qr.merchantId) {
+    if (qr.type === 'PARTICULIER') {
+      return this.payParticulierQrExternal(qr, amount, customerPhone, provider, idempotencyKey);
+    }
+    if (!qr.merchantId) {
       throw new BadRequestException('Ce QR n\'accepte pas ce mode de paiement.');
     }
     const finalAmount = qr.fixedAmount ?? (amount ? BigInt(amount) : null);
@@ -226,6 +229,34 @@ export class QrService {
         provider,
         amount: finalAmount,
         description: qr.description ?? `Paiement QR ${qr.code}`,
+      },
+      idempotencyKey,
+    );
+  }
+
+  /**
+   * Paiement PUBLIC d'un QR personnel (particulier) — envoie de l'argent à
+   * ce particulier via Mobile Money externe, sans compte MobilePay requis
+   * côté payeur (§ pay.mobilepay.ci, route /u/:code).
+   */
+  private async payParticulierQrExternal(
+    qr: { fixedAmount: bigint | null; ownerUserId: string | null; code: string },
+    amount: number | undefined,
+    customerPhone: string,
+    provider: string,
+    idempotencyKey: string,
+  ) {
+    if (!qr.ownerUserId) throw new BadRequestException('QR personnel invalide.');
+    const finalAmount = qr.fixedAmount ?? (amount ? BigInt(amount) : null);
+    if (!finalAmount) throw new BadRequestException('Un montant est requis.');
+
+    return this.paymentEngine.payParticulierAnonymously(
+      {
+        recipientUserId: qr.ownerUserId,
+        customerPhone,
+        provider,
+        amount: finalAmount,
+        description: `Envoi via QR ${qr.code}`,
       },
       idempotencyKey,
     );

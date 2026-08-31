@@ -451,6 +451,70 @@ export class PaymentEngineService {
     );
   }
 
+  /**
+   * Envoie de l'argent à un PARTICULIER via Mobile Money externe (§ QR/lien
+   * personnel sur pay.mobilepay.ci) — pour un payeur SANS compte MobilePay.
+   * Distinct de payMerchantAnonymously : pas de frais marchand, crédite
+   * directement le wallet du particulier destinataire, type TRANSFER.
+   */
+  async payParticulierAnonymously(
+    params: { recipientUserId: string; customerPhone: string; provider: string; amount: bigint; description: string },
+    idempotencyKey: string,
+  ) {
+    const existing = await this.prisma.transaction.findUnique({ where: { idempotencyKey } });
+    if (existing) return existing;
+
+    const recipientWallet = await this.prisma.wallet.findUniqueOrThrow({
+      where: { userId: params.recipientUserId },
+    });
+    const guest = await this.getOrCreateGuestUser();
+
+    const transaction = await this.prisma.transaction.create({
+      data: {
+        type: 'PAYMENT',
+        status: 'PROCESSING',
+        amount: params.amount,
+        feeAmount: 0n,
+        destWalletId: recipientWallet.id,
+        initiatedByUserId: guest.id,
+        description: params.description,
+        providerName: 'HUB2',
+        idempotencyKey,
+      },
+    });
+
+    const result = await this.hub2.initiateTopup({
+      walletId: '',
+      amount: params.amount,
+      currency: 'XOF',
+      customerPhone: params.customerPhone,
+      reference: transaction.id,
+      provider: params.provider,
+    });
+
+    await this.prisma.transaction.update({
+      where: { id: transaction.id },
+      data: { providerRef: result.providerRef },
+    });
+    await this.prisma.paymentAttempt.create({
+      data: {
+        transactionId: transaction.id,
+        providerName: 'HUB2',
+        status: 'PROCESSING',
+        providerRef: result.providerRef,
+        rawResponse: result.raw as Prisma.InputJsonValue,
+      },
+    });
+
+    return {
+      ...transaction,
+      providerRef: result.providerRef,
+      paymentLink: result.redirectUrl,
+      nextActionType: result.nextActionType,
+      nextActionMessage: result.nextActionMessage,
+    };
+  }
+
   /** Finalise un paiement marchand externe depuis le webhook HUB2. */
   async completeExternalMerchantPayment(transactionId: string, success: boolean, failureReason?: string) {
     return this.runSerializable(async (tx) => {

@@ -13,6 +13,7 @@ const MOMO_PROVIDERS = [
 interface ResolvedTarget {
   businessName?: string;
   merchant?: { businessName: string };
+  ownerUser?: { firstName: string; lastName: string };
   amount?: number | null;
   fixedAmount?: number | null;
   description?: string | null;
@@ -33,12 +34,16 @@ export default function CheckoutPage({
   payExternalEndpoint,
   walletAppUrl,
   walletAppQueryKey,
+  walletAppPath = 'payer',
+  mobilePaySubtitle = "J'ai déjà un compte MobilePay",
   identifier,
 }: {
   resolveEndpoint: string;
   payExternalEndpoint: string;
   walletAppUrl: string;
   walletAppQueryKey: string;
+  walletAppPath?: string;
+  mobilePaySubtitle?: string;
   identifier: string;
 }) {
   const [target, setTarget] = useState<ResolvedTarget | null>(null);
@@ -58,7 +63,10 @@ export default function CheckoutPage({
       .catch((err) => setLoadError(err instanceof ApiError ? err.message : 'Introuvable.'));
   }, [resolveEndpoint]);
 
-  const businessName = target?.merchant?.businessName ?? target?.businessName;
+  const businessName =
+    target?.merchant?.businessName ??
+    target?.businessName ??
+    (target?.ownerUser ? `${target.ownerUser.firstName} ${target.ownerUser.lastName}` : undefined);
   const fixedAmount = target?.fixedAmount ?? target?.amount ?? null;
 
   const submit = async () => {
@@ -130,13 +138,13 @@ export default function CheckoutPage({
       {target && mode === 'choice' && (
         <div className="mp-feature-list">
           <a
-            href={`${walletAppUrl}/payer?${walletAppQueryKey}=${identifier}`}
+            href={walletAppPath === 'envoyer' ? `${walletAppUrl}/envoyer` : `${walletAppUrl}/${walletAppPath}?${walletAppQueryKey}=${identifier}`}
             className="mp-feature-card featured"
           >
             <div className="mp-feature-icon">💚</div>
             <div className="mp-feature-text">
               <div className="mp-feature-title">Payer avec MobilePay</div>
-              <div className="mp-feature-sub">J'ai déjà un compte MobilePay</div>
+              <div className="mp-feature-sub">{mobilePaySubtitle}</div>
             </div>
             <div className="mp-feature-chevron">→</div>
           </a>
