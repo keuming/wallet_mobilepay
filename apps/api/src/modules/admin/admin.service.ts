@@ -5,6 +5,7 @@ import * as bcrypt from 'bcrypt';
 import { PrismaService } from '../../config/prisma.service';
 import { Hub2Adapter } from '../payment-engine/providers/hub2.adapter';
 import { ReloadlyAdapter } from '../payment-engine/providers/reloadly.adapter';
+import { normalizePhoneCI } from '../../common/utils/phone.util';
 
 const PAGE_SIZE_DEFAULT = 20;
 
@@ -121,13 +122,13 @@ export class AdminService {
    * première connexion (non forcé au MVP, TODO amélioration future).
    */
   async createParticulier(dto: { phone: string; firstName: string; lastName: string; password: string }) {
-    const existing = await this.prisma.user.findUnique({ where: { phone: dto.phone } });
+    const existing = await this.prisma.user.findUnique({ where: { phone: normalizePhoneCI(dto.phone) } });
     if (existing) throw new ConflictException('Un compte existe déjà avec ce numéro.');
 
     const passwordHash = await bcrypt.hash(dto.password, 12);
     return this.prisma.user.create({
       data: {
-        phone: dto.phone,
+        phone: normalizePhoneCI(dto.phone),
         firstName: dto.firstName,
         lastName: dto.lastName,
         passwordHash,
@@ -138,14 +139,14 @@ export class AdminService {
   }
 
   async createAgent(dto: { phone: string; firstName: string; lastName: string; password: string; zone?: string }) {
-    const existing = await this.prisma.user.findUnique({ where: { phone: dto.phone } });
+    const existing = await this.prisma.user.findUnique({ where: { phone: normalizePhoneCI(dto.phone) } });
     if (existing) throw new ConflictException('Un compte existe déjà avec ce numéro.');
 
     const passwordHash = await bcrypt.hash(dto.password, 12);
     return this.prisma.$transaction(async (tx) => {
       const user = await tx.user.create({
         data: {
-          phone: dto.phone,
+          phone: normalizePhoneCI(dto.phone),
           firstName: dto.firstName,
           lastName: dto.lastName,
           passwordHash,
@@ -170,7 +171,7 @@ export class AdminService {
     ownerLastName: string;
     feeRateBps?: number;
   }) {
-    let owner = await this.prisma.user.findUnique({ where: { phone: dto.ownerPhone } });
+    let owner = await this.prisma.user.findUnique({ where: { phone: normalizePhoneCI(dto.ownerPhone) } });
     const ownerExistedAlready = !!owner; // capturé AVANT toute réaffectation ci-dessous
     const tempPassword = Math.random().toString(36).slice(-10);
 
@@ -179,7 +180,7 @@ export class AdminService {
         const passwordHash = await bcrypt.hash(tempPassword, 12);
         owner = await tx.user.create({
           data: {
-            phone: dto.ownerPhone,
+            phone: normalizePhoneCI(dto.ownerPhone),
             firstName: dto.ownerFirstName,
             lastName: dto.ownerLastName,
             passwordHash,

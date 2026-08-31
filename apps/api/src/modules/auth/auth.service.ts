@@ -10,6 +10,7 @@ import * as bcrypt from 'bcrypt';
 import * as crypto from 'crypto';
 import { PrismaService } from '../../config/prisma.service';
 import { WalletsService } from '../wallets/wallets.service';
+import { normalizePhoneCI } from '../../common/utils/phone.util';
 import { RegisterDto, LoginDto } from './dto/auth.dto';
 
 const BCRYPT_ROUNDS = 12;
@@ -24,7 +25,8 @@ export class AuthService {
   ) {}
 
   async register(dto: RegisterDto) {
-    const existing = await this.prisma.user.findUnique({ where: { phone: dto.phone } });
+    const phone = normalizePhoneCI(dto.phone);
+    const existing = await this.prisma.user.findUnique({ where: { phone } });
     if (existing) {
       throw new ConflictException('Un compte existe déjà avec ce numéro de téléphone.');
     }
@@ -36,7 +38,7 @@ export class AuthService {
     const user = await this.prisma.$transaction(async (tx) => {
       const created = await tx.user.create({
         data: {
-          phone: dto.phone,
+          phone,
           firstName: dto.firstName,
           lastName: dto.lastName,
           passwordHash,
@@ -57,7 +59,7 @@ export class AuthService {
   }
 
   async login(dto: LoginDto) {
-    const user = await this.prisma.user.findUnique({ where: { phone: dto.phone } });
+    const user = await this.prisma.user.findUnique({ where: { phone: normalizePhoneCI(dto.phone) } });
     if (!user || !(await bcrypt.compare(dto.password, user.passwordHash))) {
       throw new UnauthorizedException('Identifiants invalides.');
     }

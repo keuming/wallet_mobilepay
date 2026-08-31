@@ -9,6 +9,7 @@ import { Prisma } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
 import { PrismaService } from '../../config/prisma.service';
 import { LedgerService } from '../ledger/ledger.service';
+import { normalizePhoneCI } from '../../common/utils/phone.util';
 import { TransferDto } from './dto/wallets.dto';
 
 const MAX_SERIALIZATION_RETRIES = 3;
@@ -149,7 +150,7 @@ export class WalletsService {
 
     const [sender, recipientUser] = await Promise.all([
       this.prisma.user.findUniqueOrThrow({ where: { id: senderId } }),
-      this.prisma.user.findUnique({ where: { phone: dto.toPhone } }),
+      this.prisma.user.findUnique({ where: { phone: normalizePhoneCI(dto.toPhone) } }),
     ]);
 
     if (!sender.transactionPinHash) {

@@ -7,6 +7,7 @@ import { MerchantScopeGuard } from '../../common/guards/merchant-scope.guard';
 import { CurrentUser, AuthenticatedUser } from '../../common/decorators/current-user.decorator';
 import { PrismaService } from '../../config/prisma.service';
 import { PaymentEngineService } from '../payment-engine/payment-engine.service';
+import { normalizePhoneCI } from '../../common/utils/phone.util';
 import { NotFoundException } from '@nestjs/common';
 
 @ApiTags('merchants')
@@ -152,7 +153,7 @@ export class MerchantsController {
     @Body() dto: CreatePaymentRequestDto,
     @Headers('idempotency-key') idempotencyKey: string,
   ) {
-    const customer = await this.prisma.user.findUnique({ where: { phone: dto.customerPhone } });
+    const customer = await this.prisma.user.findUnique({ where: { phone: normalizePhoneCI(dto.customerPhone) } });
     if (!customer) throw new NotFoundException('Aucun compte MobilePay pour ce numéro.');
 
     const merchantWallet = await this.merchantsService.getWallet(merchantId);
