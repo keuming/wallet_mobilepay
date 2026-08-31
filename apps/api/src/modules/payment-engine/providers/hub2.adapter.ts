@@ -249,21 +249,32 @@ export class Hub2Adapter implements PaymentProviderAdapter {
    * pour éviter les attaques par timing.
    */
   verifyWebhook(rawBody: string, signatureHeader: string): WebhookVerificationResult {
-    const expected = crypto
-      .createHmac('sha256', this.webhookSecret)
-      .update(rawBody)
-      .digest('hex');
+    // Format réel confirmé (doc officielle) : "HUB2-Signature: s1=XXXX,s0=YYYY"
+    // — s1 = signature avec le secret actuel, s0 = avec l'ancien secret
+    // (fenêtre de grâce de 24h lors d'une rotation). On extrait s1.
+    const parts = Object.fromEntries(
+      (signatureHeader ?? '')
+        .split(',')
+        .map((p) => p.trim().split('='))
+        .filter((p) => p.length === 2),
+    );
+    const providedSignature = parts['s1'];
+
+    const expected = crypto.createHmac('sha256', this.webhookSecret).update(rawBody).digest('hex');
 
     const isValid =
-      !!signatureHeader &&
-      signatureHeader.length === expected.length &&
-      crypto.timingSafeEqual(Buffer.from(signatureHeader), Buffer.from(expected));
+      !!providedSignature &&
+      providedSignature.length === expected.length &&
+      crypto.timingSafeEqual(Buffer.from(providedSignature), Buffer.from(expected));
 
     if (!isValid) {
       return { isValid: false, eventType: 'unknown', providerRef: '', status: 'FAILED' };
     }
 
-    const payload = JSON.parse(rawBody);
+    // Le vrai contenu est enveloppé : { type, data: {...objet Payment...}, id, createdAt }
+    const envelope = JSON.parse(rawBody);
+    const payload = envelope.data ?? envelope;
+
     // Schéma réel confirmé via la doc officielle (objet Payment) — statuts :
     // created | failed | pending | successful. La cause d'échec est nichée
     // sous `failure.code` / `failure.message`, pas un champ plat comme
@@ -281,7 +292,7 @@ export class Hub2Adapter implements PaymentProviderAdapter {
 
     return {
       isValid: true,
-      eventType: payload.event ?? 'payment.status_update',
+      eventType: envelope.type ?? 'payment.status_update',
       providerRef: payload.id,
       status: statusMap[payload.status] ?? 'PENDING',
       failureReason: failureMessage,

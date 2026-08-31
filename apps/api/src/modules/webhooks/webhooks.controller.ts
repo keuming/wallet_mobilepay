@@ -20,7 +20,7 @@ export class WebhooksController {
   @Post('hub2')
   async handleHub2(
     @Req() req: RawBodyRequest<Request>,
-    @Headers('x-hub2-signature') signature: string,
+    @Headers('hub2-signature') signature: string,
   ) {
     const rawBody = req.rawBody?.toString('utf8');
     if (!rawBody) {
