@@ -8,8 +8,8 @@ import { ApiError } from '../../lib/apiClient';
 export default function LoginPage() {
   const { login } = useAuth();
   const router = useRouter();
-  const [phone, setPhone] = useState('+2250700000001');
-  const [password, setPassword] = useState('Password123!');
+  const [phone, setPhone] = useState('');
+  const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
@@ -63,9 +63,6 @@ export default function LoginPage() {
         <button className="mp-btn-primary" disabled={submitting} type="submit">
           {submitting ? 'Connexion...' : 'Se connecter'}
         </button>
-        <p style={{ fontSize: 12, color: 'var(--mp-muted)', textAlign: 'center' }}>
-          Compte de démo : +2250700000001 / Password123!
-        </p>
       </form>
     </div>
   );
