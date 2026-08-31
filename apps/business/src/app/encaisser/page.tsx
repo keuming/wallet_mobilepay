@@ -341,7 +341,7 @@ function PaymentRequestPanel({ merchantId }: { merchantId: string }) {
       } else {
         setResult({
           status: 'pending',
-          message: 'Prompt envoyé — le client doit valider avec son code Mobile Money sur son téléphone.',
+          message: `Demande envoyée au ${customerPhone} — dis au client de vérifier son téléphone et de valider avec son code Mobile Money pour finaliser le paiement.`,
         });
       }
       setCustomerPhone('');
