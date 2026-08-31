@@ -2,7 +2,7 @@ import { IsEnum, IsOptional, IsPhoneNumber, IsString, MinLength } from 'class-va
 import { UserRole } from '@prisma/client';
 
 export class RegisterDto {
-  @IsPhoneNumber(undefined, { message: 'Numéro de téléphone invalide (format international requis).' })
+  @IsPhoneNumber('CI', { message: 'Numéro de téléphone invalide.' })
   phone: string;
 
   @IsString()
@@ -23,7 +23,7 @@ export class RegisterDto {
 }
 
 export class LoginDto {
-  @IsPhoneNumber(undefined)
+  @IsPhoneNumber('CI')
   phone: string;
 
   @IsString()

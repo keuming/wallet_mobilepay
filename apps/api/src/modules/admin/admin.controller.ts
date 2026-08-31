@@ -45,7 +45,7 @@ export class SetAgentStatusDto {
 }
 
 export class CreateParticulierDto {
-  @IsPhoneNumber(undefined, { message: 'Numéro de téléphone invalide.' })
+  @IsPhoneNumber('CI', { message: 'Numéro de téléphone invalide.' })
   phone: string;
 
   @IsString()
@@ -72,7 +72,7 @@ export class CreateMerchantByAdminDto {
   @IsString()
   category: string;
 
-  @IsPhoneNumber(undefined, { message: 'Numéro du titulaire invalide.' })
+  @IsPhoneNumber('CI', { message: 'Numéro du titulaire invalide.' })
   ownerPhone: string;
 
   @IsString()

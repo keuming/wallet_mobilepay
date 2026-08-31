@@ -8,7 +8,7 @@ import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { CurrentUser, AuthenticatedUser } from '../../common/decorators/current-user.decorator';
 
 export class PurchaseAirtimeDto {
-  @IsPhoneNumber(undefined, { message: 'Numéro à recharger invalide.' })
+  @IsPhoneNumber('CI', { message: 'Numéro à recharger invalide.' })
   phoneNumber: string;
 
   @IsInt()
@@ -34,7 +34,7 @@ export class SendExternalDto {
   @IsEnum(['ORANGE', 'MOOV', 'WAVE', 'MTN'])
   operator: 'ORANGE' | 'MOOV' | 'WAVE' | 'MTN';
 
-  @IsPhoneNumber(undefined, { message: 'Numéro de compte destinataire invalide.' })
+  @IsPhoneNumber('CI', { message: 'Numéro de compte destinataire invalide.' })
   accountNumber: string;
 
   @IsInt()

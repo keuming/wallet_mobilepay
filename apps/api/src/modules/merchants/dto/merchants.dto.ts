@@ -15,7 +15,7 @@ export class CreateMerchantDto {
 }
 
 export class CreatePaymentRequestDto {
-  @IsPhoneNumber(undefined)
+  @IsPhoneNumber('CI')
   customerPhone: string;
 
   @IsInt()
@@ -57,7 +57,7 @@ export class CreatePaymentLinkDto {
 }
 
 export class TransferFromMerchantDto {
-  @IsPhoneNumber(undefined, { message: 'Numéro du bénéficiaire invalide.' })
+  @IsPhoneNumber('CI', { message: 'Numéro du bénéficiaire invalide.' })
   toPhone: string;
 
   @IsInt()
@@ -71,7 +71,7 @@ export class TransferFromMerchantDto {
 }
 
 export class SellAirtimeDto {
-  @IsPhoneNumber(undefined, { message: 'Numéro du client invalide.' })
+  @IsPhoneNumber('CI', { message: 'Numéro du client invalide.' })
   phoneNumber: string;
 
   @IsInt()
@@ -102,7 +102,7 @@ export class RecordCashDto {
 }
 
 export class DebitDirectDto {
-  @IsPhoneNumber(undefined, { message: 'Numéro du client invalide.' })
+  @IsPhoneNumber('CI', { message: 'Numéro du client invalide.' })
   customerPhone: string;
 
   @IsInt()
