@@ -246,6 +246,24 @@ model Merchant {
 
 // Encaissement en espèces (§ Phase A Business — le client paie en liquide,
 // le marchand enregistre simplement le montant pour son suivi comptable).
+// Journal des SMS envoyés (§ lien de paiement Wave en backup, ou toute
+// autre notification SMS future) — suivi indépendant du fournisseur SMS.
+model SmsLog {
+  id          String   @id @default(uuid())
+  toPhone     String
+  message     String
+  status      String // SENT | FAILED
+  providerRef String? // référence retournée par la plateforme SMS, si fournie
+  errorReason String?
+  transactionId String?
+  sentByUserId  String
+  createdAt   DateTime @default(now())
+
+  @@index([toPhone])
+  @@index([transactionId])
+  @@map("sms_logs")
+}
+
 // Aucun mouvement d'argent réel ne transite par MobilePay — c'est un pur
 // journal de caisse, distinct du wallet et des transactions HUB2.
 model CashCollection {
@@ -404,6 +422,7 @@ model Transaction {
   // ussd|otp|redirection et message associé, à afficher/exploiter côté app.
   nextActionType       String?
   nextActionMessage    String?
+  nextActionUrl        String?
 
   // Opérateur télécom pour les transactions Airtime/Data (§ KPIs admin) —
   // champ structuré plutôt que texte libre dans `description`, pour permettre

@@ -7,8 +7,9 @@ import { MerchantScopeGuard } from '../../common/guards/merchant-scope.guard';
 import { CurrentUser, AuthenticatedUser } from '../../common/decorators/current-user.decorator';
 import { PrismaService } from '../../config/prisma.service';
 import { PaymentEngineService } from '../payment-engine/payment-engine.service';
+import { SmsAdapter } from '../sms/sms.adapter';
 import { normalizePhoneCI } from '../../common/utils/phone.util';
-import { NotFoundException } from '@nestjs/common';
+import { NotFoundException, BadRequestException } from '@nestjs/common';
 
 @ApiTags('merchants')
 @ApiBearerAuth()
@@ -18,6 +19,7 @@ export class MerchantsController {
     private merchantsService: MerchantsService,
     private prisma: PrismaService,
     private paymentEngine: PaymentEngineService,
+    private sms: SmsAdapter,
   ) {}
 
   @Post()
@@ -138,9 +140,63 @@ export class MerchantsController {
   async getDebitDirectStatus(@Param('transactionId') transactionId: string) {
     const tx = await this.prisma.transaction.findUniqueOrThrow({
       where: { id: transactionId },
-      select: { status: true, nextActionType: true, nextActionMessage: true, failureReason: true },
+      select: {
+        status: true,
+        nextActionType: true,
+        nextActionMessage: true,
+        nextActionUrl: true,
+        failureReason: true,
+      },
     });
     return tx;
+  }
+
+  /**
+   * Envoie le lien de paiement par SMS (§ backup Wave — le marchand n'a pas
+   * toujours de crédit SMS personnel pour le transmettre lui-même).
+   */
+  @Post(':merchantId/debit-direct/:transactionId/send-sms')
+  @UseGuards(JwtAuthGuard, MerchantScopeGuard)
+  async sendPaymentLinkSms(
+    @Param('transactionId') transactionId: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    const tx = await this.prisma.transaction.findUniqueOrThrow({
+      where: { id: transactionId },
+      select: { nextActionUrl: true },
+    });
+    if (!tx.nextActionUrl) {
+      throw new NotFoundException('Aucun lien de paiement disponible pour cette transaction.');
+    }
+
+    // Le numéro du client n'est pas stocké directement sur la transaction —
+    // récupéré depuis la tentative de paiement associée.
+    const attempt = await this.prisma.paymentAttempt.findFirst({
+      where: { transactionId, providerName: 'HUB2' },
+      orderBy: { createdAt: 'desc' },
+    });
+    const raw = attempt?.rawResponse as any;
+    const toPhone = normalizePhoneCI(raw?.payments?.[0]?.number ?? raw?.customerReference ?? '');
+
+    const message = `MobilePay : ouvre ce lien pour confirmer ton paiement — ${tx.nextActionUrl}`;
+    const result = await this.sms.send(toPhone, message);
+
+    await this.prisma.smsLog.create({
+      data: {
+        toPhone,
+        message,
+        status: result.success ? 'SENT' : 'FAILED',
+        providerRef: result.providerRef,
+        errorReason: result.errorReason,
+        transactionId,
+        sentByUserId: user.userId,
+      },
+    });
+
+    if (!result.success) {
+      throw new BadRequestException(result.errorReason ?? "Échec de l'envoi du SMS.");
+    }
+    return { sent: true };
   }
 
   /** Vue détaillée pour l'onglet "Wallet" du dashboard marchand (§11). */

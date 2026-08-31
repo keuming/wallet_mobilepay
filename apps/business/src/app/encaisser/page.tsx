@@ -318,7 +318,7 @@ function PaymentRequestPanel({ merchantId }: { merchantId: string }) {
   const [provider, setProvider] = useState('');
   const [amount, setAmount] = useState('');
   const [description, setDescription] = useState('');
-  const [result, setResult] = useState<{ status: string; message: string; link?: string } | null>(null);
+  const [result, setResult] = useState<{ status: string; message: string; link?: string; transactionId?: string } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
@@ -404,6 +404,7 @@ function PaymentRequestPanel({ merchantId }: { merchantId: string }) {
           status: string;
           nextActionType?: 'ussd' | 'otp' | 'redirection';
           nextActionMessage?: string;
+          nextActionUrl?: string;
           failureReason?: string;
         }>(`/merchants/${merchantId}/debit-direct/${transactionId}/status`);
 
@@ -431,7 +432,11 @@ function PaymentRequestPanel({ merchantId }: { merchantId: string }) {
           clearInterval(interval);
           setResult({
             status: 'pending',
-            message: `Le client va recevoir un SMS de son opérateur (${phoneLabel}) avec un lien à ouvrir pour confirmer le paiement — rien d'autre à faire de ton côté.`,
+            message: status.nextActionUrl
+              ? `Le client va recevoir un SMS avec un lien — tu peux aussi le lui partager toi-même en backup :`
+              : `Le client va recevoir un SMS de son opérateur (${phoneLabel}) avec un lien à ouvrir pour confirmer le paiement — rien d'autre à faire de ton côté.`,
+            link: status.nextActionUrl,
+            transactionId,
           });
         }
       } catch {
@@ -504,7 +509,9 @@ function PaymentRequestPanel({ merchantId }: { merchantId: string }) {
           {result.message}
         </div>
       )}
-      {result?.link && <PaymentLinkResult link={result.link} />}
+      {result?.link && (
+        <PaymentLinkResult link={result.link} merchantId={merchantId} transactionId={result.transactionId} />
+      )}
       {otpTransactionId && (
         <div
           style={{
@@ -543,8 +550,10 @@ function PaymentRequestPanel({ merchantId }: { merchantId: string }) {
   );
 }
 
-function PaymentLinkResult({ link }: { link: string }) {
+function PaymentLinkResult({ link, merchantId, transactionId }: { link: string; merchantId: string; transactionId?: string }) {
   const [copied, setCopied] = useState(false);
+  const [smsState, setSmsState] = useState<'idle' | 'sending' | 'sent' | 'error'>('idle');
+  const [smsError, setSmsError] = useState<string | null>(null);
 
   const handleCopy = async () => {
     try {
@@ -565,6 +574,19 @@ function PaymentLinkResult({ link }: { link: string }) {
       }
     } catch {
       // l'utilisateur a annulé le partage
+    }
+  };
+
+  const handleSendSms = async () => {
+    if (!transactionId) return;
+    setSmsState('sending');
+    setSmsError(null);
+    try {
+      await apiFetch(`/merchants/${merchantId}/debit-direct/${transactionId}/send-sms`, { method: 'POST' });
+      setSmsState('sent');
+    } catch (err) {
+      setSmsState('error');
+      setSmsError(err instanceof ApiError ? err.message : "Échec de l'envoi.");
     }
   };
 
@@ -604,7 +626,18 @@ function PaymentLinkResult({ link }: { link: string }) {
           📤 Partager
         </button>
       </div>
+      {transactionId && (
+        <button
+          onClick={handleSendSms}
+          className="mp-btn-primary"
+          disabled={smsState === 'sending' || smsState === 'sent'}
+          style={{ marginTop: 8, width: '100%', background: 'linear-gradient(120deg, var(--mp-green) 0%, var(--mp-green-dark) 100%)', padding: '10px 6px', fontSize: 12.5 }}
+        >
+          {smsState === 'sending' ? 'Envoi...' : smsState === 'sent' ? 'SMS envoyé ✓' : '✉️ Envoyer par SMS'}
+        </button>
+      )}
       {copied && <div style={{ marginTop: 8, fontSize: 12, color: 'var(--mp-green-dark)', fontWeight: 600 }}>Lien copié ✓</div>}
+      {smsError && <div className="mp-error" style={{ marginTop: 8 }}>{smsError}</div>}
     </div>
   );
 }
