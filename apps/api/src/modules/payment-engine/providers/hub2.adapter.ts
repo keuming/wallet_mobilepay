@@ -169,6 +169,13 @@ export class Hub2Adapter implements PaymentProviderAdapter {
       country: 'CI',
       provider: params.provider.toLowerCase(),
       mobileMoney: { msisdn: params.customerPhone },
+      // Exigé par HUB2 pour certains circuits (Wave notamment, qui redirige
+      // le client vers sa propre interface avant de revenir) — on pointe
+      // vers l'app Business en dur plutôt que via une variable d'env, pour
+      // éviter toute confusion avec WEB_APP_URL (qui cible le wallet
+      // particulier). § à améliorer plus tard avec un vrai écran dédié.
+      onSuccessRedirectionUrl: 'https://business.mobilepay-ci.com/transactions',
+      onFailedRedirectionUrl: 'https://business.mobilepay-ci.com/encaisser',
     };
     // eslint-disable-next-line no-console
     console.log('[HUB2 DEBUG] Tentative de paiement — corps envoyé:', JSON.stringify(attemptBody));
