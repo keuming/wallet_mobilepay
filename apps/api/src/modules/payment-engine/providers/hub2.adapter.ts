@@ -156,29 +156,38 @@ export class Hub2Adapter implements PaymentProviderAdapter {
       amount: params.amount,
       currency: params.currency,
     });
+    // eslint-disable-next-line no-console
+    console.log('[HUB2 DEBUG] PaymentIntent créé:', JSON.stringify(intent.raw));
 
     if (!this.apiKey || !this.merchantId) {
       throw new Error('HUB2 non configuré — impossible de tenter un paiement.');
     }
 
+    const attemptBody = {
+      token: intent.token,
+      paymentMethod: 'mobile_money',
+      country: 'CI',
+      provider: params.provider.toLowerCase(),
+      mobileMoney: { msisdn: params.customerPhone },
+    };
+    // eslint-disable-next-line no-console
+    console.log('[HUB2 DEBUG] Tentative de paiement — corps envoyé:', JSON.stringify(attemptBody));
+
     const res = await fetch(`${this.baseUrl}/payment-intents/${intent.id}/payments`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        token: intent.token,
-        paymentMethod: 'mobile_money',
-        country: 'CI',
-        provider: params.provider.toLowerCase(),
-        mobileMoney: { msisdn: params.customerPhone },
-      }),
+      body: JSON.stringify(attemptBody),
     });
 
+    const rawText = await res.text();
+    // eslint-disable-next-line no-console
+    console.log('[HUB2 DEBUG] Réponse tentative de paiement — statut', res.status, '— corps:', rawText);
+
     if (!res.ok) {
-      const text = await res.text();
-      throw new Error(`HUB2 attempt payment error (${res.status}): ${text}`);
+      throw new Error(`HUB2 attempt payment error (${res.status}): ${rawText}`);
     }
 
-    const response = await res.json();
+    const response = JSON.parse(rawText);
 
     return {
       providerRef: response.id ?? intent.id,
