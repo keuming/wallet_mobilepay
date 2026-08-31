@@ -306,6 +306,7 @@ function PaymentLinkPanel({ merchantId }: { merchantId: string }) {
 }
 
 const MOMO_PROVIDERS = [
+  { id: 'mobilepay', label: 'MobilePay' },
   { id: 'orange', label: 'Orange Money' },
   { id: 'mtn', label: 'MTN MoMo' },
   { id: 'moov', label: 'Moov Money' },
@@ -326,29 +327,47 @@ function PaymentRequestPanel({ merchantId }: { merchantId: string }) {
     setError(null);
     setResult(null);
     try {
-      const res = await apiFetch<{ status: string; paymentLink?: string }>(`/merchants/${merchantId}/debit-direct`, {
-        method: 'POST',
-        idempotent: true,
-        body: JSON.stringify({
-          customerPhone,
-          provider,
-          amount: Math.round(Number(amount) * 100),
-          description: description || undefined,
-        }),
-      });
-      if (res.status === 'SUCCESS') {
-        setResult({ status: 'success', message: 'Paiement confirmé ✓' });
-      } else if (res.paymentLink) {
+      if (provider === 'mobilepay') {
+        // Le client paie depuis son propre solde MobilePay — confirmation
+        // dans son app, pas de circuit HUB2 impliqué.
+        await apiFetch(`/merchants/${merchantId}/payment-requests`, {
+          method: 'POST',
+          idempotent: true,
+          body: JSON.stringify({
+            customerPhone,
+            amount: Math.round(Number(amount) * 100),
+            description: description || undefined,
+          }),
+        });
         setResult({
           status: 'pending',
-          message: `Envoie ce lien au ${customerPhone} — le client doit l'ouvrir pour confirmer le paiement.`,
-          link: res.paymentLink,
+          message: `Demande envoyée au ${customerPhone} — le client doit confirmer dans son app MobilePay (solde MobilePay).`,
         });
       } else {
-        setResult({
-          status: 'pending',
-          message: `Demande envoyée au ${customerPhone} — dis au client de vérifier son téléphone et de valider avec son code Mobile Money pour finaliser le paiement.`,
+        const res = await apiFetch<{ status: string; paymentLink?: string }>(`/merchants/${merchantId}/debit-direct`, {
+          method: 'POST',
+          idempotent: true,
+          body: JSON.stringify({
+            customerPhone,
+            provider,
+            amount: Math.round(Number(amount) * 100),
+            description: description || undefined,
+          }),
         });
+        if (res.status === 'SUCCESS') {
+          setResult({ status: 'success', message: 'Paiement confirmé ✓' });
+        } else if (res.paymentLink) {
+          setResult({
+            status: 'pending',
+            message: `Envoie ce lien au ${customerPhone} — le client doit l'ouvrir pour confirmer le paiement.`,
+            link: res.paymentLink,
+          });
+        } else {
+          setResult({
+            status: 'pending',
+            message: `Demande envoyée au ${customerPhone} — dis au client de vérifier son téléphone et de valider avec son code Mobile Money pour finaliser le paiement.`,
+          });
+        }
       }
       setCustomerPhone('');
       setAmount('');
@@ -363,9 +382,9 @@ function PaymentRequestPanel({ merchantId }: { merchantId: string }) {
   return (
     <div className="mp-form">
       <p style={{ color: 'var(--mp-muted)', fontSize: 13, margin: 0 }}>
-        Saisis le numéro, choisis l'opérateur et le montant à débiter — un prompt Mobile Money
-        (USSD) s'affiche directement sur le téléphone du client. Aucune app MobilePay requise
-        côté client.
+        Saisis le numéro, choisis l'opérateur et le montant à débiter. Si le client a MobilePay, il
+        confirme dans son app ; sinon, un prompt Mobile Money s'affiche directement sur son
+        téléphone via son opérateur.
       </p>
       <input className="mp-input" placeholder="Numéro du client (+225...)" value={customerPhone} onChange={(e) => setCustomerPhone(e.target.value)} />
       <select className="mp-input" value={provider} onChange={(e) => setProvider(e.target.value)}>
