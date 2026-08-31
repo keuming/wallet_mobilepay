@@ -352,13 +352,7 @@ function PaymentRequestPanel({ merchantId }: { merchantId: string }) {
           message: `Demande envoyée au ${customerPhone} — le client doit confirmer dans son app MobilePay (solde MobilePay).`,
         });
       } else {
-        const res = await apiFetch<{
-          id: string;
-          status: string;
-          paymentLink?: string;
-          nextActionType?: 'ussd' | 'otp' | 'redirection';
-          nextActionMessage?: string;
-        }>(`/merchants/${merchantId}/debit-direct`, {
+        const res = await apiFetch<{ id: string; status: string; paymentLink?: string }>(`/merchants/${merchantId}/debit-direct`, {
           method: 'POST',
           idempotent: true,
           body: JSON.stringify({
@@ -370,15 +364,6 @@ function PaymentRequestPanel({ merchantId }: { merchantId: string }) {
         });
         if (res.status === 'SUCCESS') {
           setResult({ status: 'success', message: 'Paiement confirmé ✓' });
-        } else if (res.nextActionType === 'otp') {
-          // Le client doit générer un code via son opérateur et le dicter au
-          // marchand pour finaliser — étape supplémentaire requise.
-          setOtpTransactionId(res.id);
-          setOtpMessage(res.nextActionMessage ?? 'Demande au client son code de confirmation.');
-          setResult({
-            status: 'pending',
-            message: `Demande envoyée au ${customerPhone} — un code de confirmation est requis pour finaliser.`,
-          });
         } else if (res.paymentLink) {
           setResult({
             status: 'pending',
@@ -388,8 +373,14 @@ function PaymentRequestPanel({ merchantId }: { merchantId: string }) {
         } else {
           setResult({
             status: 'pending',
-            message: `Demande envoyée au ${customerPhone} — dis au client de vérifier son téléphone et de valider avec son code Mobile Money pour finaliser le paiement.`,
+            message: `Demande envoyée au ${customerPhone} — vérification en cours...`,
           });
+          // Le type d'action requise (ussd/otp/redirection) n'est jamais
+          // connu dans cette réponse immédiate — il n'arrive que via le
+          // webhook "action_required", quelques instants plus tard. On
+          // interroge donc le statut régulièrement pour le découvrir dès
+          // qu'il est disponible (ou détecter un succès/échec direct).
+          pollDebitDirectStatus(res.id, customerPhone);
         }
       }
       setCustomerPhone('');
@@ -402,6 +393,48 @@ function PaymentRequestPanel({ merchantId }: { merchantId: string }) {
     }
   };
 
+  const pollDebitDirectStatus = (transactionId: string, phone?: string) => {
+    const phoneLabel = phone || 'le client';
+    let attempts = 0;
+    const maxAttempts = 15; // ~30s à raison d'un appel toutes les 2s
+    const interval = setInterval(async () => {
+      attempts += 1;
+      try {
+        const status = await apiFetch<{
+          status: string;
+          nextActionType?: 'ussd' | 'otp' | 'redirection';
+          nextActionMessage?: string;
+          failureReason?: string;
+        }>(`/merchants/${merchantId}/debit-direct/${transactionId}/status`);
+
+        if (status.status === 'SUCCESS') {
+          clearInterval(interval);
+          setResult({ status: 'success', message: 'Paiement confirmé ✓' });
+        } else if (status.status === 'FAILED') {
+          clearInterval(interval);
+          setResult({ status: 'pending', message: status.failureReason ?? "Le paiement a échoué." });
+        } else if (status.nextActionType === 'otp' && !otpTransactionId) {
+          clearInterval(interval);
+          setOtpTransactionId(transactionId);
+          setOtpMessage(status.nextActionMessage ?? 'Demande au client son code de confirmation.');
+          setResult({
+            status: 'pending',
+            message: `Demande envoyée au ${phoneLabel} — un code de confirmation est requis pour finaliser.`,
+          });
+        } else if (status.nextActionType === 'ussd') {
+          clearInterval(interval);
+          setResult({
+            status: 'pending',
+            message: `Demande envoyée au ${phoneLabel} — dis au client de vérifier son téléphone et de valider avec son code Mobile Money pour finaliser le paiement.`,
+          });
+        }
+      } catch {
+        // on retente au prochain tick
+      }
+      if (attempts >= maxAttempts) clearInterval(interval);
+    }, 2000);
+  };
+
   const submitOtp = async () => {
     if (!otpTransactionId) return;
     setOtpSubmitting(true);
@@ -412,8 +445,12 @@ function PaymentRequestPanel({ merchantId }: { merchantId: string }) {
         body: JSON.stringify({ confirmationCode: otpCode }),
       });
       setResult({ status: 'pending', message: 'Code transmis — finalisation en cours...' });
+      const submittedTransactionId = otpTransactionId;
       setOtpTransactionId(null);
       setOtpCode('');
+      // La confirmation finale arrive elle aussi via webhook, pas
+      // immédiatement — on continue de surveiller le statut.
+      pollDebitDirectStatus(submittedTransactionId, customerPhone);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Échec de l'authentification.");
     } finally {

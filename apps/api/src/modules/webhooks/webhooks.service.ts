@@ -78,6 +78,18 @@ export class WebhooksService {
     // immédiat, clôturant la transaction en FAILED dès le premier webhook
     // reçu, avant même que le client ait pu confirmer son paiement.
     if (verification.status === 'PENDING') {
+      // L'événement "action_required" est le seul moment où HUB2 nous dit
+      // COMMENT le client doit confirmer (ussd/otp/redirection) — on
+      // persiste cette info pour que le frontend puisse la découvrir en
+      // interrogeant la transaction (elle n'est jamais dans la réponse HTTP
+      // immédiate de la tentative de paiement, seulement ici).
+      const nextAction = envelope?.data?.nextAction;
+      if (nextAction) {
+        await this.prisma.transaction.update({
+          where: { id: transaction.id },
+          data: { nextActionType: nextAction.type, nextActionMessage: nextAction.message },
+        });
+      }
       this.logger.log(`Webhook HUB2 : événement intermédiaire (${verification.eventType}) — transaction non finalisée.`);
       await this.prisma.webhookEvent.update({
         where: { id: event.id },

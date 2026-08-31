@@ -400,6 +400,10 @@ model Transaction {
   providerName        ProviderName?
   providerRef          String? // référence côté HUB2/Stripe/PayPal
   failureReason        String?
+  // Action requise côté client (§ webhook payment.action_required) — type
+  // ussd|otp|redirection et message associé, à afficher/exploiter côté app.
+  nextActionType       String?
+  nextActionMessage    String?
 
   // Opérateur télécom pour les transactions Airtime/Data (§ KPIs admin) —
   // champ structuré plutôt que texte libre dans `description`, pour permettre

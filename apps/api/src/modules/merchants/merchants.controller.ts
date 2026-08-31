@@ -127,6 +127,22 @@ export class MerchantsController {
     return this.paymentEngine.authenticateDebitDirect(transactionId, confirmationCode);
   }
 
+  /**
+   * Statut léger d'une transaction (§ Débit direct) — l'app Business
+   * interroge cet endpoint après l'envoi pour découvrir, une fois le webhook
+   * "action_required" arrivé, si une étape OTP est requise (jamais connue
+   * dans la réponse HTTP immédiate de la tentative de paiement).
+   */
+  @Get(':merchantId/debit-direct/:transactionId/status')
+  @UseGuards(JwtAuthGuard, MerchantScopeGuard)
+  async getDebitDirectStatus(@Param('transactionId') transactionId: string) {
+    const tx = await this.prisma.transaction.findUniqueOrThrow({
+      where: { id: transactionId },
+      select: { status: true, nextActionType: true, nextActionMessage: true, failureReason: true },
+    });
+    return tx;
+  }
+
   /** Vue détaillée pour l'onglet "Wallet" du dashboard marchand (§11). */
   @Get(':merchantId/wallet-detail')
   @UseGuards(JwtAuthGuard, MerchantScopeGuard)
