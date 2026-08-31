@@ -224,6 +224,13 @@ export class AdminService {
     });
   }
 
+  /** Réinitialise le mot de passe (§ compte perdu — pas encore de flux SMS self-service). */
+  async resetUserPassword(id: string, newPassword: string) {
+    const passwordHash = await bcrypt.hash(newPassword, 12);
+    await this.prisma.user.update({ where: { id }, data: { passwordHash } });
+    return { message: 'Mot de passe réinitialisé avec succès.' };
+  }
+
   async updateMerchant(id: string, dto: { businessName?: string; category?: string; feeRateBps?: number }) {
     return this.prisma.merchant.update({
       where: { id },

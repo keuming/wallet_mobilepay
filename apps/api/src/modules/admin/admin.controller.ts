@@ -96,6 +96,12 @@ export class UpdateUserDto {
   lastName?: string;
 }
 
+export class ResetPasswordDto {
+  @IsString()
+  @MinLength(8)
+  newPassword: string;
+}
+
 export class UpdateMerchantDto {
   @IsOptional()
   @IsString()
@@ -241,6 +247,12 @@ export class AdminController {
   @Patch('users/:id')
   updateUser(@Param('id') id: string, @Body() dto: UpdateUserDto) {
     return this.adminService.updateUser(id, dto);
+  }
+
+  /** Réinitialise le mot de passe d'un utilisateur (§ compte perdu, sans SMS de récupération). */
+  @Patch('users/:id/password')
+  resetUserPassword(@Param('id') id: string, @Body() dto: ResetPasswordDto) {
+    return this.adminService.resetUserPassword(id, dto.newPassword);
   }
 
   @Patch('users/:id/blocked')
