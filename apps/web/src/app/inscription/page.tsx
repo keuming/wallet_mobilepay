@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '../../contexts/AuthContext';
 import { ApiError } from '../../lib/apiClient';
+import PasswordInput from '../../components/PasswordInput';
 
 /**
  * Carte de création de compte (§ premier écran après installation de
@@ -103,10 +104,9 @@ export default function InscriptionPage() {
         </label>
         <label>
           Code PIN <span style={{ color: 'var(--mp-muted)', fontWeight: 400 }}>(4 à 6 chiffres — connexion et transactions)</span>
-          <input
+          <PasswordInput
             className="mp-input"
-            style={{ width: '100%', marginTop: 6 }}
-            type="password"
+            style={{ marginTop: 6 }}
             inputMode="numeric"
             maxLength={6}
             value={pin}
@@ -116,10 +116,9 @@ export default function InscriptionPage() {
         </label>
         <label>
           Confirme ton code PIN
-          <input
+          <PasswordInput
             className="mp-input"
-            style={{ width: '100%', marginTop: 6 }}
-            type="password"
+            style={{ marginTop: 6 }}
             inputMode="numeric"
             maxLength={6}
             value={confirmPin}

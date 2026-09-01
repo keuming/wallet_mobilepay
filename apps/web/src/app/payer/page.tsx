@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { apiFetch, ApiError } from '../../lib/apiClient';
 import StatusModal, { ResultStatus } from '../../components/StatusModal';
 import PaymentMethodBadge, { PaymentMethodId } from '../../components/PaymentMethodBadge';
+import PasswordInput from '../../components/PasswordInput';
 
 // Note MVP : la lecture caméra du QR (scan) n'est pas implémentée ici — l'app
 // mobile Flutter branchera un vrai scanner et appellera les mêmes endpoints
@@ -472,10 +473,9 @@ function PayerContent() {
             </div>
             <label>
               Code secret
-              <input
+              <PasswordInput
                 className="mp-input"
-                style={{ width: '100%', marginTop: 6, letterSpacing: 6, fontSize: 20, textAlign: 'center' }}
-                type="password"
+                style={{ marginTop: 6, letterSpacing: 6, fontSize: 20, textAlign: 'center' }}
                 inputMode="numeric"
                 maxLength={6}
                 value={pin}

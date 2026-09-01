@@ -5,15 +5,15 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '../../contexts/AuthContext';
 import { apiFetch, ApiError } from '../../lib/apiClient';
+import PasswordInput from '../../components/PasswordInput';
 
 function PinInput({ value, onChange, label }: { value: string; onChange: (v: string) => void; label: string }) {
   return (
     <label>
       {label}
-      <input
+      <PasswordInput
         className="mp-input"
-        style={{ width: '100%', marginTop: 6, letterSpacing: 6, fontSize: 20, textAlign: 'center' }}
-        type="password"
+        style={{ marginTop: 6, letterSpacing: 6, fontSize: 20, textAlign: 'center' }}
         inputMode="numeric"
         maxLength={6}
         value={value}
@@ -109,10 +109,9 @@ export default function CodeSecretPage() {
         ) : (
           <label>
             Mot de passe de connexion
-            <input
+            <PasswordInput
               className="mp-input"
-              style={{ width: '100%', marginTop: 6 }}
-              type="password"
+              style={{ marginTop: 6 }}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="Confirmez votre identité"

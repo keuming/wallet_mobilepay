@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '../../contexts/AuthContext';
 import { apiFetch, ApiError } from '../../lib/apiClient';
 import MerchantShell from '../../components/MerchantShell';
+import PasswordInput from '../../components/PasswordInput';
 
 interface Retailer {
   id: string;
@@ -214,10 +215,9 @@ export default function DetaillantsPage() {
               <input className="mc-input" placeholder="Numéro (+225...)" value={ownerPhone} onChange={(e) => setOwnerPhone(e.target.value)} />
               <input className="mc-input" placeholder="Prénom" value={ownerFirstName} onChange={(e) => setOwnerFirstName(e.target.value)} />
               <input className="mc-input" placeholder="Nom" value={ownerLastName} onChange={(e) => setOwnerLastName(e.target.value)} />
-              <input
+              <PasswordInput
                 className="mc-input"
                 placeholder="Code PIN (4 à 6 chiffres)"
-                type="password"
                 inputMode="numeric"
                 maxLength={6}
                 value={ownerPin}

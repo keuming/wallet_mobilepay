@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { apiFetch, ApiError } from '../../../lib/apiClient';
 import StatusModal, { ResultStatus } from '../../../components/StatusModal';
+import PasswordInput from '../../../components/PasswordInput';
 import PaymentMethodBadge, { PaymentMethodId } from '../../../components/PaymentMethodBadge';
 
 type Operator = 'ORANGE' | 'MOOV' | 'WAVE' | 'MTN';
@@ -356,10 +357,9 @@ export default function RechargerWalletPage() {
             </div>
             <label>
               Code secret
-              <input
+              <PasswordInput
                 className="mp-input"
-                style={{ width: '100%', marginTop: 6, letterSpacing: 6, fontSize: 20, textAlign: 'center' }}
-                type="password"
+                style={{ marginTop: 6, letterSpacing: 6, fontSize: 20, textAlign: 'center' }}
                 inputMode="numeric"
                 maxLength={6}
                 value={pin}

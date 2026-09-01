@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { apiFetch, ApiError } from '../../lib/apiClient';
 import StatusModal, { ResultStatus } from '../../components/StatusModal';
 import PaymentMethodBadge, { PaymentMethodId } from '../../components/PaymentMethodBadge';
+import PasswordInput from '../../components/PasswordInput';
 
 type Destination = 'MOBILEPAY' | 'ORANGE' | 'MOOV' | 'WAVE' | 'MTN' | 'VISA' | 'VIREMENT';
 
@@ -328,10 +329,9 @@ export default function EnvoyerPage() {
             </div>
             <label>
               Code secret
-              <input
+              <PasswordInput
                 className="mp-input"
-                style={{ width: '100%', marginTop: 6, letterSpacing: 6, fontSize: 20, textAlign: 'center' }}
-                type="password"
+                style={{ marginTop: 6, letterSpacing: 6, fontSize: 20, textAlign: 'center' }}
                 inputMode="numeric"
                 maxLength={6}
                 value={pin}

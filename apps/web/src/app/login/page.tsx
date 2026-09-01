@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '../../contexts/AuthContext';
 import { ApiError } from '../../lib/apiClient';
+import PasswordInput from '../../components/PasswordInput';
 
 export default function LoginPage() {
   const { login } = useAuth();
@@ -52,10 +53,9 @@ export default function LoginPage() {
         </label>
         <label>
           Mot de passe
-          <input
+          <PasswordInput
             className="mp-input"
-            style={{ width: '100%', marginTop: 6 }}
-            type="password"
+            style={{ marginTop: 6 }}
             value={password}
             onChange={(e) => setPassword(e.target.value)}
           />
