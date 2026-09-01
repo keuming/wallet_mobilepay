@@ -73,6 +73,7 @@ export class MerchantsService {
       ownerPhone?: string;
       ownerFirstName?: string;
       ownerLastName?: string;
+      ownerPin?: string;
     },
   ) {
     if ((dto.ownerPhone && !dto.ownerPin) || (!dto.ownerPhone && dto.ownerPin)) {
