@@ -1,6 +1,6 @@
 import { Body, Controller, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
-import { IsBoolean, IsEnum, IsIn, IsInt, IsObject, IsOptional, IsPhoneNumber, IsPositive, IsString, MinLength } from 'class-validator';
+import { IsBoolean, IsEnum, IsIn, IsInt, IsObject, IsOptional, IsPhoneNumber, IsPositive, IsString, Matches, MinLength } from 'class-validator';
 import { MerchantStatus, TransactionStatus } from '@prisma/client';
 import { AdminService } from './admin.service';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
@@ -80,6 +80,10 @@ export class CreateMerchantByAdminDto {
 
   @IsString()
   ownerLastName: string;
+
+  @IsOptional()
+  @Matches(/^\d{4,6}$/, { message: 'Le code PIN doit contenir entre 4 et 6 chiffres.' })
+  ownerPin?: string;
 
   @IsOptional()
   @IsInt()

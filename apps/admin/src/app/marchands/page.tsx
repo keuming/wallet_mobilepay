@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { useAuth } from '../../contexts/AuthContext';
 import { apiFetch, ApiError } from '../../lib/apiClient';
 import AdminShell from '../../components/AdminShell';
+import PasswordInput from '../../components/PasswordInput';
 
 interface Merchant {
   id: string;
@@ -37,6 +38,7 @@ export default function MerchantsPage() {
   const [ownerPhone, setOwnerPhone] = useState('');
   const [ownerFirstName, setOwnerFirstName] = useState('');
   const [ownerLastName, setOwnerLastName] = useState('');
+  const [ownerPin, setOwnerPin] = useState('');
   const [createError, setCreateError] = useState<string | null>(null);
   const [createSuccess, setCreateSuccess] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
@@ -72,23 +74,20 @@ export default function MerchantsPage() {
     setCreateError(null);
     setCreateSuccess(null);
     try {
-      const res = await apiFetch<{ merchant: Merchant; ownerCreated: boolean; tempPassword?: string }>(
+      const res = await apiFetch<{ merchant: Merchant; ownerCreated: boolean }>(
         '/admin/merchants',
         {
           method: 'POST',
-          body: JSON.stringify({ businessName, category, ownerPhone, ownerFirstName, ownerLastName }),
+          body: JSON.stringify({ businessName, category, ownerPhone, ownerFirstName, ownerLastName, ownerPin: ownerPin || undefined }),
         },
       );
-      if (res.ownerCreated && res.tempPassword) {
-        setCreateSuccess(`Marchand créé. Mot de passe temporaire du titulaire : ${res.tempPassword}`);
-      } else {
-        setShowCreate(false);
-      }
+      setCreateSuccess(res.ownerCreated ? 'Marchand créé, compte titulaire créé avec le PIN fourni ✓' : 'Marchand créé ✓');
       setBusinessName('');
       setCategory('');
       setOwnerPhone('');
       setOwnerFirstName('');
       setOwnerLastName('');
+      setOwnerPin('');
       load();
     } catch (err) {
       setCreateError(err instanceof ApiError ? err.message : 'Échec de la création.');
@@ -226,9 +225,22 @@ export default function MerchantsPage() {
                 Nom du titulaire
                 <input className="adm-input" style={{ width: '100%', marginTop: 4 }} value={ownerLastName} onChange={(e) => setOwnerLastName(e.target.value)} />
               </label>
+              <label className="adm-modal-label">
+                Code PIN du titulaire <span style={{ fontWeight: 400 }}>(si nouveau compte)</span>
+                <PasswordInput
+                  className="adm-input"
+                  style={{ marginTop: 4 }}
+                  inputMode="numeric"
+                  maxLength={6}
+                  value={ownerPin}
+                  onChange={(e) => setOwnerPin(e.target.value.replace(/\D/g, ''))}
+                  placeholder="4 à 6 chiffres"
+                />
+              </label>
               <p style={{ fontSize: 11, color: 'var(--adm-muted)' }}>
                 Si ce numéro n'a pas encore de compte MobilePay, un compte lui sera créé
-                automatiquement avec un mot de passe temporaire affiché après validation.
+                automatiquement avec le code PIN saisi ci-dessus. Si le numéro a déjà un compte, ce
+                champ est ignoré.
               </p>
               {createError && <div className="adm-error">{createError}</div>}
               {createSuccess && <div className="adm-success" style={{ color: 'var(--adm-accent-light)', fontSize: 13 }}>{createSuccess}</div>}

@@ -169,15 +169,18 @@ export class AdminService {
     ownerPhone: string;
     ownerFirstName: string;
     ownerLastName: string;
+    ownerPin?: string;
     feeRateBps?: number;
   }) {
     let owner = await this.prisma.user.findUnique({ where: { phone: normalizePhoneCI(dto.ownerPhone) } });
     const ownerExistedAlready = !!owner; // capturé AVANT toute réaffectation ci-dessous
-    const tempPassword = Math.random().toString(36).slice(-10);
+    if (!ownerExistedAlready && !dto.ownerPin) {
+      throw new BadRequestException('Un code PIN est requis pour créer le compte du titulaire.');
+    }
 
     return this.prisma.$transaction(async (tx) => {
       if (!owner) {
-        const passwordHash = await bcrypt.hash(tempPassword, 12);
+        const passwordHash = await bcrypt.hash(dto.ownerPin!, 12);
         owner = await tx.user.create({
           data: {
             phone: normalizePhoneCI(dto.ownerPhone),
@@ -212,7 +215,6 @@ export class AdminService {
       return {
         merchant,
         ownerCreated: !ownerExistedAlready,
-        tempPassword: ownerExistedAlready ? undefined : tempPassword,
       };
     });
   }
