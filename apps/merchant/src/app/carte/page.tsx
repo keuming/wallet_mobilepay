@@ -2,10 +2,9 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import Link from 'next/link';
 import { useAuth } from '../../contexts/AuthContext';
 import { apiFetch, ApiError } from '../../lib/apiClient';
-import MerchantSideMenu from '../../components/MerchantSideMenu';
+import MerchantShell from '../../components/MerchantShell';
 
 interface Card {
   id: string;
@@ -35,7 +34,7 @@ function BrandMark({ network }: { network: 'VISA' | 'MASTERCARD' }) {
 }
 
 export default function CartePage() {
-  const { user, loading, activeMerchant, logout } = useAuth();
+  const { user, loading, activeMerchant } = useAuth();
   const router = useRouter();
   const [cards, setCards] = useState<Card[]>([]);
   const [fetching, setFetching] = useState(true);
@@ -45,7 +44,6 @@ export default function CartePage() {
   const [error, setError] = useState<string | null>(null);
   const [loadAmount, setLoadAmount] = useState('');
   const [busyCard, setBusyCard] = useState<string | null>(null);
-  const [menuOpen, setMenuOpen] = useState(false);
 
   const refresh = () => {
     apiFetch<Card[]>('/cards/mine')
@@ -112,42 +110,19 @@ export default function CartePage() {
   };
 
   return (
-    <div className="mp-container">
-      <div className="mp-header mc-business-header">
-        <div className="mp-header-row">
-          <div style={{ display: 'flex', gap: 6 }}>
-            <Link href="/dashboard" className="mp-icon-btn" title="Accueil">
-              🏠
-            </Link>
-            <button className="mp-icon-btn" onClick={() => setMenuOpen(true)} title="Menu">
-              ☰
-            </button>
-          </div>
-          <span className="mp-brand-mark">
-            <span className="dot" />
-            Carte virtuelle
-            <span className="mc-business-badge">BUSINESS</span>
-          </span>
-          <button onClick={() => logout().then(() => router.push('/login'))} className="mp-icon-btn" title="Déconnexion">
-            ⏻
-          </button>
-        </div>
-      </div>
+    <MerchantShell title="Carte virtuelle">
+      <p style={{ color: 'var(--mc-muted)', fontSize: 13.5, margin: '0 0 20px', maxWidth: 560 }}>
+        Carte Visa/Mastercard prépayée, alimentée depuis le wallet marchand — utile pour payer vos
+        fournisseurs en ligne.
+      </p>
 
-      <MerchantSideMenu open={menuOpen} onClose={() => setMenuOpen(false)} />
-
-      <div className="mp-section">
-        <p style={{ color: 'var(--mp-muted)', fontSize: 13, margin: '0 0 16px' }}>
-          Carte Visa/Mastercard prépayée, alimentée depuis le wallet marchand — utile pour payer vos
-          fournisseurs en ligne.
-        </p>
-
-        {fetching ? (
-          <p>Chargement...</p>
-        ) : cards.length === 0 ? (
-          <div className="mp-form" style={{ padding: 0 }}>
+      {fetching ? (
+        <p style={{ color: 'var(--mc-muted)' }}>Chargement...</p>
+      ) : cards.length === 0 ? (
+        <div className="mc-panel" style={{ maxWidth: 420 }}>
+          <div style={{ padding: 20, display: 'flex', flexDirection: 'column', gap: 12 }}>
             <div>
-              <div style={{ fontSize: 12.5, color: 'var(--mp-muted)', fontWeight: 600, marginBottom: 8 }}>
+              <div style={{ fontSize: 12.5, color: 'var(--mc-muted)', fontWeight: 600, marginBottom: 8 }}>
                 Marque de la carte
               </div>
               <div style={{ display: 'flex', gap: 8 }}>
@@ -156,10 +131,10 @@ export default function CartePage() {
                   style={{
                     flex: 1,
                     padding: '12px 8px',
-                    borderRadius: 12,
-                    border: network === 'VISA' ? '2px solid var(--mp-navy)' : '1px solid var(--mp-border)',
-                    background: network === 'VISA' ? 'var(--mp-navy)' : 'white',
-                    color: network === 'VISA' ? 'white' : 'var(--mp-navy)',
+                    borderRadius: 10,
+                    border: network === 'VISA' ? '2px solid var(--mc-navy)' : '1px solid var(--mc-border)',
+                    background: network === 'VISA' ? 'var(--mc-navy)' : 'white',
+                    color: network === 'VISA' ? 'white' : 'var(--mc-navy)',
                     fontWeight: 800,
                     fontStyle: 'italic',
                     fontSize: 15,
@@ -173,10 +148,10 @@ export default function CartePage() {
                   style={{
                     flex: 1,
                     padding: '12px 8px',
-                    borderRadius: 12,
-                    border: network === 'MASTERCARD' ? '2px solid var(--mp-navy)' : '1px solid var(--mp-border)',
-                    background: network === 'MASTERCARD' ? 'var(--mp-navy)' : 'white',
-                    color: network === 'MASTERCARD' ? 'white' : 'var(--mp-navy)',
+                    borderRadius: 10,
+                    border: network === 'MASTERCARD' ? '2px solid var(--mc-navy)' : '1px solid var(--mc-border)',
+                    background: network === 'MASTERCARD' ? 'var(--mc-navy)' : 'white',
+                    color: network === 'MASTERCARD' ? 'white' : 'var(--mc-navy)',
                     fontWeight: 700,
                     fontSize: 13,
                     cursor: 'pointer',
@@ -190,27 +165,24 @@ export default function CartePage() {
                 </button>
               </div>
             </div>
-            <input className="mp-input" placeholder="Nom à imprimer sur la carte" value={holderName} onChange={(e) => setHolderName(e.target.value)} />
-            {error && <div style={{ color: 'var(--mp-red)', fontSize: 13 }}>{error}</div>}
-            <button
-              className="mp-btn-primary"
-              style={{ background: 'linear-gradient(120deg, var(--mp-navy) 0%, #0a1f3d 100%)' }}
-              disabled={requesting || !holderName}
-              onClick={requestCard}
-            >
+            <input className="mc-input" placeholder="Nom à imprimer sur la carte" value={holderName} onChange={(e) => setHolderName(e.target.value)} />
+            {error && <div className="mc-error">{error}</div>}
+            <button className="mc-btn" disabled={requesting || !holderName} onClick={requestCard}>
               {requesting ? 'Demande en cours...' : 'Demander une carte'}
             </button>
           </div>
-        ) : (
-          cards.map((card) => (
+        </div>
+      ) : (
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 20 }}>
+          {cards.map((card) => (
             <div
               key={card.id}
               style={{
+                width: 360,
                 background: 'linear-gradient(150deg, #16345f 0%, #0f2d52 55%, #065f3c 130%)',
                 color: 'white',
                 borderRadius: 22,
                 padding: 22,
-                marginBottom: 16,
                 boxShadow: '0 16px 40px -10px rgba(15, 45, 82, 0.45)',
                 position: 'relative',
                 overflow: 'hidden',
@@ -259,7 +231,7 @@ export default function CartePage() {
                   </div>
                   <div style={{ display: 'flex', gap: 8 }}>
                     <input
-                      className="mp-input"
+                      className="mc-input"
                       style={{ flex: 1, background: 'rgba(255,255,255,.12)', color: 'white', border: '1px solid rgba(255,255,255,.18)' }}
                       placeholder="Montant à charger"
                       type="number"
@@ -267,8 +239,8 @@ export default function CartePage() {
                       onChange={(e) => setLoadAmount(e.target.value)}
                     />
                     <button
-                      className="mp-btn-primary"
-                      style={{ boxShadow: 'none', flexShrink: 0 }}
+                      className="mc-btn"
+                      style={{ flexShrink: 0 }}
                       disabled={busyCard === card.id || !loadAmount}
                       onClick={() => loadCard(card.id)}
                     >
@@ -299,10 +271,10 @@ export default function CartePage() {
                 </button>
               )}
             </div>
-          ))
-        )}
-        {error && cards.length > 0 && <div style={{ color: 'var(--mp-red)', fontSize: 13 }}>{error}</div>}
-      </div>
-    </div>
+          ))}
+        </div>
+      )}
+      {error && cards.length > 0 && <div className="mc-error" style={{ marginTop: 16 }}>{error}</div>}
+    </MerchantShell>
   );
 }

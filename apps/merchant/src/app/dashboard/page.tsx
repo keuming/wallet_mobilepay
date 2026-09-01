@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '../../contexts/AuthContext';
 import { apiFetch } from '../../lib/apiClient';
-import MerchantSideMenu from '../../components/MerchantSideMenu';
+import MerchantShell from '../../components/MerchantShell';
 
 interface DashboardData {
   availableBalance: number;
@@ -27,12 +27,11 @@ function formatFcfa(amountInCents: number): string {
 }
 
 export default function DashboardPage() {
-  const { user, loading, activeMerchant, logout } = useAuth();
+  const { user, loading, activeMerchant } = useAuth();
   const router = useRouter();
   const [data, setData] = useState<DashboardData | null>(null);
   const [recent, setRecent] = useState<LedgerEntry[]>([]);
   const [fetching, setFetching] = useState(true);
-  const [menuOpen, setMenuOpen] = useState(false);
 
   useEffect(() => {
     if (loading) return;
@@ -55,60 +54,30 @@ export default function DashboardPage() {
       .finally(() => setFetching(false));
   }, [user, loading, activeMerchant, router]);
 
-  if (loading || fetching || !user) {
-    return (
-      <div className="mp-container">
-        <div className="mp-section">Chargement...</div>
-      </div>
-    );
-  }
+  if (loading || !user) return null;
 
   if (!activeMerchant) {
     return (
-      <div className="mp-container">
-        <div className="mp-section">
-          <p style={{ color: 'var(--mp-muted)' }}>
-            Aucun marchand rattaché à ce compte. Contactez un agent MobilePay pour créer votre établissement.
-          </p>
-        </div>
-      </div>
+      <MerchantShell title="Dashboard">
+        <p style={{ color: 'var(--mc-muted)' }}>
+          Aucun marchand rattaché à ce compte. Contactez un agent MobilePay pour créer votre établissement.
+        </p>
+      </MerchantShell>
     );
   }
 
   return (
-    <div className="mp-container">
-      <div className="mp-header mc-business-header">
-        <div className="mp-header-row">
-          <button className="mp-icon-btn" onClick={() => setMenuOpen(true)} title="Menu">
-            ☰
-          </button>
-          <span className="mp-brand-mark">
-            <span className="dot" />
-            {activeMerchant.businessName}
-            <span className="mc-business-badge">BUSINESS</span>
-          </span>
-          <button
-            onClick={() => logout().then(() => router.push('/login'))}
-            className="mp-icon-btn"
-            title="Déconnexion"
-          >
-            ⏻
-          </button>
-        </div>
-      </div>
-
-      <MerchantSideMenu open={menuOpen} onClose={() => setMenuOpen(false)} />
-
+    <MerchantShell title="Dashboard">
       {activeMerchant.status !== 'ACTIVE' && (
         <div
           style={{
-            margin: '16px 20px 0',
+            marginBottom: 20,
             background: '#fef3f0',
             border: '1px solid #f0c4b8',
-            borderRadius: 12,
+            borderRadius: 10,
             padding: '12px 16px',
-            fontSize: 12.5,
-            color: '#c0442c',
+            fontSize: 13,
+            color: 'var(--mc-red)',
           }}
         >
           Votre établissement est en statut <strong>{activeMerchant.status}</strong> — l'encaissement est
@@ -116,98 +85,76 @@ export default function DashboardPage() {
         </div>
       )}
 
-      <div className="mp-balance-card">
-        <div className="mp-balance-label">💳 Solde disponible</div>
-        <div className="mp-balance-amount">
-          {data ? formatFcfa(data.availableBalance) : '—'}
-          <span className="currency">FCFA</span>
-        </div>
-
-        <div className="mp-actions">
-          <Link href="/wallet" className="mp-action-btn">
-            <span className="icon">💼</span>
-            Wallet
-          </Link>
-          <Link href="/transactions" className="mp-action-btn">
-            <span className="icon">📋</span>
-            Historique
-          </Link>
-          <Link href="/carte" className="mp-action-btn">
-            <span className="icon">💎</span>
-            Carte
-          </Link>
-          <a href="https://business.mobilepay-ci.com" className="mp-action-btn">
-            <span className="icon">📲</span>
-            Encaisser
-          </a>
-        </div>
-      </div>
-
-      {data && (
-        <div className="mp-feature-list" style={{ marginTop: 8 }}>
-          <a href="https://business.mobilepay-ci.com" className="mp-feature-card featured">
-            <div className="mp-feature-icon">📲</div>
-            <div className="mp-feature-text">
-              <div className="mp-feature-title">App Business</div>
-              <div className="mp-feature-sub">Encaisser un client, vendre du crédit/data</div>
+      {fetching ? (
+        <p style={{ color: 'var(--mc-muted)' }}>Chargement...</p>
+      ) : (
+        <>
+          <div className="mc-stats-grid">
+            <div className="mc-stat-card">
+              <div className="mc-stat-label">Solde disponible</div>
+              <div className="mc-stat-value">{data ? formatFcfa(data.availableBalance) : '—'} FCFA</div>
             </div>
-            <div className="mp-feature-chevron">→</div>
-          </a>
-          <div className="mp-feature-card" style={{ cursor: 'default' }}>
-            <div className="mp-feature-icon">⏳</div>
-            <div className="mp-feature-text">
-              <div className="mp-feature-title">{formatFcfa(data.pendingBalance)} FCFA</div>
-              <div className="mp-feature-sub">Fonds en attente de règlement</div>
+            <div className="mc-stat-card">
+              <div className="mc-stat-label">En attente de règlement</div>
+              <div className="mc-stat-value">{data ? formatFcfa(data.pendingBalance) : '—'} FCFA</div>
+            </div>
+            <div className="mc-stat-card">
+              <div className="mc-stat-label">Encaissé aujourd'hui</div>
+              <div className="mc-stat-value">{data ? formatFcfa(data.todayCollections) : '—'} FCFA</div>
+            </div>
+            <div className="mc-stat-card">
+              <div className="mc-stat-label">Encaissé ce mois</div>
+              <div className="mc-stat-value">{data ? formatFcfa(data.monthCollections) : '—'} FCFA</div>
             </div>
           </div>
-          <div className="mp-feature-card" style={{ cursor: 'default' }}>
-            <div className="mp-feature-icon">📆</div>
-            <div className="mp-feature-text">
-              <div className="mp-feature-title">
-                {formatFcfa(data.todayCollections)} FCFA <span style={{ color: 'var(--mp-muted)', fontWeight: 500 }}>aujourd'hui</span>
-              </div>
-              <div className="mp-feature-sub">{formatFcfa(data.monthCollections)} FCFA encaissés ce mois</div>
-            </div>
+
+          <div className="mc-quick-actions">
+            <Link href="/wallet" className="mc-quick-btn">💼 Wallet</Link>
+            <Link href="/transactions" className="mc-quick-btn">📋 Historique</Link>
+            <Link href="/carte" className="mc-quick-btn">💎 Carte virtuelle</Link>
+            <a href="https://business.mobilepay-ci.com" className="mc-quick-btn">📲 Encaisser (app)</a>
           </div>
-        </div>
+
+          <div className="mc-panel">
+            <div className="mc-panel-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span>Dernières transactions</span>
+              <Link href="/transactions" style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--mc-green)' }}>
+                Voir tout →
+              </Link>
+            </div>
+            {recent.length === 0 ? (
+              <div style={{ padding: 18, color: 'var(--mc-muted)', fontSize: 13.5 }}>Aucune transaction pour le moment.</div>
+            ) : (
+              <table className="mc-table">
+                <thead>
+                  <tr>
+                    <th>Description</th>
+                    <th>Type</th>
+                    <th>Montant</th>
+                    <th>Date</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {recent.map((entry) => (
+                    <tr key={entry.id}>
+                      <td>{entry.description}</td>
+                      <td>
+                        <span className={`mc-badge ${entry.type === 'CREDIT' ? 'green' : 'red'}`}>
+                          {entry.type === 'CREDIT' ? 'Crédit' : 'Débit'}
+                        </span>
+                      </td>
+                      <td>
+                        {entry.type === 'CREDIT' ? '+' : '−'} {formatFcfa(entry.amount)} FCFA
+                      </td>
+                      <td>{new Date(entry.createdAt).toLocaleDateString('fr-FR')}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
+        </>
       )}
-
-      <div className="mp-section">
-        <h3>
-          📋 Dernières transactions
-          <Link
-            href="/transactions"
-            style={{ marginLeft: 'auto', fontSize: 12, fontWeight: 600, color: 'var(--mp-green-dark)' }}
-          >
-            Voir tout →
-          </Link>
-        </h3>
-        {recent.length === 0 && (
-          <p style={{ color: 'var(--mp-muted)', fontSize: 14 }}>Aucune transaction pour le moment.</p>
-        )}
-        <div className="mp-history-list" style={{ padding: 0 }}>
-          {recent.map((entry) => (
-            <div className="mp-history-card" key={entry.id} style={{ cursor: 'default' }}>
-              <div className="mp-history-row">
-                <div className={`mp-history-avatar ${entry.type === 'CREDIT' ? 'credit' : 'debit'}`}>
-                  {entry.type === 'CREDIT' ? '↙' : '↗'}
-                </div>
-                <div className="mp-history-main">
-                  <div className="mp-history-name">{entry.description}</div>
-                </div>
-                <div className="mp-history-amount-block">
-                  <div className={`mp-history-amount ${entry.type === 'CREDIT' ? 'credit' : 'debit'}`}>
-                    {entry.type === 'CREDIT' ? '+' : '−'} {formatFcfa(entry.amount)} FCFA
-                  </div>
-                  <div className="mp-history-time">
-                    {new Date(entry.createdAt).toLocaleDateString('fr-FR')}
-                  </div>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-    </div>
+    </MerchantShell>
   );
 }

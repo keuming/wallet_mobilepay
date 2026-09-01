@@ -2,10 +2,9 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import Link from 'next/link';
 import { useAuth } from '../../contexts/AuthContext';
 import { apiFetch } from '../../lib/apiClient';
-import MerchantSideMenu from '../../components/MerchantSideMenu';
+import MerchantShell from '../../components/MerchantShell';
 
 interface LedgerEntry {
   id: string;
@@ -20,13 +19,12 @@ function fcfa(cents: number): string {
 }
 
 export default function TransactionsPage() {
-  const { user, loading, activeMerchant, logout } = useAuth();
+  const { user, loading, activeMerchant } = useAuth();
   const router = useRouter();
   const [entries, setEntries] = useState<LedgerEntry[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
   const [fetching, setFetching] = useState(true);
-  const [menuOpen, setMenuOpen] = useState(false);
 
   const load = (p = page) => {
     if (!activeMerchant) return;
@@ -56,62 +54,45 @@ export default function TransactionsPage() {
   const totalPages = Math.max(1, Math.ceil(total / 20));
 
   return (
-    <div className="mp-container">
-      <div className="mp-header mc-business-header">
-        <div className="mp-header-row">
-          <div style={{ display: 'flex', gap: 6 }}>
-            <Link href="/dashboard" className="mp-icon-btn" title="Accueil">
-              🏠
-            </Link>
-            <button className="mp-icon-btn" onClick={() => setMenuOpen(true)} title="Menu">
-              ☰
-            </button>
-          </div>
-          <span className="mp-brand-mark">
-            <span className="dot" />
-            Transactions
-            <span className="mc-business-badge">BUSINESS</span>
-          </span>
-          <button onClick={() => logout().then(() => router.push('/login'))} className="mp-icon-btn" title="Déconnexion">
-            ⏻
-          </button>
-        </div>
-      </div>
-
-      <MerchantSideMenu open={menuOpen} onClose={() => setMenuOpen(false)} />
-
-      <div className="mp-section">
+    <MerchantShell title="Transactions">
+      <div className="mc-panel">
         {fetching ? (
-          <p style={{ color: 'var(--mp-muted)', fontSize: 14 }}>Chargement...</p>
+          <div style={{ padding: 18, color: 'var(--mc-muted)' }}>Chargement...</div>
         ) : entries.length === 0 ? (
-          <p style={{ color: 'var(--mp-muted)', fontSize: 14 }}>Aucune transaction pour le moment.</p>
+          <div style={{ padding: 18, color: 'var(--mc-muted)' }}>Aucune transaction pour le moment.</div>
         ) : (
-          <div className="mp-history-list" style={{ padding: 0 }}>
-            {entries.map((entry) => (
-              <div className="mp-history-card" key={entry.id} style={{ cursor: 'default' }}>
-                <div className="mp-history-row">
-                  <div className={`mp-history-avatar ${entry.type === 'CREDIT' ? 'credit' : 'debit'}`}>
-                    {entry.type === 'CREDIT' ? '↙' : '↗'}
-                  </div>
-                  <div className="mp-history-main">
-                    <div className="mp-history-name">{entry.description}</div>
-                  </div>
-                  <div className="mp-history-amount-block">
-                    <div className={`mp-history-amount ${entry.type === 'CREDIT' ? 'credit' : 'debit'}`}>
-                      {entry.type === 'CREDIT' ? '+' : '−'} {fcfa(entry.amount)} FCFA
-                    </div>
-                    <div className="mp-history-time">{new Date(entry.createdAt).toLocaleDateString('fr-FR')}</div>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
+          <table className="mc-table">
+            <thead>
+              <tr>
+                <th>Description</th>
+                <th>Type</th>
+                <th>Montant</th>
+                <th>Date</th>
+              </tr>
+            </thead>
+            <tbody>
+              {entries.map((entry) => (
+                <tr key={entry.id}>
+                  <td>{entry.description}</td>
+                  <td>
+                    <span className={`mc-badge ${entry.type === 'CREDIT' ? 'green' : 'red'}`}>
+                      {entry.type === 'CREDIT' ? 'Crédit' : 'Débit'}
+                    </span>
+                  </td>
+                  <td>
+                    {entry.type === 'CREDIT' ? '+' : '−'} {fcfa(entry.amount)} FCFA
+                  </td>
+                  <td>{new Date(entry.createdAt).toLocaleDateString('fr-FR')}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         )}
 
-        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 14, marginTop: 16 }}>
+        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 14, padding: 16 }}>
           <button
-            className="mp-icon-btn"
-            style={{ width: 'auto', padding: '0 12px' }}
+            className="mc-btn ghost"
+            style={{ padding: '6px 14px' }}
             disabled={page <= 1}
             onClick={() => {
               const p = page - 1;
@@ -121,12 +102,12 @@ export default function TransactionsPage() {
           >
             ← Préc.
           </button>
-          <span style={{ color: 'var(--mp-muted)', fontSize: 13 }}>
+          <span style={{ color: 'var(--mc-muted)', fontSize: 13 }}>
             Page {page} / {totalPages}
           </span>
           <button
-            className="mp-icon-btn"
-            style={{ width: 'auto', padding: '0 12px' }}
+            className="mc-btn ghost"
+            style={{ padding: '6px 14px' }}
             disabled={page >= totalPages}
             onClick={() => {
               const p = page + 1;
@@ -138,6 +119,6 @@ export default function TransactionsPage() {
           </button>
         </div>
       </div>
-    </div>
+    </MerchantShell>
   );
 }

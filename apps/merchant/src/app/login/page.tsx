@@ -8,8 +8,8 @@ import { ApiError } from '../../lib/apiClient';
 export default function LoginPage() {
   const { login } = useAuth();
   const router = useRouter();
-  const [phone, setPhone] = useState('+2250700000003');
-  const [password, setPassword] = useState('Password123!');
+  const [phone, setPhone] = useState('');
+  const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
@@ -58,9 +58,6 @@ export default function LoginPage() {
           <button className="mc-btn" disabled={submitting} type="submit" style={{ marginTop: 8 }}>
             {submitting ? 'Connexion...' : 'Se connecter'}
           </button>
-          <p style={{ fontSize: 11, color: '#5a7a94', marginTop: 4 }}>
-            Compte marchand de démo : +2250700000003 / Password123!
-          </p>
         </form>
       </div>
     </div>
