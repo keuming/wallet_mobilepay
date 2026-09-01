@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '../../contexts/AuthContext';
-import { apiFetch } from '../../lib/apiClient';
+import { apiFetch, ApiError } from '../../lib/apiClient';
 import MerchantShell from '../../components/MerchantShell';
 
 interface StaticQr {
@@ -18,6 +18,10 @@ export default function QrPage() {
   const [qr, setQr] = useState<StaticQr | null>(null);
   const [fetching, setFetching] = useState(true);
   const [copied, setCopied] = useState(false);
+  const [smsPhone, setSmsPhone] = useState('');
+  const [smsSending, setSmsSending] = useState(false);
+  const [smsSent, setSmsSent] = useState(false);
+  const [smsError, setSmsError] = useState<string | null>(null);
 
   useEffect(() => {
     if (loading) return;
@@ -53,6 +57,23 @@ export default function QrPage() {
     a.href = qr.imageDataUrl;
     a.download = `qr-${activeMerchant?.businessName ?? 'marchand'}.png`;
     a.click();
+  };
+
+  const handleSendSms = async () => {
+    if (!qr || !smsPhone) return;
+    setSmsSending(true);
+    setSmsError(null);
+    try {
+      await apiFetch('/sms/send-link', {
+        method: 'POST',
+        body: JSON.stringify({ toPhone: smsPhone, url: qr.url, label: `le lien de paiement de ${activeMerchant?.businessName}` }),
+      });
+      setSmsSent(true);
+    } catch (err) {
+      setSmsError(err instanceof ApiError ? err.message : "Échec de l'envoi du SMS.");
+    } finally {
+      setSmsSending(false);
+    }
   };
 
   return (
@@ -95,6 +116,27 @@ export default function QrPage() {
               <button className="mc-btn" style={{ flex: 1 }} onClick={handleDownload}>
                 ⬇️ Télécharger
               </button>
+            </div>
+            <div style={{ marginTop: 16, textAlign: 'left' }}>
+              <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--mc-muted)' }}>
+                Envoyer ce lien par SMS
+                <div style={{ display: 'flex', gap: 8, marginTop: 6 }}>
+                  <input
+                    className="mc-input"
+                    style={{ flex: 1 }}
+                    value={smsPhone}
+                    onChange={(e) => {
+                      setSmsPhone(e.target.value);
+                      setSmsSent(false);
+                    }}
+                    placeholder="+2250700000000"
+                  />
+                  <button className="mc-btn" style={{ flexShrink: 0 }} disabled={smsSending || !smsPhone} onClick={handleSendSms}>
+                    {smsSending ? 'Envoi...' : smsSent ? 'Envoyé ✓' : 'Envoyer'}
+                  </button>
+                </div>
+              </label>
+              {smsError && <div className="mc-error" style={{ marginTop: 6 }}>{smsError}</div>}
             </div>
           </div>
         </div>

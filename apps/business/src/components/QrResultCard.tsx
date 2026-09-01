@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { apiFetch, ApiError } from '../lib/apiClient';
 
 interface QrResultCardProps {
   imageDataUrl: string;
@@ -12,10 +13,15 @@ interface QrResultCardProps {
 /**
  * Carte de résultat QR réutilisée pour les 3 modes d'encaissement (QR
  * permanent, QR dynamique, Payment Link) — image QR, copie du lien,
- * partage natif (WhatsApp/SMS...) et téléchargement de l'image.
+ * partage natif (WhatsApp/SMS...), envoi par SMS via notre plateforme, et
+ * téléchargement de l'image.
  */
 export default function QrResultCard({ imageDataUrl, url, title = 'Votre QR', filename = 'mobilepay-qr' }: QrResultCardProps) {
   const [copyStatus, setCopyStatus] = useState<'idle' | 'copied' | 'shared' | 'failed'>('idle');
+  const [smsPhone, setSmsPhone] = useState('');
+  const [smsSending, setSmsSending] = useState(false);
+  const [smsSent, setSmsSent] = useState(false);
+  const [smsError, setSmsError] = useState<string | null>(null);
 
   const handleCopy = async () => {
     try {
@@ -49,6 +55,23 @@ export default function QrResultCard({ imageDataUrl, url, title = 'Votre QR', fi
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
+  };
+
+  const handleSendSms = async () => {
+    if (!smsPhone) return;
+    setSmsSending(true);
+    setSmsError(null);
+    try {
+      await apiFetch('/sms/send-link', {
+        method: 'POST',
+        body: JSON.stringify({ toPhone: smsPhone, url, label: 'le lien de paiement' }),
+      });
+      setSmsSent(true);
+    } catch (err) {
+      setSmsError(err instanceof ApiError ? err.message : "Échec de l'envoi du SMS.");
+    } finally {
+      setSmsSending(false);
+    }
   };
 
   return (
@@ -124,6 +147,33 @@ export default function QrResultCard({ imageDataUrl, url, title = 'Votre QR', fi
       {copyStatus === 'failed' && (
         <div style={{ marginTop: 10, fontSize: 12, color: 'var(--mp-red)' }}>Impossible de copier sur cet appareil.</div>
       )}
+
+      <div style={{ marginTop: 16, textAlign: 'left' }}>
+        <label style={{ fontSize: 11.5, fontWeight: 700, color: 'var(--mp-muted)', textTransform: 'uppercase', letterSpacing: 0.4 }}>
+          Envoyer par SMS
+          <div style={{ display: 'flex', gap: 8, marginTop: 6 }}>
+            <input
+              className="mp-input"
+              style={{ flex: 1, fontSize: 13 }}
+              value={smsPhone}
+              onChange={(e) => {
+                setSmsPhone(e.target.value);
+                setSmsSent(false);
+              }}
+              placeholder="+2250700000000"
+            />
+            <button
+              className="mp-btn-primary"
+              style={{ flexShrink: 0, padding: '0 14px', fontSize: 12.5 }}
+              disabled={smsSending || !smsPhone}
+              onClick={handleSendSms}
+            >
+              {smsSending ? 'Envoi...' : smsSent ? 'Envoyé ✓' : 'Envoyer'}
+            </button>
+          </div>
+        </label>
+        {smsError && <div style={{ marginTop: 6, fontSize: 12, color: 'var(--mp-red)' }}>{smsError}</div>}
+      </div>
     </div>
   );
 }

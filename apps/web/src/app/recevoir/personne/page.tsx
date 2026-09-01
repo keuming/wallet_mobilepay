@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { apiFetch } from '../../../lib/apiClient';
+import { apiFetch, ApiError } from '../../../lib/apiClient';
 import StatusModal from '../../../components/StatusModal';
 
 interface PersonalQr {
@@ -19,6 +19,10 @@ export default function EncaisserPage() {
   const [showRecap, setShowRecap] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
   const [shareStatus, setShareStatus] = useState<'shared' | 'copied' | 'failed' | null>(null);
+  const [smsPhone, setSmsPhone] = useState('');
+  const [smsSending, setSmsSending] = useState(false);
+  const [smsSent, setSmsSent] = useState(false);
+  const [smsError, setSmsError] = useState<string | null>(null);
 
   useEffect(() => {
     apiFetch<PersonalQr>('/users/me/qr').then(setQr);
@@ -49,6 +53,27 @@ export default function EncaisserPage() {
       } catch {
         setShareStatus('failed');
       }
+    }
+  };
+
+  const handleSendSms = async () => {
+    if (!requestLink || !smsPhone) return;
+    setSmsSending(true);
+    setSmsError(null);
+    try {
+      await apiFetch('/sms/send-link', {
+        method: 'POST',
+        body: JSON.stringify({
+          toPhone: smsPhone,
+          url: requestLink,
+          label: amount ? `ta demande de ${Number(amount).toLocaleString('fr-FR')} FCFA` : 'mon lien de réception',
+        }),
+      });
+      setSmsSent(true);
+    } catch (err) {
+      setSmsError(err instanceof ApiError ? err.message : "Échec de l'envoi du SMS.");
+    } finally {
+      setSmsSending(false);
     }
   };
 
@@ -137,6 +162,32 @@ export default function EncaisserPage() {
           <p style={{ fontSize: 13, color: 'var(--mp-muted)', wordBreak: 'break-all', marginTop: 16 }}>
             {requestLink}
           </p>
+          <div style={{ marginTop: 18, textAlign: 'left' }}>
+            <label style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--mp-muted)' }}>
+              Envoyer ce lien par SMS
+              <div style={{ display: 'flex', gap: 8, marginTop: 6 }}>
+                <input
+                  className="mp-input"
+                  style={{ flex: 1 }}
+                  value={smsPhone}
+                  onChange={(e) => {
+                    setSmsPhone(e.target.value);
+                    setSmsSent(false);
+                  }}
+                  placeholder="+2250700000000"
+                />
+                <button
+                  className="mp-btn-primary"
+                  style={{ flexShrink: 0, padding: '0 16px' }}
+                  disabled={smsSending || !smsPhone}
+                  onClick={handleSendSms}
+                >
+                  {smsSending ? 'Envoi...' : smsSent ? 'Envoyé ✓' : 'Envoyer'}
+                </button>
+              </div>
+            </label>
+            {smsError && <div className="mp-error" style={{ marginTop: 6 }}>{smsError}</div>}
+          </div>
         </div>
       )}
 
