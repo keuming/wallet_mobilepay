@@ -8,41 +8,62 @@ export interface SmsSendResult {
 }
 
 /**
- * Adaptateur pour la plateforme SMS interne (§ lien de paiement Wave en
- * backup, quand le marchand n'a pas de crédit SMS personnel pour le
- * transmettre lui-même). Dashboard : http://135.181.44.102:8083/dashboard/html/
- *
- * ⚠️ L'appel HTTP réel ci-dessous n'est PAS encore branché — le contrat
- * exact de l'API (endpoint, méthode, paramètres) doit être confirmé sur le
- * dashboard avant activation, pour éviter de deviner un format qui
- * échouerait silencieusement en production (voir tout le travail de
- * vérification fait pour HUB2 dans cette même session — même principe ici).
+ * Adaptateur pour la plateforme SMS Inter Active Media (SMSAPI) — utilisée
+ * pour l'OTP d'inscription et le lien de paiement Wave en backup. Contrat
+ * confirmé via leur documentation officielle (SMS_API_SPECIFICATIONS_IAM,
+ * 18/09/2023) : endpoint, en-têtes et corps exacts, pas deviné.
  */
 @Injectable()
 export class SmsAdapter {
   private readonly logger = new Logger(SmsAdapter.name);
   private readonly baseUrl: string;
-  private readonly user: string;
-  private readonly pass: string;
+  private readonly appToken: string;
   private readonly senderId: string;
 
   constructor(private config: ConfigService) {
-    this.baseUrl = this.config.get('SMS_GATEWAY_URL', '');
-    this.user = this.config.get('SMS_GATEWAY_USER', '');
-    this.pass = this.config.get('SMS_GATEWAY_PASSWORD', '');
+    this.baseUrl = this.config.get('SMS_GATEWAY_URL', 'http://135.181.44.102:8083');
+    this.appToken = this.config.get('SMS_APP_TOKEN', '');
     this.senderId = this.config.get('SMS_SENDER_ID', 'MobilePay');
   }
 
   async send(toPhone: string, message: string): Promise<SmsSendResult> {
-    if (!this.baseUrl || !this.user || !this.pass) {
-      this.logger.warn('SMS non envoyé — plateforme SMS non configurée (contrat API à confirmer).');
-      return { success: false, errorReason: 'Plateforme SMS non configurée.' };
+    if (!this.appToken) {
+      this.logger.warn('SMS non envoyé — SMS_APP_TOKEN non configuré.');
+      return { success: false, errorReason: 'Plateforme SMS non configurée (jeton manquant).' };
     }
 
-    // TODO : brancher le vrai appel une fois le contrat API confirmé.
-    // Exemple probable (à vérifier) :
-    //   GET `${this.baseUrl}/api/send?user=${this.user}&pass=${this.pass}&to=${toPhone}&text=${encodeURIComponent(message)}&sender=${this.senderId}`
-    this.logger.warn('SMS non envoyé — appel HTTP réel pas encore implémenté (contrat API en attente).');
-    return { success: false, errorReason: 'Envoi SMS pas encore activé.' };
+    // Le format receiver attendu (§ doc) est "225" + numéro, sans "+".
+    const receiver = toPhone.replace(/^\+/, '');
+
+    const res = await fetch(`${this.baseUrl}/api/communicationManagement/v1/communicationMessage`, {
+      method: 'POST',
+      headers: {
+        'x-app-token': this.appToken,
+        Accept: 'application/json',
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        receiver,
+        sender: this.senderId,
+        content: message,
+        messageType: 'SMS',
+      }),
+    });
+
+    const rawText = await res.text();
+    let parsed: any;
+    try {
+      parsed = JSON.parse(rawText);
+    } catch {
+      this.logger.error(`SMS — réponse non JSON (statut ${res.status}): ${rawText.slice(0, 200)}`);
+      return { success: false, errorReason: 'Réponse invalide de la plateforme SMS.' };
+    }
+
+    if (!res.ok || parsed.code !== 200) {
+      this.logger.error(`SMS échoué (${res.status}): ${JSON.stringify(parsed)}`);
+      return { success: false, errorReason: parsed.message ?? "Échec de l'envoi du SMS." };
+    }
+
+    return { success: true, providerRef: parsed.message_id };
   }
 }
