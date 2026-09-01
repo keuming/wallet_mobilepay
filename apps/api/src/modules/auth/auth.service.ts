@@ -11,7 +11,7 @@ import * as crypto from 'crypto';
 import { PrismaService } from '../../config/prisma.service';
 import { WalletsService } from '../wallets/wallets.service';
 import { normalizePhoneCI } from '../../common/utils/phone.util';
-import { RegisterDto, LoginDto } from './dto/auth.dto';
+import { RegisterDto, LoginDto, RegisterWithPinDto } from './dto/auth.dto';
 
 const BCRYPT_ROUNDS = 12;
 
@@ -51,6 +51,48 @@ export class AuthService {
           data: { type: 'PARTICULIER', userId: created.id, currency: 'XOF' },
         });
       }
+
+      return created;
+    });
+
+    return this.issueTokens(user.id, user.role, user.phone);
+  }
+
+  /**
+   * Inscription simplifiée avec PIN unique (§ carte d'accueil après
+   * installation) — le même code sert de mot de passe de connexion ET de
+   * code transactionnel. N'affecte pas les comptes créés via `register`
+   * (mot de passe et PIN restent indépendants pour eux).
+   */
+  async registerWithPin(dto: RegisterWithPinDto) {
+    const phone = normalizePhoneCI(dto.phone);
+    const existing = await this.prisma.user.findUnique({ where: { phone } });
+    if (existing) {
+      throw new ConflictException('Un compte existe déjà avec ce numéro de téléphone.');
+    }
+    if (dto.email) {
+      const emailTaken = await this.prisma.user.findUnique({ where: { email: dto.email } });
+      if (emailTaken) throw new ConflictException('Cette adresse email est déjà utilisée.');
+    }
+
+    const pinHash = await bcrypt.hash(dto.pin, BCRYPT_ROUNDS);
+
+    const user = await this.prisma.$transaction(async (tx) => {
+      const created = await tx.user.create({
+        data: {
+          phone,
+          firstName: dto.firstName,
+          lastName: dto.lastName,
+          email: dto.email,
+          passwordHash: pinHash,
+          transactionPinHash: pinHash,
+          role: 'PARTICULIER',
+        },
+      });
+
+      await tx.wallet.create({
+        data: { type: 'PARTICULIER', userId: created.id, currency: 'XOF' },
+      });
 
       return created;
     });

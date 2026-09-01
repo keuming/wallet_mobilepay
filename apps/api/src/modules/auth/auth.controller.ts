@@ -2,7 +2,7 @@ import { Body, Controller, Get, Post, Patch, UseGuards } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import { IsString } from 'class-validator';
 import { AuthService } from './auth.service';
-import { RegisterDto, LoginDto, RefreshDto } from './dto/auth.dto';
+import { RegisterDto, LoginDto, RefreshDto, RegisterWithPinDto } from './dto/auth.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { CurrentUser, AuthenticatedUser } from '../../common/decorators/current-user.decorator';
 
@@ -30,6 +30,12 @@ export class AuthController {
   @Post('register')
   register(@Body() dto: RegisterDto) {
     return this.authService.register(dto);
+  }
+
+  /** Inscription simplifiée — un seul code PIN (§ carte d'accueil après installation). */
+  @Post('register-pin')
+  registerWithPin(@Body() dto: RegisterWithPinDto) {
+    return this.authService.registerWithPin(dto);
   }
 
   @Post('login')

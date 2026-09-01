@@ -2,6 +2,7 @@
 
 import { useState, FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { useAuth } from '../../contexts/AuthContext';
 import { ApiError } from '../../lib/apiClient';
 
@@ -63,6 +64,9 @@ export default function LoginPage() {
         <button className="mp-btn-primary" disabled={submitting} type="submit">
           {submitting ? 'Connexion...' : 'Se connecter'}
         </button>
+        <p style={{ fontSize: 12.5, color: 'var(--mp-muted)', textAlign: 'center' }}>
+          Pas encore de compte ? <Link href="/inscription" style={{ color: 'var(--mp-green-dark)', fontWeight: 600 }}>Créer un compte</Link>
+        </p>
       </form>
     </div>
   );

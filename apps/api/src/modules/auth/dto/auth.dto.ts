@@ -1,4 +1,4 @@
-import { IsEnum, IsOptional, IsPhoneNumber, IsString, MinLength } from 'class-validator';
+import { IsEmail, IsEnum, IsOptional, IsPhoneNumber, IsString, Matches, MinLength } from 'class-validator';
 import { UserRole } from '@prisma/client';
 
 export class RegisterDto {
@@ -28,6 +28,33 @@ export class LoginDto {
 
   @IsString()
   password: string;
+}
+
+/**
+ * Inscription simplifiée (§ carte d'accueil après installation) — un seul
+ * code PIN sert à la fois de mot de passe de connexion et de code
+ * transactionnel, comme Orange Money/MTN MoMo. En interne, les deux champs
+ * (passwordHash et transactionPinHash) reçoivent le même hash — n'affecte
+ * pas les comptes existants qui ont mot de passe et PIN distincts.
+ */
+export class RegisterWithPinDto {
+  @IsPhoneNumber('CI', { message: 'Numéro de téléphone invalide.' })
+  phone: string;
+
+  @IsString()
+  @MinLength(2)
+  firstName: string;
+
+  @IsString()
+  @MinLength(2)
+  lastName: string;
+
+  @IsOptional()
+  @IsEmail({}, { message: 'Adresse email invalide.' })
+  email?: string;
+
+  @Matches(/^\d{4,6}$/, { message: 'Le code PIN doit contenir entre 4 et 6 chiffres.' })
+  pin: string;
 }
 
 export class RefreshDto {
