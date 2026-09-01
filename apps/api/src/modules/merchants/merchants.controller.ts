@@ -1,7 +1,7 @@
-import { Body, Controller, Get, Headers, Param, Post, Query, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Headers, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { MerchantsService } from './merchants.service';
-import { CreateMerchantDto, CreatePaymentRequestDto, TransferFromMerchantDto, SellAirtimeDto, RecordCashDto, DebitDirectDto } from './dto/merchants.dto';
+import { CreateMerchantDto, CreatePaymentRequestDto, TransferFromMerchantDto, SellAirtimeDto, RecordCashDto, DebitDirectDto, CreateRetailerDto, RetailerFundDto, RetailerStatusDto } from './dto/merchants.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { MerchantScopeGuard } from '../../common/guards/merchant-scope.guard';
 import { CurrentUser, AuthenticatedUser } from '../../common/decorators/current-user.decorator';
@@ -94,6 +94,68 @@ export class MerchantsController {
   @UseGuards(JwtAuthGuard, MerchantScopeGuard)
   listCash(@Param('merchantId') merchantId: string) {
     return this.merchantsService.listCashCollections(merchantId);
+  }
+
+  // --- § Hiérarchie distributeur → détaillants (comptes Business) ---
+
+  @Post(':merchantId/retailers')
+  @UseGuards(JwtAuthGuard, MerchantScopeGuard)
+  createRetailer(
+    @Param('merchantId') merchantId: string,
+    @CurrentUser() user: AuthenticatedUser,
+    @Body() dto: CreateRetailerDto,
+  ) {
+    return this.merchantsService.createRetailer(merchantId, user.userId, dto);
+  }
+
+  @Get(':merchantId/retailers')
+  @UseGuards(JwtAuthGuard, MerchantScopeGuard)
+  listRetailers(@Param('merchantId') merchantId: string) {
+    return this.merchantsService.listRetailers(merchantId);
+  }
+
+  @Post(':merchantId/retailers/:retailerId/fund')
+  @UseGuards(JwtAuthGuard, MerchantScopeGuard)
+  fundRetailer(
+    @Param('merchantId') merchantId: string,
+    @Param('retailerId') retailerId: string,
+    @CurrentUser() user: AuthenticatedUser,
+    @Body() dto: RetailerFundDto,
+  ) {
+    return this.merchantsService.fundRetailer(
+      merchantId,
+      retailerId,
+      BigInt(dto.amount),
+      dto.description ?? 'Approvisionnement détaillant',
+      user.userId,
+    );
+  }
+
+  @Post(':merchantId/retailers/:retailerId/debit')
+  @UseGuards(JwtAuthGuard, MerchantScopeGuard)
+  debitRetailer(
+    @Param('merchantId') merchantId: string,
+    @Param('retailerId') retailerId: string,
+    @CurrentUser() user: AuthenticatedUser,
+    @Body() dto: RetailerFundDto,
+  ) {
+    return this.merchantsService.debitRetailer(
+      merchantId,
+      retailerId,
+      BigInt(dto.amount),
+      dto.description ?? 'Débit détaillant',
+      user.userId,
+    );
+  }
+
+  @Patch(':merchantId/retailers/:retailerId/status')
+  @UseGuards(JwtAuthGuard, MerchantScopeGuard)
+  setRetailerStatus(
+    @Param('merchantId') merchantId: string,
+    @Param('retailerId') retailerId: string,
+    @Body() dto: RetailerStatusDto,
+  ) {
+    return this.merchantsService.setRetailerStatus(merchantId, retailerId, dto.status);
   }
 
   /** Débit direct via HUB2 (§ app Business — Phase A) — collecte Mobile Money

@@ -1,5 +1,6 @@
 import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
+import * as bcrypt from 'bcrypt';
 import { PrismaService } from '../../config/prisma.service';
 import { LedgerService } from '../ledger/ledger.service';
 import { ReloadlyAdapter } from '../payment-engine/providers/reloadly.adapter';
@@ -53,6 +54,186 @@ export class MerchantsService {
 
       return merchant;
     });
+  }
+
+  /**
+   * § Hiérarchie distributeur → détaillants — un marchand (distributeur)
+   * peut créer autant de comptes Business (détaillants) qu'il souhaite,
+   * chacun avec son propre wallet et QR. Le distributeur est automatiquement
+   * rattaché comme utilisateur du détaillant créé, pour pouvoir y basculer
+   * via le sélecteur multi-établissements déjà existant — aucun nouvel
+   * écran de consultation à construire pour Wallet/Transactions/Carte.
+   */
+  async createRetailer(
+    distributorMerchantId: string,
+    creatorUserId: string,
+    dto: {
+      businessName: string;
+      category?: string;
+      ownerPhone?: string;
+      ownerFirstName?: string;
+      ownerLastName?: string;
+    },
+  ) {
+    return this.prisma.$transaction(async (tx) => {
+      const retailer = await tx.merchant.create({
+        data: {
+          businessName: dto.businessName,
+          category: dto.category,
+          status: 'ACTIVE', // créé directement actif — pas de KYC séparé, sous la responsabilité du distributeur
+          parentMerchantId: distributorMerchantId,
+        },
+      });
+
+      await tx.wallet.create({ data: { type: 'MERCHANT', merchantId: retailer.id, currency: 'XOF' } });
+      await tx.qrCode.create({
+        data: {
+          code: `MPR${retailer.id.slice(0, 10).toUpperCase()}`,
+          type: 'MERCHANT_STATIC',
+          status: 'UNASSIGNED',
+          merchantId: retailer.id,
+        },
+      });
+
+      // Le distributeur peut toujours gérer ce détaillant (bascule via sélecteur).
+      await tx.merchantUser.create({
+        data: { merchantId: retailer.id, userId: creatorUserId, role: 'MERCHANT_ADMIN' },
+      });
+
+      // Si un numéro dédié est fourni, ce détaillant a aussi son propre
+      // accès de connexion indépendant (ex: un employé sur le terrain).
+      let tempPassword: string | undefined;
+      if (dto.ownerPhone) {
+        const phone = normalizePhoneCI(dto.ownerPhone);
+        let owner = await tx.user.findUnique({ where: { phone } });
+        if (!owner) {
+          tempPassword = Math.random().toString(36).slice(-10);
+          const passwordHash = await bcrypt.hash(tempPassword, 12);
+          owner = await tx.user.create({
+            data: {
+              phone,
+              firstName: dto.ownerFirstName ?? dto.businessName,
+              lastName: dto.ownerLastName ?? '',
+              passwordHash,
+              role: 'MERCHANT_USER',
+            },
+          });
+        }
+        await tx.merchantUser.create({
+          data: { merchantId: retailer.id, userId: owner.id, role: 'CASHIER' },
+        });
+      }
+
+      return { retailer, tempPassword };
+    });
+  }
+
+  /** Liste des détaillants d'un distributeur, avec solde et statut. */
+  async listRetailers(distributorMerchantId: string) {
+    const retailers = await this.prisma.merchant.findMany({
+      where: { parentMerchantId: distributorMerchantId },
+      include: { wallet: { select: { cachedBalance: true } } },
+      orderBy: { createdAt: 'desc' },
+    });
+    return retailers.map((r) => ({
+      id: r.id,
+      businessName: r.businessName,
+      category: r.category,
+      status: r.status,
+      balance: Number(r.wallet?.cachedBalance ?? 0n),
+      createdAt: r.createdAt,
+    }));
+  }
+
+  /** Vérifie que ce détaillant appartient bien à ce distributeur, avant toute action. */
+  private async assertRetailerOwnership(distributorMerchantId: string, retailerId: string) {
+    const retailer = await this.prisma.merchant.findUnique({ where: { id: retailerId } });
+    if (!retailer || retailer.parentMerchantId !== distributorMerchantId) {
+      throw new NotFoundException('Détaillant introuvable pour ce distributeur.');
+    }
+    return retailer;
+  }
+
+  /** Approvisionne le wallet d'un détaillant depuis le wallet du distributeur. */
+  async fundRetailer(
+    distributorMerchantId: string,
+    retailerId: string,
+    amount: bigint,
+    description: string,
+    initiatedByUserId: string,
+  ) {
+    await this.assertRetailerOwnership(distributorMerchantId, retailerId);
+    const [distributorWallet, retailerWallet] = await Promise.all([
+      this.prisma.wallet.findUniqueOrThrow({ where: { merchantId: distributorMerchantId } }),
+      this.prisma.wallet.findUniqueOrThrow({ where: { merchantId: retailerId } }),
+    ]);
+
+    return this.runSerializable(async (tx) => {
+      const transaction = await tx.transaction.create({
+        data: {
+          type: 'TRANSFER',
+          status: 'SUCCESS',
+          amount,
+          feeAmount: 0n,
+          sourceWalletId: distributorWallet.id,
+          destWalletId: retailerWallet.id,
+          initiatedByUserId,
+          description,
+        },
+      });
+      await this.ledger.postDoubleEntry(tx, {
+        transactionId: transaction.id,
+        fromWalletId: distributorWallet.id,
+        toWalletId: retailerWallet.id,
+        amount,
+        description,
+      });
+      return transaction;
+    });
+  }
+
+  /** Débite le wallet d'un détaillant vers le wallet du distributeur. */
+  async debitRetailer(
+    distributorMerchantId: string,
+    retailerId: string,
+    amount: bigint,
+    description: string,
+    initiatedByUserId: string,
+  ) {
+    await this.assertRetailerOwnership(distributorMerchantId, retailerId);
+    const [distributorWallet, retailerWallet] = await Promise.all([
+      this.prisma.wallet.findUniqueOrThrow({ where: { merchantId: distributorMerchantId } }),
+      this.prisma.wallet.findUniqueOrThrow({ where: { merchantId: retailerId } }),
+    ]);
+
+    return this.runSerializable(async (tx) => {
+      const transaction = await tx.transaction.create({
+        data: {
+          type: 'TRANSFER',
+          status: 'SUCCESS',
+          amount,
+          feeAmount: 0n,
+          sourceWalletId: retailerWallet.id,
+          destWalletId: distributorWallet.id,
+          initiatedByUserId,
+          description,
+        },
+      });
+      await this.ledger.postDoubleEntry(tx, {
+        transactionId: transaction.id,
+        fromWalletId: retailerWallet.id,
+        toWalletId: distributorWallet.id,
+        amount,
+        description,
+      });
+      return transaction;
+    });
+  }
+
+  /** Bloque/débloque un détaillant (§ le distributeur contrôle ses propres détaillants). */
+  async setRetailerStatus(distributorMerchantId: string, retailerId: string, status: 'ACTIVE' | 'SUSPENDED') {
+    await this.assertRetailerOwnership(distributorMerchantId, retailerId);
+    return this.prisma.merchant.update({ where: { id: retailerId }, data: { status } });
   }
 
   async getWallet(merchantId: string) {

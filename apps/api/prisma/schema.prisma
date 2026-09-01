@@ -226,6 +226,13 @@ model Merchant {
   // marchand précis.
   transfersEnabled Boolean     @default(false)
 
+  // Hiérarchie distributeur → détaillants (§ un marchand peut créer et
+  // gérer plusieurs comptes Business sous lui — approvisionnement, blocage,
+  // etc.). Un détaillant a son propre wallet et QR, distincts du parent.
+  parentMerchantId String?
+  parentMerchant   Merchant?  @relation("MerchantRetailers", fields: [parentMerchantId], references: [id])
+  retailers        Merchant[] @relation("MerchantRetailers")
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -241,6 +248,7 @@ model Merchant {
 
   @@index([status])
   @@index([agentId])
+  @@index([parentMerchantId])
   @@map("merchants")
 }
 

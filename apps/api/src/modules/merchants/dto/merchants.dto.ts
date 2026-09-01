@@ -131,3 +131,42 @@ export class PayExternalDto {
   @IsIn(['orange', 'mtn', 'moov', 'wave'], { message: 'Opérateur Mobile Money invalide.' })
   provider: string;
 }
+
+/** § Hiérarchie distributeur → détaillants (comptes Business). */
+export class CreateRetailerDto {
+  @IsString()
+  @MinLength(2)
+  businessName: string;
+
+  @IsOptional()
+  @IsString()
+  category?: string;
+
+  @IsOptional()
+  @IsPhoneNumber('CI', { message: 'Numéro invalide.' })
+  ownerPhone?: string;
+
+  @IsOptional()
+  @IsString()
+  ownerFirstName?: string;
+
+  @IsOptional()
+  @IsString()
+  ownerLastName?: string;
+}
+
+export class RetailerFundDto {
+  @IsInt()
+  @IsPositive()
+  amount: number;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(140)
+  description?: string;
+}
+
+export class RetailerStatusDto {
+  @IsIn(['ACTIVE', 'SUSPENDED'])
+  status: 'ACTIVE' | 'SUSPENDED';
+}
