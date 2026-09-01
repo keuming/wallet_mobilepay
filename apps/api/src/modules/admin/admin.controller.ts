@@ -86,6 +86,10 @@ export class CreateMerchantByAdminDto {
   ownerPin?: string;
 
   @IsOptional()
+  @IsIn(['CI', 'SN', 'ML', 'BF', 'BJ', 'TG', 'NE', 'GW', 'CM', 'GA', 'CG', 'TD', 'CF', 'GQ'], { message: 'Pays non pris en charge.' })
+  country?: string;
+
+  @IsOptional()
   @IsInt()
   feeRateBps?: number;
 }

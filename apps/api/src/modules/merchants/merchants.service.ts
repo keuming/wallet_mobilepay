@@ -74,17 +74,20 @@ export class MerchantsService {
       ownerFirstName?: string;
       ownerLastName?: string;
       ownerPin?: string;
+      country?: string;
     },
   ) {
     if ((dto.ownerPhone && !dto.ownerPin) || (!dto.ownerPhone && dto.ownerPin)) {
       throw new BadRequestException('Le numéro et le code PIN doivent être fournis ensemble, ou aucun des deux.');
     }
+    const distributor = await this.prisma.merchant.findUniqueOrThrow({ where: { id: distributorMerchantId } });
     return this.prisma.$transaction(async (tx) => {
       const retailer = await tx.merchant.create({
         data: {
           businessName: dto.businessName,
           category: dto.category,
           status: 'ACTIVE', // créé directement actif — pas de KYC séparé, sous la responsabilité du distributeur
+          country: dto.country ?? distributor.country,
           parentMerchantId: distributorMerchantId,
         },
       });
@@ -118,6 +121,7 @@ export class MerchantsService {
               phone,
               firstName: dto.ownerFirstName ?? dto.businessName,
               lastName: dto.ownerLastName ?? '',
+              country: dto.country ?? distributor.country,
               passwordHash,
               role: 'MERCHANT_USER',
             },

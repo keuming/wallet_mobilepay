@@ -157,6 +157,10 @@ export class CreateRetailerDto {
   @IsOptional()
   @Matches(/^\d{4,6}$/, { message: 'Le code PIN doit contenir entre 4 et 6 chiffres.' })
   ownerPin?: string;
+
+  @IsOptional()
+  @IsIn(['CI', 'SN', 'ML', 'BF', 'BJ', 'TG', 'NE', 'GW', 'CM', 'GA', 'CG', 'TD', 'CF', 'GQ'], { message: 'Pays non pris en charge.' })
+  country?: string;
 }
 
 export class RetailerFundDto {

@@ -7,6 +7,23 @@ import { apiFetch, ApiError } from '../../lib/apiClient';
 import MerchantShell from '../../components/MerchantShell';
 import PasswordInput from '../../components/PasswordInput';
 
+const COUNTRIES = [
+  { code: 'CI', label: "Côte d'Ivoire" },
+  { code: 'SN', label: 'Sénégal' },
+  { code: 'ML', label: 'Mali' },
+  { code: 'BF', label: 'Burkina Faso' },
+  { code: 'BJ', label: 'Bénin' },
+  { code: 'TG', label: 'Togo' },
+  { code: 'NE', label: 'Niger' },
+  { code: 'GW', label: 'Guinée-Bissau' },
+  { code: 'CM', label: 'Cameroun' },
+  { code: 'GA', label: 'Gabon' },
+  { code: 'CG', label: 'Congo' },
+  { code: 'TD', label: 'Tchad' },
+  { code: 'CF', label: 'République Centrafricaine' },
+  { code: 'GQ', label: 'Guinée Équatoriale' },
+];
+
 interface Retailer {
   id: string;
   businessName: string;
@@ -33,6 +50,7 @@ export default function DetaillantsPage() {
   const [ownerFirstName, setOwnerFirstName] = useState('');
   const [ownerLastName, setOwnerLastName] = useState('');
   const [ownerPin, setOwnerPin] = useState('');
+  const [country, setCountry] = useState('CI');
   const [creating, setCreating] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
 
@@ -75,6 +93,7 @@ export default function DetaillantsPage() {
           ownerFirstName: ownerFirstName || undefined,
           ownerLastName: ownerLastName || undefined,
           ownerPin: ownerPin || undefined,
+          country,
         }),
       });
       setBusinessName('');
@@ -209,6 +228,14 @@ export default function DetaillantsPage() {
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               <input className="mc-input" placeholder="Nom du détaillant *" value={businessName} onChange={(e) => setBusinessName(e.target.value)} />
               <input className="mc-input" placeholder="Catégorie (optionnel)" value={category} onChange={(e) => setCategory(e.target.value)} />
+              <label style={{ fontSize: 12, color: 'var(--mc-muted)' }}>
+                Pays
+                <select className="mc-input" style={{ marginTop: 4 }} value={country} onChange={(e) => setCountry(e.target.value)}>
+                  {COUNTRIES.map((c) => (
+                    <option key={c.code} value={c.code}>{c.label}</option>
+                  ))}
+                </select>
+              </label>
               <p style={{ fontSize: 12, color: 'var(--mc-muted)', margin: '4px 0 0' }}>
                 Accès de connexion (optionnel) — laisse vide si toi seul dois y accéder :
               </p>

@@ -154,6 +154,7 @@ model User {
   email        String?  @unique
   passwordHash String
   firstName    String
+  country      String   @default("CI") // code ISO 3166-1 alpha-2 — pays de résidence, pilote HUB2/Reloadly et le pays par défaut des transferts
   lastName     String
   role         UserRole @default(PARTICULIER)
 
@@ -215,6 +216,7 @@ model Beneficiary {
 model Merchant {
   id            String         @id @default(uuid())
   businessName  String
+  country       String         @default("CI") // code ISO 3166-1 alpha-2
   legalName     String?
   category      String? // ex: "Restauration", "VTC", "Commerce général"
   status        MerchantStatus @default(PENDING)

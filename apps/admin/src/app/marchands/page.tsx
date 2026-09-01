@@ -8,6 +8,23 @@ import { apiFetch, ApiError } from '../../lib/apiClient';
 import AdminShell from '../../components/AdminShell';
 import PasswordInput from '../../components/PasswordInput';
 
+const COUNTRIES = [
+  { code: 'CI', label: "Côte d'Ivoire" },
+  { code: 'SN', label: 'Sénégal' },
+  { code: 'ML', label: 'Mali' },
+  { code: 'BF', label: 'Burkina Faso' },
+  { code: 'BJ', label: 'Bénin' },
+  { code: 'TG', label: 'Togo' },
+  { code: 'NE', label: 'Niger' },
+  { code: 'GW', label: 'Guinée-Bissau' },
+  { code: 'CM', label: 'Cameroun' },
+  { code: 'GA', label: 'Gabon' },
+  { code: 'CG', label: 'Congo' },
+  { code: 'TD', label: 'Tchad' },
+  { code: 'CF', label: 'République Centrafricaine' },
+  { code: 'GQ', label: 'Guinée Équatoriale' },
+];
+
 interface Merchant {
   id: string;
   businessName: string;
@@ -35,6 +52,7 @@ export default function MerchantsPage() {
   const [showCreate, setShowCreate] = useState(false);
   const [businessName, setBusinessName] = useState('');
   const [category, setCategory] = useState('');
+  const [country, setCountry] = useState('CI');
   const [ownerPhone, setOwnerPhone] = useState('');
   const [ownerFirstName, setOwnerFirstName] = useState('');
   const [ownerLastName, setOwnerLastName] = useState('');
@@ -78,7 +96,7 @@ export default function MerchantsPage() {
         '/admin/merchants',
         {
           method: 'POST',
-          body: JSON.stringify({ businessName, category, ownerPhone, ownerFirstName, ownerLastName, ownerPin: ownerPin || undefined }),
+          body: JSON.stringify({ businessName, category, ownerPhone, ownerFirstName, ownerLastName, ownerPin: ownerPin || undefined, country }),
         },
       );
       setCreateSuccess(res.ownerCreated ? 'Marchand créé, compte titulaire créé avec le PIN fourni ✓' : 'Marchand créé ✓');
@@ -212,6 +230,14 @@ export default function MerchantsPage() {
               <label className="adm-modal-label">
                 Catégorie
                 <input className="adm-input" style={{ width: '100%', marginTop: 4 }} value={category} onChange={(e) => setCategory(e.target.value)} placeholder="Ex: Restauration" />
+              </label>
+              <label className="adm-modal-label">
+                Pays
+                <select className="adm-input" style={{ width: '100%', marginTop: 4 }} value={country} onChange={(e) => setCountry(e.target.value)}>
+                  {COUNTRIES.map((c) => (
+                    <option key={c.code} value={c.code}>{c.label}</option>
+                  ))}
+                </select>
               </label>
               <label className="adm-modal-label">
                 Téléphone du titulaire

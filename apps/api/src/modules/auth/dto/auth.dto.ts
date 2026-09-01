@@ -1,4 +1,4 @@
-import { IsEmail, IsEnum, IsOptional, IsPhoneNumber, IsString, Matches, MinLength } from 'class-validator';
+import { IsEmail, IsEnum, IsIn, IsOptional, IsPhoneNumber, IsString, Matches, MinLength } from 'class-validator';
 import { UserRole } from '@prisma/client';
 
 export class RegisterDto {
@@ -37,6 +37,12 @@ export class LoginDto {
  * (passwordHash et transactionPinHash) reçoivent le même hash — n'affecte
  * pas les comptes existants qui ont mot de passe et PIN distincts.
  */
+/**
+ * Pays couverts par HUB2 (zones UEMOA + CEMAC) — liste partagée pour la
+ * validation du champ pays à l'inscription et la création de comptes.
+ */
+export const SUPPORTED_COUNTRIES = ['CI', 'SN', 'ML', 'BF', 'BJ', 'TG', 'NE', 'GW', 'CM', 'GA', 'CG', 'TD', 'CF', 'GQ'] as const;
+
 export class RegisterWithPinDto {
   @IsPhoneNumber('CI', { message: 'Numéro de téléphone invalide.' })
   phone: string;
@@ -52,6 +58,10 @@ export class RegisterWithPinDto {
   @IsOptional()
   @IsEmail({}, { message: 'Adresse email invalide.' })
   email?: string;
+
+  @IsOptional()
+  @IsIn(SUPPORTED_COUNTRIES, { message: 'Pays non pris en charge.' })
+  country?: string;
 
   @Matches(/^\d{4,6}$/, { message: 'Le code PIN doit contenir entre 4 et 6 chiffres.' })
   pin: string;

@@ -170,6 +170,7 @@ export class AdminService {
     ownerFirstName: string;
     ownerLastName: string;
     ownerPin?: string;
+    country?: string;
     feeRateBps?: number;
   }) {
     let owner = await this.prisma.user.findUnique({ where: { phone: normalizePhoneCI(dto.ownerPhone) } });
@@ -186,6 +187,7 @@ export class AdminService {
             phone: normalizePhoneCI(dto.ownerPhone),
             firstName: dto.ownerFirstName,
             lastName: dto.ownerLastName,
+            country: dto.country ?? 'CI',
             passwordHash,
             role: 'MERCHANT_USER',
           },
@@ -197,6 +199,7 @@ export class AdminService {
           businessName: dto.businessName,
           category: dto.category,
           status: 'PENDING',
+          country: dto.country ?? 'CI',
           feeRateBps: dto.feeRateBps ?? 200,
         },
       });

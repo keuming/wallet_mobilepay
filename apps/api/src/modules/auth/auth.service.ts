@@ -171,6 +171,7 @@ export class AuthService {
           firstName: dto.firstName,
           lastName: dto.lastName,
           email: dto.email,
+          country: dto.country ?? 'CI',
           passwordHash: pinHash,
           transactionPinHash: pinHash,
           role: 'PARTICULIER',

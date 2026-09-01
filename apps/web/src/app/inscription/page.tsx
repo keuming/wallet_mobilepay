@@ -7,6 +7,23 @@ import { useAuth } from '../../contexts/AuthContext';
 import { apiFetch, ApiError } from '../../lib/apiClient';
 import PasswordInput from '../../components/PasswordInput';
 
+const COUNTRIES = [
+  { code: 'CI', label: "Côte d'Ivoire" },
+  { code: 'SN', label: 'Sénégal' },
+  { code: 'ML', label: 'Mali' },
+  { code: 'BF', label: 'Burkina Faso' },
+  { code: 'BJ', label: 'Bénin' },
+  { code: 'TG', label: 'Togo' },
+  { code: 'NE', label: 'Niger' },
+  { code: 'GW', label: 'Guinée-Bissau' },
+  { code: 'CM', label: 'Cameroun' },
+  { code: 'GA', label: 'Gabon' },
+  { code: 'CG', label: 'Congo' },
+  { code: 'TD', label: 'Tchad' },
+  { code: 'CF', label: 'République Centrafricaine' },
+  { code: 'GQ', label: 'Guinée Équatoriale' },
+];
+
 /**
  * Carte de création de compte (§ premier écran après installation de
  * l'app) — en 3 étapes : vérification du numéro par OTP (évite les comptes
@@ -20,6 +37,7 @@ export default function InscriptionPage() {
   const [step, setStep] = useState<'phone' | 'otp' | 'details'>('phone');
 
   const [phone, setPhone] = useState('');
+  const [country, setCountry] = useState('CI');
   const [otpCode, setOtpCode] = useState('');
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
@@ -69,7 +87,7 @@ export default function InscriptionPage() {
     setError(null);
     setSubmitting(true);
     try {
-      await registerWithPin({ phone, firstName, lastName, email: email || undefined, pin });
+      await registerWithPin({ phone, firstName, lastName, email: email || undefined, pin, country });
       router.push('/dashboard');
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Impossible de créer le compte.');
@@ -94,6 +112,19 @@ export default function InscriptionPage() {
           <p style={{ color: 'var(--mp-muted)', fontSize: 13, margin: 0 }}>
             On va d'abord vérifier ton numéro par SMS, pour être sûr qu'il est bien saisi.
           </p>
+          <label>
+            Pays de résidence
+            <select
+              className="mp-input"
+              style={{ width: '100%', marginTop: 6 }}
+              value={country}
+              onChange={(e) => setCountry(e.target.value)}
+            >
+              {COUNTRIES.map((c) => (
+                <option key={c.code} value={c.code}>{c.label}</option>
+              ))}
+            </select>
+          </label>
           <label>
             Numéro de téléphone
             <input
