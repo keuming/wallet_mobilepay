@@ -10,6 +10,7 @@ const NAV_ITEMS = [
   { href: '/wallet', label: '💼 Wallet' },
   { href: '/transactions', label: '📋 Transactions' },
   { href: '/carte', label: '💳 Carte virtuelle' },
+  { href: '/qr', label: '📱 QR Code' },
   { href: '/detaillants', label: '🏬 Mes détaillants' },
 ];
 
