@@ -254,6 +254,23 @@ model Merchant {
 
 // Encaissement en espèces (§ Phase A Business — le client paie en liquide,
 // le marchand enregistre simplement le montant pour son suivi comptable).
+// Vérification de numéro par code OTP (§ inscription — évite les comptes
+// créés avec un numéro mal saisi, jamais accessibles ensuite). Le code n'est
+// jamais stocké en clair, seulement son hash.
+model PhoneVerification {
+  id        String   @id @default(uuid())
+  phone     String
+  codeHash  String
+  purpose   String   @default("REGISTRATION")
+  verified  Boolean  @default(false)
+  attempts  Int      @default(0)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([phone])
+  @@map("phone_verifications")
+}
+
 // Journal des SMS envoyés (§ lien de paiement Wave en backup, ou toute
 // autre notification SMS future) — suivi indépendant du fournisseur SMS.
 model SmsLog {

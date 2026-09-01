@@ -10,6 +10,7 @@ import * as bcrypt from 'bcrypt';
 import * as crypto from 'crypto';
 import { PrismaService } from '../../config/prisma.service';
 import { WalletsService } from '../wallets/wallets.service';
+import { SmsAdapter } from '../sms/sms.adapter';
 import { normalizePhoneCI } from '../../common/utils/phone.util';
 import { RegisterDto, LoginDto, RegisterWithPinDto } from './dto/auth.dto';
 
@@ -22,7 +23,78 @@ export class AuthService {
     private jwt: JwtService,
     private config: ConfigService,
     private wallets: WalletsService,
+    private sms: SmsAdapter,
   ) {}
+
+  /**
+   * Envoie un code OTP au numéro fourni (§ inscription — vérifie que le
+   * numéro est bien saisi correctement et joignable, avant de créer le
+   * compte). Limite à un envoi par minute pour éviter le spam.
+   */
+  async sendPhoneOtp(phoneRaw: string) {
+    const phone = normalizePhoneCI(phoneRaw);
+
+    const recent = await this.prisma.phoneVerification.findFirst({
+      where: { phone, purpose: 'REGISTRATION', createdAt: { gte: new Date(Date.now() - 60_000) } },
+      orderBy: { createdAt: 'desc' },
+    });
+    if (recent) {
+      throw new BadRequestException('Un code a déjà été envoyé récemment — patiente une minute avant de réessayer.');
+    }
+
+    const existing = await this.prisma.user.findUnique({ where: { phone } });
+    if (existing) {
+      throw new ConflictException('Un compte existe déjà avec ce numéro de téléphone.');
+    }
+
+    const code = Math.floor(100000 + Math.random() * 900000).toString();
+    const codeHash = await bcrypt.hash(code, 10);
+    await this.prisma.phoneVerification.create({
+      data: {
+        phone,
+        codeHash,
+        purpose: 'REGISTRATION',
+        expiresAt: new Date(Date.now() + 10 * 60_000), // 10 minutes
+      },
+    });
+
+    const result = await this.sms.send(phone, `MobilePay CI : votre code de vérification est ${code}. Valable 10 minutes.`);
+    if (!result.success) {
+      throw new BadRequestException(result.errorReason ?? "Échec de l'envoi du code.");
+    }
+    return { sent: true };
+  }
+
+  /**
+   * Vérifie le code OTP saisi. Ne crée pas encore le compte — marque juste
+   * ce numéro comme vérifié, pour un temps limité, avant l'inscription
+   * effective (§ registerWithPin exige cette vérification récente).
+   */
+  async verifyPhoneOtp(phoneRaw: string, code: string) {
+    const phone = normalizePhoneCI(phoneRaw);
+    const verification = await this.prisma.phoneVerification.findFirst({
+      where: { phone, purpose: 'REGISTRATION', verified: false, expiresAt: { gte: new Date() } },
+      orderBy: { createdAt: 'desc' },
+    });
+    if (!verification) {
+      throw new BadRequestException('Code expiré ou introuvable — demande un nouveau code.');
+    }
+    if (verification.attempts >= 5) {
+      throw new BadRequestException('Trop de tentatives — demande un nouveau code.');
+    }
+
+    const matches = await bcrypt.compare(code, verification.codeHash);
+    if (!matches) {
+      await this.prisma.phoneVerification.update({
+        where: { id: verification.id },
+        data: { attempts: { increment: 1 } },
+      });
+      throw new BadRequestException('Code incorrect.');
+    }
+
+    await this.prisma.phoneVerification.update({ where: { id: verification.id }, data: { verified: true } });
+    return { verified: true };
+  }
 
   async register(dto: RegisterDto) {
     const phone = normalizePhoneCI(dto.phone);
@@ -73,6 +145,21 @@ export class AuthService {
     if (dto.email) {
       const emailTaken = await this.prisma.user.findUnique({ where: { email: dto.email } });
       if (emailTaken) throw new ConflictException('Cette adresse email est déjà utilisée.');
+    }
+
+    // Le numéro doit avoir été vérifié par OTP dans les 30 dernières minutes
+    // — évite les comptes créés avec un numéro mal saisi, ensuite injoignable.
+    const verification = await this.prisma.phoneVerification.findFirst({
+      where: {
+        phone,
+        purpose: 'REGISTRATION',
+        verified: true,
+        createdAt: { gte: new Date(Date.now() - 30 * 60_000) },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+    if (!verification) {
+      throw new BadRequestException('Numéro non vérifié — merci de vérifier ton numéro par code avant de continuer.');
     }
 
     const pinHash = await bcrypt.hash(dto.pin, BCRYPT_ROUNDS);
