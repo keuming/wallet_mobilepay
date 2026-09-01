@@ -320,7 +320,7 @@ function PayerContent() {
             />
           </label>
           {resolveError && <div className="mp-error">{resolveError}</div>}
-          <button className="mp-btn-primary" disabled={!code} onClick={handleResolve}>
+          <button className="mp-btn-primary" disabled={!code} onClick={() => handleResolve()}>
             Continuer
           </button>
         </div>
