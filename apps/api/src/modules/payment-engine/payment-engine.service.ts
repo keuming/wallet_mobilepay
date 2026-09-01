@@ -13,6 +13,7 @@ import { PrismaService } from '../../config/prisma.service';
 import { LedgerService } from '../ledger/ledger.service';
 import { Hub2Adapter } from './providers/hub2.adapter';
 import { ReloadlyAdapter } from './providers/reloadly.adapter';
+import { SmsAdapter } from '../sms/sms.adapter';
 
 const MAX_SERIALIZATION_RETRIES = 3;
 
@@ -30,6 +31,7 @@ export class PaymentEngineService {
     private ledger: LedgerService,
     private hub2: Hub2Adapter,
     private reloadly: ReloadlyAdapter,
+    private sms: SmsAdapter,
   ) {}
 
   /**
@@ -719,7 +721,20 @@ export class PaymentEngineService {
           airtimeKind: params.kind,
         },
       });
+    }).then(async (transaction) => {
+      if (transaction.status === 'SUCCESS') {
+        await this.notifyAirtimeDelivery(params.phoneNumber, params.amount, params.kind, transaction.operatorName);
+      }
+      return transaction;
     });
+  }
+
+  /** Confirme par SMS la livraison d'un crédit/forfait data (§ Reloadly). */
+  private async notifyAirtimeDelivery(phoneNumber: string, amount: bigint, kind: 'AIRTIME' | 'DATA', operatorName?: string | null) {
+    const label = kind === 'DATA' ? 'forfait data' : 'crédit';
+    const amountLabel = (Number(amount) / 100).toLocaleString('fr-FR');
+    const message = `MobilePay CI : ton ${label} de ${amountLabel} FCFA${operatorName ? ` (${operatorName})` : ''} a été livré avec succès.`;
+    await this.sms.send(phoneNumber, message).catch(() => null); // notification best-effort — n'échoue jamais l'achat lui-même
   }
 
   /**
@@ -805,7 +820,7 @@ export class PaymentEngineService {
     // au système (aucun wallet interne débité). En cas d'échec Reloadly après
     // collecte HUB2 réussie, seul un remboursement manuel côté HUB2 serait requis
     // en production — hors périmètre du mode simulé local.
-    return this.prisma.transaction.update({
+    const updated = await this.prisma.transaction.update({
       where: { id: transaction.id },
       data: {
         status: finalStatus,
@@ -815,6 +830,10 @@ export class PaymentEngineService {
         airtimeKind: params.kind,
       },
     });
+    if (updated.status === 'SUCCESS') {
+      await this.notifyAirtimeDelivery(params.phoneNumber, params.amount, params.kind, updated.operatorName);
+    }
+    return updated;
   }
 
   /** Initie une recharge de wallet particulier via HUB2 (cash-in mobile money). */
