@@ -75,6 +75,9 @@ export class MerchantsService {
       ownerLastName?: string;
     },
   ) {
+    if ((dto.ownerPhone && !dto.ownerPin) || (!dto.ownerPhone && dto.ownerPin)) {
+      throw new BadRequestException('Le numéro et le code PIN doivent être fournis ensemble, ou aucun des deux.');
+    }
     return this.prisma.$transaction(async (tx) => {
       const retailer = await tx.merchant.create({
         data: {
@@ -101,14 +104,14 @@ export class MerchantsService {
       });
 
       // Si un numéro dédié est fourni, ce détaillant a aussi son propre
-      // accès de connexion indépendant (ex: un employé sur le terrain).
-      let tempPassword: string | undefined;
-      if (dto.ownerPhone) {
+      // accès de connexion indépendant (ex: un employé sur le terrain) —
+      // avec le PIN choisi par le distributeur, pas un mot de passe généré
+      // au hasard et affiché une seule fois.
+      if (dto.ownerPhone && dto.ownerPin) {
         const phone = normalizePhoneCI(dto.ownerPhone);
         let owner = await tx.user.findUnique({ where: { phone } });
         if (!owner) {
-          tempPassword = Math.random().toString(36).slice(-10);
-          const passwordHash = await bcrypt.hash(tempPassword, 12);
+          const passwordHash = await bcrypt.hash(dto.ownerPin, 12);
           owner = await tx.user.create({
             data: {
               phone,
@@ -124,7 +127,7 @@ export class MerchantsService {
         });
       }
 
-      return { retailer, tempPassword };
+      return { retailer };
     });
   }
 

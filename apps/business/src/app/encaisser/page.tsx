@@ -334,6 +334,7 @@ function PaymentRequestPanel({ merchantId }: { merchantId: string }) {
     setError(null);
     setResult(null);
     setOtpTransactionId(null);
+    setNextActionShown(false);
     try {
       if (provider === 'mobilepay') {
         // Le client paie depuis son propre solde MobilePay — confirmation
@@ -393,10 +394,12 @@ function PaymentRequestPanel({ merchantId }: { merchantId: string }) {
     }
   };
 
+  const [nextActionShown, setNextActionShown] = useState(false);
+
   const pollDebitDirectStatus = (transactionId: string, phone?: string) => {
     const phoneLabel = phone || 'le client';
     let attempts = 0;
-    const maxAttempts = 15; // ~30s à raison d'un appel toutes les 2s
+    const maxAttempts = 60; // ~2 minutes — le client peut mettre du temps à valider (lien, OTP...)
     const interval = setInterval(async () => {
       attempts += 1;
       try {
@@ -414,30 +417,33 @@ function PaymentRequestPanel({ merchantId }: { merchantId: string }) {
         } else if (status.status === 'FAILED') {
           clearInterval(interval);
           setResult({ status: 'pending', message: status.failureReason ?? "Le paiement a échoué." });
-        } else if (status.nextActionType === 'otp' && !otpTransactionId) {
-          clearInterval(interval);
-          setOtpTransactionId(transactionId);
-          setOtpMessage(status.nextActionMessage ?? 'Demande au client son code de confirmation.');
-          setResult({
-            status: 'pending',
-            message: `Demande envoyée au ${phoneLabel} — un code de confirmation est requis pour finaliser.`,
-          });
-        } else if (status.nextActionType === 'ussd') {
-          clearInterval(interval);
-          setResult({
-            status: 'pending',
-            message: `Demande envoyée au ${phoneLabel} — dis au client de vérifier son téléphone et de valider avec son code Mobile Money pour finaliser le paiement.`,
-          });
-        } else if (status.nextActionType === 'redirection') {
-          clearInterval(interval);
-          setResult({
-            status: 'pending',
-            message: status.nextActionUrl
-              ? `Le client va recevoir un SMS avec un lien — tu peux aussi le lui partager toi-même en backup :`
-              : `Le client va recevoir un SMS de son opérateur (${phoneLabel}) avec un lien à ouvrir pour confirmer le paiement — rien d'autre à faire de ton côté.`,
-            link: status.nextActionUrl,
-            transactionId,
-          });
+        } else if (status.nextActionType && !nextActionShown) {
+          // On continue de surveiller (sans couper l'intervalle) — sinon le
+          // vrai succès/échec, qui arrive plus tard via webhook, ne serait
+          // jamais détecté et le message resterait figé indéfiniment.
+          setNextActionShown(true);
+          if (status.nextActionType === 'otp') {
+            setOtpTransactionId(transactionId);
+            setOtpMessage(status.nextActionMessage ?? 'Demande au client son code de confirmation.');
+            setResult({
+              status: 'pending',
+              message: `Demande envoyée au ${phoneLabel} — un code de confirmation est requis pour finaliser.`,
+            });
+          } else if (status.nextActionType === 'ussd') {
+            setResult({
+              status: 'pending',
+              message: `Demande envoyée au ${phoneLabel} — dis au client de vérifier son téléphone et de valider avec son code Mobile Money pour finaliser le paiement.`,
+            });
+          } else if (status.nextActionType === 'redirection') {
+            setResult({
+              status: 'pending',
+              message: status.nextActionUrl
+                ? `Le client va recevoir un SMS avec un lien — tu peux aussi le lui partager toi-même en backup :`
+                : `Le client va recevoir un SMS de son opérateur (${phoneLabel}) avec un lien à ouvrir pour confirmer le paiement — rien d'autre à faire de ton côté.`,
+              link: status.nextActionUrl,
+              transactionId,
+            });
+          }
         }
       } catch {
         // on retente au prochain tick

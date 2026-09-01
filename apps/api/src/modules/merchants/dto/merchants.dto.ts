@@ -1,4 +1,4 @@
-import { IsIn, IsInt, IsOptional, IsPhoneNumber, IsPositive, IsString, MaxLength, Min, MinLength } from 'class-validator';
+import { IsIn, IsInt, IsOptional, IsPhoneNumber, IsPositive, IsString, MaxLength, Matches, Min, MinLength } from 'class-validator';
 
 export class CreateMerchantDto {
   @IsString()
@@ -153,6 +153,10 @@ export class CreateRetailerDto {
   @IsOptional()
   @IsString()
   ownerLastName?: string;
+
+  @IsOptional()
+  @Matches(/^\d{4,6}$/, { message: 'Le code PIN doit contenir entre 4 et 6 chiffres.' })
+  ownerPin?: string;
 }
 
 export class RetailerFundDto {

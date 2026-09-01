@@ -31,9 +31,9 @@ export default function DetaillantsPage() {
   const [ownerPhone, setOwnerPhone] = useState('');
   const [ownerFirstName, setOwnerFirstName] = useState('');
   const [ownerLastName, setOwnerLastName] = useState('');
+  const [ownerPin, setOwnerPin] = useState('');
   const [creating, setCreating] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
-  const [createdCreds, setCreatedCreds] = useState<{ phone: string; tempPassword: string } | null>(null);
 
   const [actionRetailer, setActionRetailer] = useState<Retailer | null>(null);
   const [actionType, setActionType] = useState<'fund' | 'debit' | null>(null);
@@ -65,27 +65,23 @@ export default function DetaillantsPage() {
     setCreating(true);
     setCreateError(null);
     try {
-      const res = await apiFetch<{ retailer: Retailer; tempPassword?: string }>(
-        `/merchants/${activeMerchant.merchantId}/retailers`,
-        {
-          method: 'POST',
-          body: JSON.stringify({
-            businessName,
-            category: category || undefined,
-            ownerPhone: ownerPhone || undefined,
-            ownerFirstName: ownerFirstName || undefined,
-            ownerLastName: ownerLastName || undefined,
-          }),
-        },
-      );
-      if (res.tempPassword) {
-        setCreatedCreds({ phone: ownerPhone, tempPassword: res.tempPassword });
-      }
+      await apiFetch(`/merchants/${activeMerchant.merchantId}/retailers`, {
+        method: 'POST',
+        body: JSON.stringify({
+          businessName,
+          category: category || undefined,
+          ownerPhone: ownerPhone || undefined,
+          ownerFirstName: ownerFirstName || undefined,
+          ownerLastName: ownerLastName || undefined,
+          ownerPin: ownerPin || undefined,
+        }),
+      });
       setBusinessName('');
       setCategory('');
       setOwnerPhone('');
       setOwnerFirstName('');
       setOwnerLastName('');
+      setOwnerPin('');
       setShowCreate(false);
       load();
     } catch (err) {
@@ -209,35 +205,32 @@ export default function DetaillantsPage() {
         >
           <div onClick={(e) => e.stopPropagation()} style={{ background: '#fff', borderRadius: 14, padding: 24, maxWidth: 420, width: '100%' }}>
             <h3 style={{ marginTop: 0, color: 'var(--mc-navy)' }}>Créer un détaillant</h3>
-            {createdCreds ? (
-              <div>
-                <p style={{ fontSize: 13.5 }}>
-                  Détaillant créé ✓ — identifiants pour <strong>{createdCreds.phone}</strong> :
-                </p>
-                <p style={{ fontFamily: 'monospace', background: '#f4f7f6', padding: 10, borderRadius: 8 }}>
-                  Mot de passe temporaire : {createdCreds.tempPassword}
-                </p>
-                <button className="mc-btn" onClick={() => setCreatedCreds(null)}>Fermer</button>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              <input className="mc-input" placeholder="Nom du détaillant *" value={businessName} onChange={(e) => setBusinessName(e.target.value)} />
+              <input className="mc-input" placeholder="Catégorie (optionnel)" value={category} onChange={(e) => setCategory(e.target.value)} />
+              <p style={{ fontSize: 12, color: 'var(--mc-muted)', margin: '4px 0 0' }}>
+                Accès de connexion (optionnel) — laisse vide si toi seul dois y accéder :
+              </p>
+              <input className="mc-input" placeholder="Numéro (+225...)" value={ownerPhone} onChange={(e) => setOwnerPhone(e.target.value)} />
+              <input className="mc-input" placeholder="Prénom" value={ownerFirstName} onChange={(e) => setOwnerFirstName(e.target.value)} />
+              <input className="mc-input" placeholder="Nom" value={ownerLastName} onChange={(e) => setOwnerLastName(e.target.value)} />
+              <input
+                className="mc-input"
+                placeholder="Code PIN (4 à 6 chiffres)"
+                type="password"
+                inputMode="numeric"
+                maxLength={6}
+                value={ownerPin}
+                onChange={(e) => setOwnerPin(e.target.value.replace(/\D/g, ''))}
+              />
+              {createError && <div className="mc-error">{createError}</div>}
+              <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+                <button className="mc-btn ghost" style={{ flex: 1 }} onClick={() => setShowCreate(false)}>Annuler</button>
+                <button className="mc-btn" style={{ flex: 1 }} disabled={creating || !businessName} onClick={createRetailer}>
+                  {creating ? 'Création...' : 'Créer'}
+                </button>
               </div>
-            ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                <input className="mc-input" placeholder="Nom du détaillant *" value={businessName} onChange={(e) => setBusinessName(e.target.value)} />
-                <input className="mc-input" placeholder="Catégorie (optionnel)" value={category} onChange={(e) => setCategory(e.target.value)} />
-                <p style={{ fontSize: 12, color: 'var(--mc-muted)', margin: '4px 0 0' }}>
-                  Accès dédié (optionnel) — laisse vide si toi seul dois y accéder :
-                </p>
-                <input className="mc-input" placeholder="Numéro (+225...)" value={ownerPhone} onChange={(e) => setOwnerPhone(e.target.value)} />
-                <input className="mc-input" placeholder="Prénom" value={ownerFirstName} onChange={(e) => setOwnerFirstName(e.target.value)} />
-                <input className="mc-input" placeholder="Nom" value={ownerLastName} onChange={(e) => setOwnerLastName(e.target.value)} />
-                {createError && <div className="mc-error">{createError}</div>}
-                <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
-                  <button className="mc-btn ghost" style={{ flex: 1 }} onClick={() => setShowCreate(false)}>Annuler</button>
-                  <button className="mc-btn" style={{ flex: 1 }} disabled={creating || !businessName} onClick={createRetailer}>
-                    {creating ? 'Création...' : 'Créer'}
-                  </button>
-                </div>
-              </div>
-            )}
+            </div>
           </div>
         </div>
       )}

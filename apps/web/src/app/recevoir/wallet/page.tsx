@@ -47,7 +47,7 @@ export default function RechargerWalletPage() {
 
   const pollTransactionStatus = (transactionId: string) => {
     let attempts = 0;
-    const maxAttempts = 15;
+    const maxAttempts = 60; // ~2 minutes — le client peut mettre du temps à valider (lien Wave, OTP...)
     const interval = setInterval(async () => {
       attempts += 1;
       try {
@@ -70,7 +70,9 @@ export default function RechargerWalletPage() {
           setNextAction(null);
           setResult({ status: 'failed', message: tx.failureReason ?? "La recharge n'a pas pu être finalisée." });
         } else if (tx.nextActionType && !nextAction) {
-          clearInterval(interval);
+          // On continue de surveiller (sans couper l'intervalle) — sinon le
+          // vrai succès/échec, qui arrive plus tard via webhook, ne serait
+          // jamais détecté et la fenêtre resterait ouverte indéfiniment.
           setResult(null);
           setNextAction({
             type: tx.nextActionType,
