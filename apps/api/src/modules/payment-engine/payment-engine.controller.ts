@@ -1,6 +1,6 @@
 import { Body, Controller, Get, Headers, Post, Query, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
-import { IsEnum, IsInt, IsOptional, IsPhoneNumber, IsPositive, IsString } from 'class-validator';
+import { IsEnum, IsIn, IsInt, IsOptional, IsPhoneNumber, IsPositive, IsString } from 'class-validator';
 import { PaymentEngineService } from './payment-engine.service';
 import { ReloadlyAdapter } from './providers/reloadly.adapter';
 import { TopupDto } from '../wallets/dto/wallets.dto';
@@ -51,6 +51,10 @@ export class SendExternalDto {
   @IsOptional()
   @IsString()
   recipientName?: string;
+
+  @IsOptional()
+  @IsIn(['CI', 'SN', 'ML', 'BF', 'BJ', 'TG', 'NE', 'GW', 'CM', 'GA', 'CG', 'TD', 'CF', 'GQ'], { message: 'Pays non pris en charge.' })
+  country?: string;
 }
 
 @ApiTags('wallets')
@@ -89,7 +93,7 @@ export class PaymentEngineController {
   ) {
     return this.paymentEngine.sendToExternalAccount(
       user.userId,
-      { operator: dto.operator, accountNumber: dto.accountNumber, amount: BigInt(dto.amount), pin: dto.pin, recipientName: dto.recipientName },
+      { operator: dto.operator, accountNumber: dto.accountNumber, amount: BigInt(dto.amount), pin: dto.pin, recipientName: dto.recipientName, country: dto.country },
       idempotencyKey,
     );
   }

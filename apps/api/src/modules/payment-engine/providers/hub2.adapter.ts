@@ -164,7 +164,7 @@ export class Hub2Adapter implements PaymentProviderAdapter {
     const attemptBody = {
       token: intent.token,
       paymentMethod: 'mobile_money',
-      country: 'CI',
+      country: params.country ?? 'CI',
       provider: params.provider.toLowerCase(),
       mobileMoney: {
         msisdn: params.customerPhone,
@@ -259,7 +259,7 @@ export class Hub2Adapter implements PaymentProviderAdapter {
       description: `MobilePay — envoi vers ${params.recipientName}`,
       destination: {
         type: 'mobile_money',
-        country: 'CI',
+        country: params.country ?? 'CI',
         msisdn: params.customerPhone,
         provider: params.provider.toLowerCase(),
         recipientName: params.recipientName,

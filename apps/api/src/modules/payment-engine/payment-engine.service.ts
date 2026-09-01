@@ -60,13 +60,14 @@ export class PaymentEngineService {
    */
   async sendToExternalAccount(
     userId: string,
-    params: { operator: 'ORANGE' | 'MOOV' | 'WAVE' | 'MTN'; accountNumber: string; amount: bigint; pin: string; recipientName?: string },
+    params: { operator: 'ORANGE' | 'MOOV' | 'WAVE' | 'MTN'; accountNumber: string; amount: bigint; pin: string; recipientName?: string; country?: string },
     idempotencyKey: string,
   ) {
     const existing = await this.prisma.transaction.findUnique({ where: { idempotencyKey } });
     if (existing) return existing;
 
     await this.verifyTransactionPin(userId, params.pin);
+    const sender = await this.prisma.user.findUniqueOrThrow({ where: { id: userId } });
 
     const label = OPERATOR_LABELS[params.operator];
 
@@ -109,6 +110,7 @@ export class PaymentEngineService {
       // bénéficiaire — à ajouter à terme. Repli générique en attendant.
       recipientName: params.recipientName ?? 'Bénéficiaire',
       reference: transaction.id,
+      country: params.country ?? sender.country,
     });
 
     await this.prisma.transaction.update({
@@ -293,6 +295,7 @@ export class PaymentEngineService {
       customerPhone: params.customerPhone,
       reference: transaction.id,
       provider: params.provider,
+      country: merchant.country,
     });
 
     await this.prisma.transaction.update({
@@ -364,6 +367,7 @@ export class PaymentEngineService {
       customerPhone: params.customerPhone,
       reference: transaction.id,
       provider: params.provider,
+      country: merchant.country,
     });
 
     await this.prisma.transaction.update({
@@ -475,6 +479,7 @@ export class PaymentEngineService {
     const recipientWallet = await this.prisma.wallet.findUniqueOrThrow({
       where: { userId: params.recipientUserId },
     });
+    const recipientUser = await this.prisma.user.findUniqueOrThrow({ where: { id: params.recipientUserId } });
     const guest = await this.getOrCreateGuestUser();
 
     const transaction = await this.prisma.transaction.create({
@@ -498,6 +503,7 @@ export class PaymentEngineService {
       customerPhone: params.customerPhone,
       reference: transaction.id,
       provider: params.provider,
+      country: recipientUser.country,
     });
 
     await this.prisma.transaction.update({
@@ -784,6 +790,7 @@ export class PaymentEngineService {
       customerPhone: user.phone,
       reference: transaction.id,
       provider: params.momoProvider,
+      country: user.country,
     });
 
     await this.prisma.paymentAttempt.create({
@@ -844,6 +851,7 @@ export class PaymentEngineService {
     await this.verifyTransactionPin(userId, params.pin);
 
     const wallet = await this.prisma.wallet.findUniqueOrThrow({ where: { userId } });
+    const user = await this.prisma.user.findUniqueOrThrow({ where: { id: userId } });
     const reference = `TOPUP-${nanoid(12)}`;
     const label = OPERATOR_LABELS[params.operator];
 
@@ -869,6 +877,7 @@ export class PaymentEngineService {
       customerPhone: params.accountNumber,
       reference: transaction.id,
       provider: params.operator.toLowerCase(),
+      country: user.country,
     });
 
     await this.prisma.transaction.update({
