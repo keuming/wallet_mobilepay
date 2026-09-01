@@ -56,11 +56,43 @@ export default function EnvoyerPage() {
     }
   };
 
+  const [pinError, setPinError] = useState<string | null>(null);
+
+  const pollTransactionStatus = (transactionId: string) => {
+    let attempts = 0;
+    const maxAttempts = 60; // ~2 minutes — un retrait HUB2 peut prendre un peu de temps
+    const interval = setInterval(async () => {
+      attempts += 1;
+      try {
+        const tx = await apiFetch<{ status: string; failureReason?: string }>(`/transactions/${transactionId}`);
+        if (tx.status === 'SUCCESS') {
+          clearInterval(interval);
+          setResult({
+            status: 'success',
+            message: `${Number(amount).toLocaleString('fr-FR')} FCFA envoyés à ${destinationInfo?.label}.`,
+          });
+          setTimeout(() => router.push('/dashboard'), 2000);
+        } else if (tx.status === 'FAILED') {
+          clearInterval(interval);
+          setResult({
+            status: 'failed',
+            message: tx.failureReason ?? "L'envoi n'a pas pu être finalisé. Aucun montant ne sera débité au-delà de la tentative.",
+          });
+          setTimeout(() => router.push('/dashboard'), 2500);
+        }
+      } catch {
+        // on retente au prochain tick
+      }
+      if (attempts >= maxAttempts) clearInterval(interval);
+    }, 2000);
+  };
+
   const handleSubmit = async () => {
     setError(null);
+    setPinError(null);
     setSubmitting(true);
     try {
-      let response: { status?: string };
+      let response: { status?: string; id?: string };
       if (destination === 'MOBILEPAY') {
         response = await apiFetch('/transfers', {
           method: 'POST',
@@ -93,22 +125,35 @@ export default function EnvoyerPage() {
           status: 'success',
           message: `${Number(amount).toLocaleString('fr-FR')} FCFA envoyés à ${destinationInfo?.label}.`,
         });
+        setTimeout(() => router.push('/dashboard'), 2000);
       } else if (response.status === 'PROCESSING' || response.status === 'PENDING' || response.status === 'INITIATED') {
+        if (response.id) {
+          pollTransactionStatus(response.id);
+        }
         setResult({
           status: 'pending',
           message: 'Votre envoi a été transmis et est en attente de confirmation par l\'opérateur.',
         });
       } else if (response.status === 'FAILED' || response.status === 'CANCELLED' || response.status === 'EXPIRED') {
         setResult({ status: 'failed', message: 'L\'envoi n\'a pas pu être finalisé. Aucun montant ne sera débité au-delà de la tentative.' });
+        setTimeout(() => router.push('/dashboard'), 2500);
       } else {
         // Réponse reçue mais sans statut exploitable — cas rare, on reste prudent.
         setResult({ status: 'unknown', message: 'La réponse du serveur est incomplète. Vérifiez votre historique pour confirmer l\'issue de cet envoi.' });
       }
     } catch (err) {
       if (err instanceof ApiError) {
-        // Le serveur a répondu avec une erreur explicite (solde insuffisant,
-        // code secret incorrect, destinataire introuvable...) — échec confirmé.
-        setResult({ status: 'failed', message: err.message });
+        if (err.statusCode === 401) {
+          // Code secret incorrect — on reste sur cette étape pour permettre
+          // de ressaisir, plutôt que de rediriger comme pour un vrai échec
+          // de transaction (fonds insuffisants, réseau, etc.).
+          setPinError(err.message);
+        } else {
+          // Le serveur a répondu avec une erreur explicite (solde insuffisant,
+          // destinataire introuvable...) — échec confirmé.
+          setResult({ status: 'failed', message: err.message });
+          setTimeout(() => router.push('/dashboard'), 2500);
+        }
       } else {
         // Aucune réponse exploitable du tout (coupure réseau, timeout) — l'issue
         // réelle de la transaction est inconnue, distincte d'un échec confirmé.
@@ -335,11 +380,15 @@ export default function EnvoyerPage() {
                 inputMode="numeric"
                 maxLength={6}
                 value={pin}
-                onChange={(e) => setPin(e.target.value.replace(/\D/g, ''))}
+                onChange={(e) => {
+                  setPin(e.target.value.replace(/\D/g, ''));
+                  setPinError(null);
+                }}
                 placeholder="••••"
                 autoFocus
               />
             </label>
+            {pinError && <div className="mp-error">{pinError}</div>}
           </>
         )}
 
