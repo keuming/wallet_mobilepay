@@ -4,7 +4,7 @@ import * as bcrypt from 'bcrypt';
 import { PrismaService } from '../../config/prisma.service';
 import { LedgerService } from '../ledger/ledger.service';
 import { ReloadlyAdapter } from '../payment-engine/providers/reloadly.adapter';
-import { normalizePhoneCI } from '../../common/utils/phone.util';
+import { normalizePhoneCI, normalizePhoneCandidates } from '../../common/utils/phone.util';
 import { CreateMerchantDto } from './dto/merchants.dto';
 
 const MAX_SERIALIZATION_RETRIES = 3;
@@ -308,7 +308,9 @@ export class MerchantsService {
       throw new BadRequestException('Ce marchand doit être actif pour effectuer un transfert.');
     }
 
-    const recipientUser = await this.prisma.user.findUnique({ where: { phone: normalizePhoneCI(dto.toPhone) } });
+    // § Le destinataire peut être dans un autre pays que le marchand —
+    // on essaie chaque pays supporté plutôt que de supposer 'CI'.
+    const recipientUser = await this.prisma.user.findFirst({ where: { phone: { in: normalizePhoneCandidates(dto.toPhone) } } });
     if (!recipientUser) {
       throw new NotFoundException('Aucun compte MobilePay associé à ce numéro.');
     }

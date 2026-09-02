@@ -11,7 +11,7 @@ import * as crypto from 'crypto';
 import { PrismaService } from '../../config/prisma.service';
 import { WalletsService } from '../wallets/wallets.service';
 import { SmsAdapter } from '../sms/sms.adapter';
-import { normalizePhoneCI } from '../../common/utils/phone.util';
+import { normalizePhoneCI, normalizePhoneCandidates } from '../../common/utils/phone.util';
 import { RegisterDto, LoginDto, RegisterWithPinDto } from './dto/auth.dto';
 
 const BCRYPT_ROUNDS = 12;
@@ -189,7 +189,11 @@ export class AuthService {
   }
 
   async login(dto: LoginDto) {
-    const user = await this.prisma.user.findUnique({ where: { phone: normalizePhoneCI(dto.phone) } });
+    // § Le numéro peut être saisi en format local sans indicatif — on ne
+    // sait pas encore à quel pays il appartient, donc on essaie chaque pays
+    // supporté jusqu'à trouver le compte, plutôt que de supposer 'CI'.
+    const candidates = normalizePhoneCandidates(dto.phone);
+    const user = await this.prisma.user.findFirst({ where: { phone: { in: candidates } } });
     if (!user || !(await bcrypt.compare(dto.password, user.passwordHash))) {
       throw new UnauthorizedException('Identifiants invalides.');
     }

@@ -1,5 +1,6 @@
 import { IsEmail, IsEnum, IsIn, IsOptional, IsPhoneNumber, IsString, Matches, MinLength } from 'class-validator';
 import { UserRole } from '@prisma/client';
+import { SUPPORTED_COUNTRIES } from '../../../common/utils/phone.util';
 
 export class RegisterDto {
   @IsPhoneNumber(undefined, { message: 'Numéro de téléphone invalide.' })
@@ -41,7 +42,6 @@ export class LoginDto {
  * Pays couverts par HUB2 (zones UEMOA + CEMAC) — liste partagée pour la
  * validation du champ pays à l'inscription et la création de comptes.
  */
-export const SUPPORTED_COUNTRIES = ['CI', 'SN', 'ML', 'BF', 'BJ', 'TG', 'NE', 'GW', 'CM', 'GA', 'CG', 'TD', 'CF', 'GQ'] as const;
 
 export class RegisterWithPinDto {
   @IsPhoneNumber(undefined, { message: 'Numéro de téléphone invalide.' })
