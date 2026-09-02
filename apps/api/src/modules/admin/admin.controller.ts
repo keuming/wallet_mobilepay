@@ -1,7 +1,10 @@
-import { Body, Controller, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Param, Patch, Post, Query, Res, UseGuards, UseInterceptors, UploadedFile, BadRequestException } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { IsBoolean, IsEnum, IsIn, IsInt, IsObject, IsOptional, IsPhoneNumber, IsPositive, IsString, Matches, MinLength } from 'class-validator';
+import { Type } from 'class-transformer';
 import { MerchantStatus, TransactionStatus } from '@prisma/client';
+import { Response } from 'express';
 import { AdminService } from './admin.service';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
@@ -113,6 +116,39 @@ export class ResetPasswordDto {
 export class UpdatePhoneDto {
   @IsPhoneNumber(undefined, { message: 'Numéro de téléphone invalide.' })
   newPhone: string;
+}
+
+/** Forme minimale d'un fichier Multer — évite de dépendre du type Express.Multer.File (paquet @types/multer absent). */
+interface UploadedMulterFile {
+  originalname: string;
+  mimetype: string;
+  buffer: Buffer;
+  size: number;
+}
+
+export class RecordManualFundingDto {
+  @IsIn(['PARTICULIER', 'MERCHANT'])
+  targetType: 'PARTICULIER' | 'MERCHANT';
+
+  @IsOptional()
+  @IsString()
+  targetUserId?: string;
+
+  @IsOptional()
+  @IsString()
+  targetMerchantId?: string;
+
+  @IsInt()
+  @IsPositive()
+  @Type(() => Number)
+  amount: number;
+
+  @IsIn(['WALLET_RECHARGE', 'AIRTIME_DATA', 'TRANSFER', 'CARD_LOAD', 'BULK_PAYMENT', 'BANK_TRANSFER', 'OTHER'])
+  serviceType: string;
+
+  @IsOptional()
+  @IsString()
+  note?: string;
 }
 
 export class UpdateMerchantDto {
@@ -255,6 +291,38 @@ export class AdminController {
   @Get('users/:id')
   getUser(@Param('id') id: string) {
     return this.adminService.getUserDetail(id);
+  }
+
+  // --- § Approvisionnement manuel (preuve de remise de fonds) ---
+
+  @Post('manual-funding')
+  @UseInterceptors(FileInterceptor('proof'))
+  async recordManualFunding(
+    @Body() dto: RecordManualFundingDto,
+    @UploadedFile() file: UploadedMulterFile,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    if (!file) {
+      throw new BadRequestException('Le justificatif (image ou PDF) est requis.');
+    }
+    return this.adminService.recordManualFunding(
+      dto,
+      { fileName: file.originalname, mimeType: file.mimetype, data: file.buffer.toString('base64') },
+      user.userId,
+    );
+  }
+
+  @Get('manual-funding')
+  listManualFundings(@Query('page') page?: string) {
+    return this.adminService.listManualFundings(page ? Number(page) : 1);
+  }
+
+  @Get('manual-funding/:id/proof')
+  async getManualFundingProof(@Param('id') id: string, @Res() res: Response) {
+    const proof = await this.adminService.getManualFundingProof(id);
+    res.setHeader('Content-Type', proof.proofMimeType);
+    res.setHeader('Content-Disposition', `inline; filename="${proof.proofFileName}"`);
+    res.send(Buffer.from(proof.proofData, 'base64'));
   }
 
   @Patch('users/:id')

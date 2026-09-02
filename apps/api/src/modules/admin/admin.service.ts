@@ -5,9 +5,20 @@ import * as bcrypt from 'bcrypt';
 import { PrismaService } from '../../config/prisma.service';
 import { Hub2Adapter } from '../payment-engine/providers/hub2.adapter';
 import { ReloadlyAdapter } from '../payment-engine/providers/reloadly.adapter';
+import { LedgerService } from '../ledger/ledger.service';
 import { normalizePhoneCI } from '../../common/utils/phone.util';
 
 const PAGE_SIZE_DEFAULT = 20;
+
+const MANUAL_FUNDING_SERVICE_LABELS: Record<string, string> = {
+  WALLET_RECHARGE: 'Recharge wallet',
+  AIRTIME_DATA: "Crédit d'appel et data",
+  TRANSFER: "Transfert d'argent",
+  CARD_LOAD: 'Rechargement carte virtuelle',
+  BULK_PAYMENT: 'Bulk paiement',
+  BANK_TRANSFER: 'Virement bancaire',
+  OTHER: 'Autre',
+};
 
 // Grille tarifaire HUB2 réelle (tableau de frais du compte marchand CSN,
 // consultée le 28/08/2026 — à mettre à jour si HUB2 republie de nouveaux
@@ -31,6 +42,7 @@ export class AdminService {
     private config: ConfigService,
     private hub2: Hub2Adapter,
     private reloadly: ReloadlyAdapter,
+    private ledger: LedgerService,
   ) {}
 
   /**
@@ -220,6 +232,134 @@ export class AdminService {
         ownerCreated: !ownerExistedAlready,
       };
     });
+  }
+
+  /**
+   * § Approvisionnement manuel — un client dépose de l'argent hors
+   * plateforme (espèces, virement, chèque) et envoie une preuve ; un
+   * comptable enregistre ici le crédit correspondant sur le wallet
+   * particulier ou marchand, avec le justificatif joint.
+   */
+  async recordManualFunding(
+    dto: {
+      targetType: 'PARTICULIER' | 'MERCHANT';
+      targetUserId?: string;
+      targetMerchantId?: string;
+      amount: number;
+      serviceType: string;
+      note?: string;
+    },
+    proof: { fileName: string; mimeType: string; data: string },
+    recordedByUserId: string,
+  ) {
+    if (dto.targetType === 'PARTICULIER' && !dto.targetUserId) {
+      throw new BadRequestException('Compte particulier requis.');
+    }
+    if (dto.targetType === 'MERCHANT' && !dto.targetMerchantId) {
+      throw new BadRequestException('Compte marchand requis.');
+    }
+
+    const wallet =
+      dto.targetType === 'PARTICULIER'
+        ? await this.prisma.wallet.findUniqueOrThrow({ where: { userId: dto.targetUserId } })
+        : await this.prisma.wallet.findUniqueOrThrow({ where: { merchantId: dto.targetMerchantId } });
+
+    const amount = BigInt(dto.amount);
+    const serviceLabel = MANUAL_FUNDING_SERVICE_LABELS[dto.serviceType] ?? dto.serviceType;
+
+    return this.prisma.$transaction(async (tx) => {
+      const transaction = await tx.transaction.create({
+        data: {
+          type: 'TOPUP',
+          status: 'SUCCESS',
+          amount,
+          feeAmount: 0n,
+          destWalletId: wallet.id,
+          initiatedByUserId: recordedByUserId,
+          description: `Approvisionnement manuel — ${serviceLabel}${dto.note ? ` (${dto.note})` : ''}`,
+          providerName: 'MANUAL',
+        },
+      });
+
+      await this.ledger.postDoubleEntry(tx, {
+        transactionId: transaction.id,
+        fromWalletId: null,
+        toWalletId: wallet.id,
+        amount,
+        description: `Approvisionnement manuel — ${serviceLabel}`,
+      });
+
+      await tx.manualFunding.create({
+        data: {
+          targetType: dto.targetType,
+          targetUserId: dto.targetUserId,
+          targetMerchantId: dto.targetMerchantId,
+          amount,
+          serviceType: dto.serviceType,
+          note: dto.note,
+          proofFileName: proof.fileName,
+          proofMimeType: proof.mimeType,
+          proofData: proof.data,
+          transactionId: transaction.id,
+          recordedByUserId,
+        },
+      });
+
+      return { transaction, message: 'Approvisionnement enregistré avec succès.' };
+    });
+  }
+
+  /** Historique des approvisionnements manuels (§ back-office admin). */
+  async listManualFundings(page = 1) {
+    const [items, total] = await this.prisma.$transaction([
+      this.prisma.manualFunding.findMany({
+        orderBy: { createdAt: 'desc' },
+        skip: (page - 1) * PAGE_SIZE_DEFAULT,
+        take: PAGE_SIZE_DEFAULT,
+        select: {
+          id: true,
+          targetType: true,
+          targetUserId: true,
+          targetMerchantId: true,
+          amount: true,
+          serviceType: true,
+          note: true,
+          proofFileName: true,
+          proofMimeType: true,
+          createdAt: true,
+        },
+      }),
+      this.prisma.manualFunding.count(),
+    ]);
+
+    const userIds = items.filter((i) => i.targetUserId).map((i) => i.targetUserId!);
+    const merchantIds = items.filter((i) => i.targetMerchantId).map((i) => i.targetMerchantId!);
+    const [users, merchants] = await Promise.all([
+      userIds.length
+        ? this.prisma.user.findMany({ where: { id: { in: userIds } }, select: { id: true, firstName: true, lastName: true } })
+        : [],
+      merchantIds.length
+        ? this.prisma.merchant.findMany({ where: { id: { in: merchantIds } }, select: { id: true, businessName: true } })
+        : [],
+    ]);
+    const userMap = new Map(users.map((u) => [u.id, `${u.firstName} ${u.lastName}`]));
+    const merchantMap = new Map(merchants.map((m) => [m.id, m.businessName]));
+
+    const enriched = items.map((i) => ({
+      ...i,
+      accountLabel: i.targetUserId ? (userMap.get(i.targetUserId) ?? '—') : (merchantMap.get(i.targetMerchantId!) ?? '—'),
+    }));
+
+    return { items: enriched, total, page, pageSize: PAGE_SIZE_DEFAULT };
+  }
+
+  /** Récupère la preuve d'un approvisionnement (§ affichage/téléchargement admin). */
+  async getManualFundingProof(id: string) {
+    const record = await this.prisma.manualFunding.findUniqueOrThrow({
+      where: { id },
+      select: { proofFileName: true, proofMimeType: true, proofData: true },
+    });
+    return record;
   }
 
   async updateUser(id: string, dto: { firstName?: string; lastName?: string }) {

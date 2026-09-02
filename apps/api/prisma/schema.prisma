@@ -256,6 +256,30 @@ model Merchant {
 
 // Encaissement en espèces (§ Phase A Business — le client paie en liquide,
 // le marchand enregistre simplement le montant pour son suivi comptable).
+// Approvisionnement manuel (§ back-office admin) — un client dépose de
+// l'argent en espèces/virement/chèque hors plateforme et envoie une preuve ;
+// un comptable enregistre ici le crédit correspondant, avec justificatif
+// joint (stocké en base64 — pas de service de stockage externe configuré).
+model ManualFunding {
+  id                String   @id @default(uuid())
+  targetType        String   // 'PARTICULIER' | 'MERCHANT'
+  targetUserId      String?
+  targetMerchantId  String?
+  amount            BigInt
+  serviceType       String   // 'WALLET_RECHARGE' | 'AIRTIME_DATA' | 'TRANSFER' | 'CARD_LOAD' | 'BULK_PAYMENT' | 'BANK_TRANSFER' | 'OTHER'
+  note              String?
+  proofFileName     String
+  proofMimeType     String
+  proofData         String   // base64
+  transactionId     String?  @unique
+  recordedByUserId  String
+  createdAt         DateTime @default(now())
+
+  @@index([targetUserId])
+  @@index([targetMerchantId])
+  @@map("manual_fundings")
+}
+
 // Vérification de numéro par code OTP (§ inscription — évite les comptes
 // créés avec un numéro mal saisi, jamais accessibles ensuite). Le code n'est
 // jamais stocké en clair, seulement son hash.
