@@ -42,7 +42,7 @@ export class SendExternalDto {
   @IsEnum(['ORANGE', 'MOOV', 'WAVE', 'MTN'])
   operator: 'ORANGE' | 'MOOV' | 'WAVE' | 'MTN';
 
-  @IsPhoneNumber('CI', { message: 'Numéro de compte destinataire invalide.' })
+  @IsPhoneNumber(undefined, { message: 'Numéro de compte destinataire invalide.' })
   accountNumber: string;
 
   @IsInt()

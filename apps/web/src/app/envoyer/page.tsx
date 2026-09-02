@@ -7,6 +7,24 @@ import { apiFetch, ApiError } from '../../lib/apiClient';
 import StatusModal, { ResultStatus } from '../../components/StatusModal';
 import PaymentMethodBadge, { PaymentMethodId } from '../../components/PaymentMethodBadge';
 import PasswordInput from '../../components/PasswordInput';
+import { useAuth } from '../../contexts/AuthContext';
+
+const COUNTRIES = [
+  { code: 'CI', label: "Côte d'Ivoire" },
+  { code: 'SN', label: 'Sénégal' },
+  { code: 'ML', label: 'Mali' },
+  { code: 'BF', label: 'Burkina Faso' },
+  { code: 'BJ', label: 'Bénin' },
+  { code: 'TG', label: 'Togo' },
+  { code: 'NE', label: 'Niger' },
+  { code: 'GW', label: 'Guinée-Bissau' },
+  { code: 'CM', label: 'Cameroun' },
+  { code: 'GA', label: 'Gabon' },
+  { code: 'CG', label: 'Congo' },
+  { code: 'TD', label: 'Tchad' },
+  { code: 'CF', label: 'République Centrafricaine' },
+  { code: 'GQ', label: 'Guinée Équatoriale' },
+];
 
 type Destination = 'MOBILEPAY' | 'ORANGE' | 'MOOV' | 'WAVE' | 'MTN' | 'VISA' | 'VIREMENT';
 
@@ -24,9 +42,11 @@ const STEPS = ['Destination', 'Compte', 'Montant', 'Résumé', 'Code secret'];
 
 export default function EnvoyerPage() {
   const router = useRouter();
+  const { user } = useAuth();
   const [step, setStep] = useState(0);
   const [destination, setDestination] = useState<Destination | null>(null);
   const [accountNumber, setAccountNumber] = useState('');
+  const [destCountry, setDestCountry] = useState('CI');
   const [amount, setAmount] = useState('');
   const [description, setDescription] = useState('');
   const [pin, setPin] = useState('');
@@ -38,6 +58,10 @@ export default function EnvoyerPage() {
   useEffect(() => {
     apiFetch<{ hasPin: boolean }>('/auth/pin/status').then((res) => setHasPin(res.hasPin));
   }, []);
+
+  useEffect(() => {
+    if (user?.country) setDestCountry(user.country);
+  }, [user?.country]);
 
   const canGoNext = (): boolean => {
     switch (step) {
@@ -113,6 +137,7 @@ export default function EnvoyerPage() {
             accountNumber,
             amount: Math.round(Number(amount) * 100),
             pin,
+            country: destCountry,
           }),
         });
       }
@@ -251,17 +276,34 @@ export default function EnvoyerPage() {
 
         {/* Étape 2 : Numéro de compte */}
         {step === 1 && (
-          <label>
-            Numéro de compte {destinationInfo?.label}
-            <input
-              className="mp-input"
-              style={{ width: '100%', marginTop: 6 }}
-              value={accountNumber}
-              onChange={(e) => setAccountNumber(e.target.value)}
-              placeholder="+2250700000000"
-              autoFocus
-            />
-          </label>
+          <>
+            {destination !== 'MOBILEPAY' && (
+              <label>
+                Pays du destinataire
+                <select
+                  className="mp-input"
+                  style={{ width: '100%', marginTop: 6, marginBottom: 14 }}
+                  value={destCountry}
+                  onChange={(e) => setDestCountry(e.target.value)}
+                >
+                  {COUNTRIES.map((c) => (
+                    <option key={c.code} value={c.code}>{c.label}</option>
+                  ))}
+                </select>
+              </label>
+            )}
+            <label>
+              Numéro de compte {destinationInfo?.label}
+              <input
+                className="mp-input"
+                style={{ width: '100%', marginTop: 6 }}
+                value={accountNumber}
+                onChange={(e) => setAccountNumber(e.target.value)}
+                placeholder="+2250700000000"
+                autoFocus
+              />
+            </label>
+          </>
         )}
 
         {/* Étape 3 : Montant */}
@@ -318,6 +360,12 @@ export default function EnvoyerPage() {
                 <span className="k">Numéro de compte</span>
                 <span className="v">{accountNumber}</span>
               </div>
+              {destination !== 'MOBILEPAY' && (
+                <div className="mp-detail-row">
+                  <span className="k">Pays</span>
+                  <span className="v">{COUNTRIES.find((c) => c.code === destCountry)?.label}</span>
+                </div>
+              )}
               <div className="mp-detail-row">
                 <span className="k">Montant</span>
                 <span className="v" style={{ fontSize: 16, color: 'var(--mp-green-dark)' }}>
