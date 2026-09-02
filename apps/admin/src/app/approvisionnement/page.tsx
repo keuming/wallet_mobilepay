@@ -43,7 +43,7 @@ function fcfa(cents: number): string {
 }
 
 export default function ApprovisionnementPage() {
-  const { user, loading } = useAuth();
+  const { admin, loading } = useAuth();
   const router = useRouter();
 
   const [targetType, setTargetType] = useState<'PARTICULIER' | 'MERCHANT'>('PARTICULIER');
@@ -73,13 +73,13 @@ export default function ApprovisionnementPage() {
 
   useEffect(() => {
     if (loading) return;
-    if (!user) {
+    if (!admin) {
       router.replace('/login');
       return;
     }
     loadHistory();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user, loading, router]);
+  }, [admin, loading, router]);
 
   const doSearch = async () => {
     if (!search) return;
@@ -143,7 +143,7 @@ export default function ApprovisionnementPage() {
     }
   };
 
-  if (loading || !user) return null;
+  if (loading || !admin) return null;
 
   return (
     <AdminShell title="Approvisionnement">
