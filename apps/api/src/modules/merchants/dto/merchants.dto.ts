@@ -118,7 +118,7 @@ export class DebitDirectDto {
   description?: string;
 }
 
-/** Paiement public (sans connexion) via Mobile Money externe — § pay.mobilepay.ci */
+/** Paiement public (sans connexion) via Mobile Money externe — § pay.mobilepay-ci.com */
 export class PayExternalDto {
   @IsOptional()
   @IsInt()

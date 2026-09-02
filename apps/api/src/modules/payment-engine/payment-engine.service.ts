@@ -416,7 +416,7 @@ export class PaymentEngineService {
   }
 
   /**
-   * Utilisateur système "invité" (§ page de paiement publique pay.mobilepay.ci)
+   * Utilisateur système "invité" (§ page de paiement publique pay.mobilepay-ci.com)
    * — sert de valeur pour `initiatedByUserId` (champ requis) lorsqu'un client
    * SANS compte MobilePay paie via Mobile Money externe. Créé une seule fois,
    * réutilisé ensuite (jamais de mot de passe fonctionnel, jamais connecté).
@@ -440,7 +440,7 @@ export class PaymentEngineService {
   }
 
   /**
-   * Paiement public d'un marchand via Mobile Money externe (§ pay.mobilepay.ci)
+   * Paiement public d'un marchand via Mobile Money externe (§ pay.mobilepay-ci.com)
    * — pour un client SANS compte MobilePay, scannant un QR ou ouvrant un lien.
    * Même mécanique que `debitDirect`, mais initiée par le CLIENT lui-même
    * (page publique, sans connexion), pas par le marchand.
@@ -465,7 +465,7 @@ export class PaymentEngineService {
 
   /**
    * Envoie de l'argent à un PARTICULIER via Mobile Money externe (§ QR/lien
-   * personnel sur pay.mobilepay.ci) — pour un payeur SANS compte MobilePay.
+   * personnel sur pay.mobilepay-ci.com) — pour un payeur SANS compte MobilePay.
    * Distinct de payMerchantAnonymously : pas de frais marchand, crédite
    * directement le wallet du particulier destinataire, type TRANSFER.
    */

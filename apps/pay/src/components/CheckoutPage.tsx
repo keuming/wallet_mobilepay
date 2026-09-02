@@ -24,7 +24,7 @@ function fcfa(cents: number): string {
 }
 
 /**
- * Page de paiement publique (§ pay.mobilepay.ci) — accessible sans compte
+ * Page de paiement publique (§ pay.mobilepay-ci.com) — accessible sans compte
  * MobilePay. Le client choisit soit de payer avec son solde MobilePay (s'il
  * en a un, redirection vers le wallet), soit avec un autre Mobile Money
  * (Orange/MTN/Moov/Wave), directement sur cette page sans connexion.

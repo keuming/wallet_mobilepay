@@ -92,7 +92,7 @@ export class QrController {
     return this.qrService.payPaymentLink(user.userId, slug, amount, fundingSource, pin, idempotencyKey, customerPhone, provider);
   }
 
-  // --- Paiement PUBLIC, sans connexion (§ pay.mobilepay.ci) — client sans
+  // --- Paiement PUBLIC, sans connexion (§ pay.mobilepay-ci.com) — client sans
   // compte MobilePay, via Mobile Money externe uniquement. ---
   @Post('qr/:code/pay-external')
   payQrExternal(

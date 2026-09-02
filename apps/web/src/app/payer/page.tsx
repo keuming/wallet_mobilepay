@@ -163,7 +163,7 @@ function PayerContent() {
     }
   };
 
-  // Préremplissage automatique depuis pay.mobilepay.ci (§ page publique) —
+  // Préremplissage automatique depuis pay.mobilepay-ci.com (§ page publique) —
   // le client a choisi "Payer avec MobilePay" et arrive ici avec le QR/lien
   // déjà identifié, pas besoin de le ressaisir.
   useEffect(() => {
