@@ -185,7 +185,7 @@ export class AdminService {
     country?: string;
     feeRateBps?: number;
   }) {
-    let owner = await this.prisma.user.findUnique({ where: { phone: normalizePhoneCI(dto.ownerPhone) } });
+    let owner = await this.prisma.user.findUnique({ where: { phone: normalizePhoneCI(dto.ownerPhone, (dto.country as any) ?? 'CI') } });
     const ownerExistedAlready = !!owner; // capturé AVANT toute réaffectation ci-dessous
     if (!ownerExistedAlready && !dto.ownerPin) {
       throw new BadRequestException('Un code PIN est requis pour créer le compte du titulaire.');
@@ -196,7 +196,7 @@ export class AdminService {
         const passwordHash = await bcrypt.hash(dto.ownerPin!, 12);
         owner = await tx.user.create({
           data: {
-            phone: normalizePhoneCI(dto.ownerPhone),
+            phone: normalizePhoneCI(dto.ownerPhone, (dto.country as any) ?? 'CI'),
             firstName: dto.ownerFirstName,
             lastName: dto.ownerLastName,
             country: dto.country ?? 'CI',

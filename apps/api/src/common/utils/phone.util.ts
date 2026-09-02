@@ -1,17 +1,21 @@
-import { parsePhoneNumber } from 'libphonenumber-js';
+import { parsePhoneNumber, CountryCode } from 'libphonenumber-js';
 
 /**
- * Normalise un numéro de téléphone ivoirien (local ou international) vers
- * le format E.164 complet (+225...), tel que stocké en base sur User.phone.
- * Sans cette normalisation, une recherche par numéro échoue silencieusement
- * dès que l'utilisateur saisit le format local (ex: "0700000001" au lieu de
- * "+2250700000001"), même si ce compte existe bel et bien.
- * Retourne le numéro tel quel si le format est invalide — laisse la
- * validation en amont (class-validator @IsPhoneNumber) gérer le rejet.
+ * Normalise un numéro de téléphone (local ou international) vers le format
+ * E.164 complet, tel que stocké en base sur User.phone.
+ *
+ * § Correction multi-pays : le paramètre `defaultCountry` sert d'indice
+ * UNIQUEMENT quand le numéro est saisi sans "+" explicite (format local).
+ * Un numéro avec "+" (ex: +221771234567) est toujours interprété
+ * correctement quel que soit ce paramètre — libphonenumber-js lit le vrai
+ * indicatif dans le numéro lui-même. Le défaut 'CI' ne sert que de repli
+ * pour les appels historiques qui ne connaissent pas encore le pays réel
+ * (connexion, recherche) — partout où le pays de l'utilisateur est connu
+ * (inscription, création de compte), il doit être transmis explicitement.
  */
-export function normalizePhoneCI(phone: string): string {
+export function normalizePhoneCI(phone: string, defaultCountry: CountryCode = 'CI'): string {
   try {
-    return parsePhoneNumber(phone, 'CI').number;
+    return parsePhoneNumber(phone, defaultCountry).number;
   } catch {
     return phone;
   }

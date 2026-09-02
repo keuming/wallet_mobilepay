@@ -112,7 +112,7 @@ export class MerchantsService {
       // avec le PIN choisi par le distributeur, pas un mot de passe généré
       // au hasard et affiché une seule fois.
       if (dto.ownerPhone && dto.ownerPin) {
-        const phone = normalizePhoneCI(dto.ownerPhone);
+        const phone = normalizePhoneCI(dto.ownerPhone, retailer.country as any);
         let owner = await tx.user.findUnique({ where: { phone } });
         if (!owner) {
           const passwordHash = await bcrypt.hash(dto.ownerPin, 12);

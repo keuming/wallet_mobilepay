@@ -52,7 +52,7 @@ export default function InscriptionPage() {
     setError(null);
     setSubmitting(true);
     try {
-      await apiFetch('/auth/phone/send-otp', { method: 'POST', auth: false, body: JSON.stringify({ phone }) });
+      await apiFetch('/auth/phone/send-otp', { method: 'POST', auth: false, body: JSON.stringify({ phone, country }) });
       setStep('otp');
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Échec de l'envoi du code.");
@@ -65,7 +65,7 @@ export default function InscriptionPage() {
     setError(null);
     setSubmitting(true);
     try {
-      await apiFetch('/auth/phone/verify-otp', { method: 'POST', auth: false, body: JSON.stringify({ phone, code: otpCode }) });
+      await apiFetch('/auth/phone/verify-otp', { method: 'POST', auth: false, body: JSON.stringify({ phone, code: otpCode, country }) });
       setStep('details');
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Code incorrect.');

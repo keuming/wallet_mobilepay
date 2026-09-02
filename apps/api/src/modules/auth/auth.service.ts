@@ -31,8 +31,8 @@ export class AuthService {
    * numéro est bien saisi correctement et joignable, avant de créer le
    * compte). Limite à un envoi par minute pour éviter le spam.
    */
-  async sendPhoneOtp(phoneRaw: string) {
-    const phone = normalizePhoneCI(phoneRaw);
+  async sendPhoneOtp(phoneRaw: string, country?: string) {
+    const phone = normalizePhoneCI(phoneRaw, (country as any) ?? 'CI');
 
     const recent = await this.prisma.phoneVerification.findFirst({
       where: { phone, purpose: 'REGISTRATION', createdAt: { gte: new Date(Date.now() - 60_000) } },
@@ -70,8 +70,8 @@ export class AuthService {
    * ce numéro comme vérifié, pour un temps limité, avant l'inscription
    * effective (§ registerWithPin exige cette vérification récente).
    */
-  async verifyPhoneOtp(phoneRaw: string, code: string) {
-    const phone = normalizePhoneCI(phoneRaw);
+  async verifyPhoneOtp(phoneRaw: string, code: string, country?: string) {
+    const phone = normalizePhoneCI(phoneRaw, (country as any) ?? 'CI');
     const verification = await this.prisma.phoneVerification.findFirst({
       where: { phone, purpose: 'REGISTRATION', verified: false, expiresAt: { gte: new Date() } },
       orderBy: { createdAt: 'desc' },
@@ -137,7 +137,7 @@ export class AuthService {
    * (mot de passe et PIN restent indépendants pour eux).
    */
   async registerWithPin(dto: RegisterWithPinDto) {
-    const phone = normalizePhoneCI(dto.phone);
+    const phone = normalizePhoneCI(dto.phone, (dto.country as any) ?? 'CI');
     const existing = await this.prisma.user.findUnique({ where: { phone } });
     if (existing) {
       throw new ConflictException('Un compte existe déjà avec ce numéro de téléphone.');

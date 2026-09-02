@@ -35,14 +35,14 @@ export class AuthController {
   /** Inscription simplifiée — un seul code PIN (§ carte d'accueil après installation). */
   /** Envoie un code de vérification par SMS (§ inscription). */
   @Post('phone/send-otp')
-  sendPhoneOtp(@Body('phone') phone: string) {
-    return this.authService.sendPhoneOtp(phone);
+  sendPhoneOtp(@Body('phone') phone: string, @Body('country') country?: string) {
+    return this.authService.sendPhoneOtp(phone, country);
   }
 
   /** Vérifie le code reçu par SMS (§ inscription). */
   @Post('phone/verify-otp')
-  verifyPhoneOtp(@Body('phone') phone: string, @Body('code') code: string) {
-    return this.authService.verifyPhoneOtp(phone, code);
+  verifyPhoneOtp(@Body('phone') phone: string, @Body('code') code: string, @Body('country') country?: string) {
+    return this.authService.verifyPhoneOtp(phone, code, country);
   }
 
   @Post('register-pin')
