@@ -134,6 +134,7 @@ enum ProviderName {
   PAYPAL
   RELOADLY
   CARD_ISSUER
+  MANUAL
 }
 
 enum WebhookStatus {
