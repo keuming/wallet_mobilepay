@@ -114,6 +114,15 @@ export class WebhooksService {
         verification.failureReason,
       );
     }
+    if (transaction.type === 'AIRTIME' && transaction.providerName === 'HUB2') {
+      // § Ne déclenche Reloadly qu'ici, une fois le paiement du client
+      // réellement confirmé — jamais avant (voir correction sécurité).
+      await this.paymentEngine.completeAirtimeMobileMoneyDeposit(
+        transaction.id,
+        verification.status === 'SUCCESS',
+        verification.failureReason,
+      );
+    }
 
     await this.prisma.webhookEvent.update({
       where: { id: event.id },

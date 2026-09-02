@@ -758,6 +758,12 @@ export class PaymentEngineService {
    * champ de métadonnées sur Transaction pour porter operatorId/kind entre les
    * deux étapes asynchrones — TODO Phase 6).
    */
+  /**
+   * § Correction sécurité — Reloadly n'est JAMAIS appelé ici. On se contente
+   * de lancer la collecte HUB2 et de mémoriser les détails de l'achat ;
+   * c'est le webhook (§ completeAirtimeMobileMoneyDeposit), une fois le
+   * paiement du client réellement confirmé, qui déclenche Reloadly.
+   */
   private async purchaseAirtimeFromMobileMoney(
     userId: string,
     params: {
@@ -775,6 +781,7 @@ export class PaymentEngineService {
     }
     const label = params.kind === 'DATA' ? 'Forfait data' : 'Recharge crédit';
     const user = await this.prisma.user.findUniqueOrThrow({ where: { id: userId } });
+    const countryCode = params.countryCode ?? user.country;
 
     const transaction = await this.prisma.transaction.create({
       data: {
@@ -782,9 +789,21 @@ export class PaymentEngineService {
         status: 'PROCESSING',
         amount: params.amount,
         initiatedByUserId: userId,
-        description: `${label} ${params.phoneNumber} (Mobile Money)`,
-        providerName: 'RELOADLY',
+        description: `${label} ${params.phoneNumber} (Mobile Money) — en attente de confirmation du paiement`,
+        providerName: 'HUB2',
+        operatorId: params.operatorId,
+        airtimeKind: params.kind,
         idempotencyKey,
+      },
+    });
+
+    await this.prisma.pendingAirtimeDelivery.create({
+      data: {
+        transactionId: transaction.id,
+        phoneNumber: params.phoneNumber,
+        operatorId: params.operatorId,
+        kind: params.kind,
+        countryCode,
       },
     });
 
@@ -795,9 +814,13 @@ export class PaymentEngineService {
       customerPhone: user.phone,
       reference: transaction.id,
       provider: params.momoProvider,
-      country: user.country,
+      country: countryCode,
     });
 
+    await this.prisma.transaction.update({
+      where: { id: transaction.id },
+      data: { providerRef: collection.providerRef },
+    });
     await this.prisma.paymentAttempt.create({
       data: {
         transactionId: transaction.id,
@@ -808,13 +831,50 @@ export class PaymentEngineService {
       },
     });
 
+    return {
+      ...transaction,
+      providerRef: collection.providerRef,
+      nextActionType: collection.nextActionType,
+      nextActionMessage: collection.nextActionMessage,
+    };
+  }
+
+  /**
+   * Appelé par WebhooksService une fois le paiement Mobile Money du client
+   * CONFIRMÉ (succès ou échec réel, jamais une supposition) — ne déclenche
+   * Reloadly que si le paiement a effectivement réussi.
+   */
+  async completeAirtimeMobileMoneyDeposit(transactionId: string, paymentSuccess: boolean, failureReason?: string) {
+    const transaction = await this.prisma.transaction.findUniqueOrThrow({ where: { id: transactionId } });
+    if (transaction.status === 'SUCCESS' || transaction.status === 'FAILED') {
+      return transaction; // déjà traité — idempotence webhook
+    }
+
+    if (!paymentSuccess) {
+      // Le client n'a pas payé (ou a annulé) — aucun crédit envoyé, aucune
+      // perte pour MobilePay. C'est précisément le cas que corrige ce chantier.
+      return this.prisma.transaction.update({
+        where: { id: transactionId },
+        data: { status: 'FAILED', failureReason: failureReason ?? "Le paiement n'a pas pu être confirmé." },
+      });
+    }
+
+    const pending = await this.prisma.pendingAirtimeDelivery.findUnique({ where: { transactionId } });
+    if (!pending) {
+      // Ne devrait jamais arriver — garde-fou pour éviter un crash silencieux.
+      return this.prisma.transaction.update({
+        where: { id: transactionId },
+        data: { status: 'FAILED', failureReason: 'Détails de livraison introuvables.' },
+      });
+    }
+
     const result = await this.reloadly.purchaseAirtime({
-      phoneNumber: params.phoneNumber,
-      operatorId: params.operatorId,
-      amount: params.amount,
-      kind: params.kind,
+      phoneNumber: pending.phoneNumber,
+      operatorId: pending.operatorId ?? undefined,
+      amount: transaction.amount,
+      kind: pending.kind as 'AIRTIME' | 'DATA',
       reference: transaction.id,
-      countryCode: params.countryCode ?? user.country,
+      countryCode: pending.countryCode,
     });
 
     const finalStatus = result.status === 'SUCCESS' ? 'SUCCESS' : 'FAILED';
@@ -829,23 +889,23 @@ export class PaymentEngineService {
       },
     });
 
-    // Rien à rembourser côté MobilePay : le prélèvement Mobile Money est externe
-    // au système (aucun wallet interne débité). En cas d'échec Reloadly après
-    // collecte HUB2 réussie, seul un remboursement manuel côté HUB2 serait requis
-    // en production — hors périmètre du mode simulé local.
+    // Cas rare mais réel : le client a bien payé, mais Reloadly échoue quand
+    // même (rupture de stock opérateur, etc.) — le paiement collecté doit
+    // alors être remboursé manuellement côté HUB2 (hors automatisation ici,
+    // à traiter par un admin via l'historique des transactions).
     const updated = await this.prisma.transaction.update({
-      where: { id: transaction.id },
+      where: { id: transactionId },
       data: {
         status: finalStatus,
-        providerRef: result.providerRef,
-        operatorId: params.operatorId,
         operatorName: result.operatorName,
-        airtimeKind: params.kind,
+        failureReason: finalStatus === 'FAILED' ? 'Paiement reçu mais échec de la livraison Reloadly — remboursement à traiter manuellement.' : undefined,
       },
     });
+
     if (updated.status === 'SUCCESS') {
-      await this.notifyAirtimeDelivery(params.phoneNumber, params.amount, params.kind, updated.operatorName);
+      await this.notifyAirtimeDelivery(pending.phoneNumber, transaction.amount, pending.kind as 'AIRTIME' | 'DATA', updated.operatorName);
     }
+
     return updated;
   }
 

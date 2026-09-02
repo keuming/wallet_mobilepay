@@ -257,6 +257,21 @@ model Merchant {
 
 // Encaissement en espèces (§ Phase A Business — le client paie en liquide,
 // le marchand enregistre simplement le montant pour son suivi comptable).
+// Détails d'un achat crédit/data en attente de confirmation du paiement
+// Mobile Money (§ correction sécurité — Reloadly ne doit JAMAIS être appelé
+// avant que le webhook HUB2 confirme réellement le paiement du client).
+model PendingAirtimeDelivery {
+  id            String   @id @default(uuid())
+  transactionId String   @unique
+  phoneNumber   String
+  operatorId    String?
+  kind          String // 'AIRTIME' | 'DATA'
+  countryCode   String
+  createdAt     DateTime @default(now())
+
+  @@map("pending_airtime_deliveries")
+}
+
 // Approvisionnement manuel (§ back-office admin) — un client dépose de
 // l'argent en espèces/virement/chèque hors plateforme et envoie une preuve ;
 // un comptable enregistre ici le crédit correspondant, avec justificatif

@@ -60,6 +60,66 @@ export default function RechargerPage() {
   const [submitting, setSubmitting] = useState(false);
   const [result, setResult] = useState<{ status: ResultStatus; message: string } | null>(null);
 
+  // Suivi jusqu'au résultat final (§ correction sécurité) — un achat financé
+  // par Mobile Money passe par HUB2, potentiellement avec OTP/USSD/lien à
+  // confirmer, avant que Reloadly ne soit jamais appelé côté serveur.
+  const [nextAction, setNextAction] = useState<{ type: 'ussd' | 'otp' | 'redirection'; message: string; url?: string } | null>(null);
+  const [otpCode, setOtpCode] = useState('');
+  const [otpTransactionId, setOtpTransactionId] = useState<string | null>(null);
+  const [otpSubmitting, setOtpSubmitting] = useState(false);
+
+  const pollTransactionStatus = (transactionId: string) => {
+    let attempts = 0;
+    const maxAttempts = 60; // ~2 minutes — le temps que le client confirme réellement son paiement
+    const interval = setInterval(async () => {
+      attempts += 1;
+      try {
+        const tx = await apiFetch<{
+          status: string;
+          nextActionType?: 'ussd' | 'otp' | 'redirection';
+          nextActionMessage?: string;
+          nextActionUrl?: string;
+          failureReason?: string;
+        }>(`/transactions/${transactionId}`);
+
+        if (tx.status === 'SUCCESS') {
+          clearInterval(interval);
+          setNextAction(null);
+          setResult({ status: 'success', message: `C'est fait ! ${CATEGORY_LABELS[category!].label} activé pour ${phone}. 🎉` });
+        } else if (tx.status === 'FAILED') {
+          clearInterval(interval);
+          setNextAction(null);
+          setResult({ status: 'failed', message: tx.failureReason ?? "L'achat n'a pas pu être finalisé." });
+        } else if (tx.nextActionType && !nextAction) {
+          setResult(null);
+          if (tx.nextActionType === 'otp') setOtpTransactionId(transactionId);
+          setNextAction({ type: tx.nextActionType, message: tx.nextActionMessage ?? '', url: tx.nextActionUrl });
+        }
+      } catch {
+        // on retente au prochain tick
+      }
+      if (attempts >= maxAttempts) clearInterval(interval);
+    }, 2000);
+  };
+
+  const submitOtp = async () => {
+    if (!otpTransactionId) return;
+    setOtpSubmitting(true);
+    try {
+      await apiFetch(`/transactions/${otpTransactionId}/authenticate`, {
+        method: 'POST',
+        body: JSON.stringify({ confirmationCode: otpCode }),
+      });
+      setNextAction(null);
+      setOtpCode('');
+      pollTransactionStatus(otpTransactionId);
+    } catch (err) {
+      setResult({ status: 'failed', message: err instanceof ApiError ? err.message : "Échec de l'authentification." });
+    } finally {
+      setOtpSubmitting(false);
+    }
+  };
+
   useEffect(() => {
     apiFetch<Operator[]>(`/airtime/operators?country=${user?.country ?? 'CI'}`).then(setAllOperators);
   }, [user?.country]);
@@ -90,7 +150,7 @@ export default function RechargerPage() {
   const handleSubmit = async () => {
     setSubmitting(true);
     try {
-      const response = await apiFetch<{ status?: string }>('/airtime', {
+      const response = await apiFetch<{ status?: string; id?: string }>('/airtime', {
         method: 'POST',
         idempotent: true,
         body: JSON.stringify({
@@ -107,7 +167,12 @@ export default function RechargerPage() {
       if (response.status === 'SUCCESS') {
         setResult({ status: 'success', message: `C'est fait ! ${CATEGORY_LABELS[category!].label} activé pour ${phone}. 🎉` });
       } else if (response.status === 'PROCESSING' || response.status === 'PENDING') {
-        setResult({ status: 'pending', message: 'Votre demande est en attente de confirmation.' });
+        if (response.id && paymentMethod === 'MOBILE_MONEY') {
+          pollTransactionStatus(response.id);
+          setResult({ status: 'pending', message: 'Vérification en cours...' });
+        } else {
+          setResult({ status: 'pending', message: 'Votre demande est en attente de confirmation.' });
+        }
       } else if (response.status === 'FAILED') {
         setResult({ status: 'failed', message: 'L\'achat n\'a pas pu être finalisé.' });
       } else {
@@ -332,6 +397,48 @@ export default function RechargerPage() {
           </button>
         )}
       </div>
+
+      {nextAction?.type === 'ussd' && (
+        <div className="mp-section" style={{ paddingTop: 0 }}>
+          <div className="mp-success" style={{ textAlign: 'left' }}>
+            Vérifie ton téléphone et valide avec ton code Mobile Money pour finaliser l'achat.
+          </div>
+        </div>
+      )}
+
+      {nextAction?.type === 'otp' && (
+        <div className="mp-section" style={{ paddingTop: 0 }}>
+          <div style={{ background: 'rgba(184, 121, 10, 0.08)', border: '1px solid rgba(184, 121, 10, 0.2)', borderRadius: 14, padding: 14 }}>
+            <p style={{ fontSize: 12.5, color: '#8a5a06', margin: '0 0 10px' }}>{nextAction.message}</p>
+            <input
+              className="mp-input"
+              style={{ width: '100%' }}
+              placeholder="Code de confirmation"
+              value={otpCode}
+              onChange={(e) => setOtpCode(e.target.value)}
+            />
+            <button
+              className="mp-btn-primary"
+              style={{ marginTop: 8, width: '100%', background: 'linear-gradient(120deg, #b8790a 0%, #8a5a06 100%)' }}
+              disabled={otpSubmitting || !otpCode}
+              onClick={submitOtp}
+            >
+              {otpSubmitting ? 'Validation...' : 'Valider le code'}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {nextAction?.type === 'redirection' && nextAction.url && (
+        <div className="mp-section" style={{ paddingTop: 0 }}>
+          <div style={{ background: 'var(--mp-surface)', border: '1px solid var(--mp-border)', borderRadius: 14, padding: 14 }}>
+            <p style={{ fontSize: 12.5, color: 'var(--mp-muted)', margin: '0 0 10px' }}>Ouvre ce lien pour confirmer ton achat :</p>
+            <a href={nextAction.url} target="_blank" rel="noreferrer" className="mp-btn-primary" style={{ display: 'block', textAlign: 'center', textDecoration: 'none' }}>
+              Ouvrir le lien de confirmation
+            </a>
+          </div>
+        </div>
+      )}
 
       {result && (
         <StatusModal
