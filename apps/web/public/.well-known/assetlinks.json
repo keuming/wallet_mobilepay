@@ -3,6 +3,6 @@
       "target": {
         "namespace": "android_app",
         "package_name": "com.mobilepay_ci.wallet.twa",
-        "sha256_cert_fingerprints": ["7B:98:B2:26:C2:B0:AC:E0:59:49:37:F9:50:A2:4F:48:C8:D7:26:3A:1E:BA:95:91:DA:AA:46:4F:30:5A:F0:2B"]
+        "sha256_cert_fingerprints": ["89:0F:94:B6:91:B4:9F:BC:87:F2:64:F0:9B:E5:88:58:C5:61:4F:1B:FF:F8:6B:D2:97:BA:FA:D4:EB:10:96:9A"]
       }
     }]
