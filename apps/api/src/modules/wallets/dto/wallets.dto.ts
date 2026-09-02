@@ -1,7 +1,7 @@
 import { IsIn, IsInt, IsOptional, IsPhoneNumber, IsPositive, IsString, MaxLength } from 'class-validator';
 
 export class TransferDto {
-  @IsPhoneNumber('CI', { message: 'Numéro du bénéficiaire invalide.' })
+  @IsPhoneNumber(undefined, { message: 'Numéro du bénéficiaire invalide.' })
   toPhone: string;
 
   @IsInt()
@@ -25,7 +25,7 @@ export class TopupDto {
   @IsIn(['ORANGE', 'MOOV', 'WAVE', 'MTN'])
   operator: 'ORANGE' | 'MOOV' | 'WAVE' | 'MTN';
 
-  @IsPhoneNumber('CI', { message: 'Numéro de compte invalide.' })
+  @IsPhoneNumber(undefined, { message: 'Numéro de compte invalide.' })
   accountNumber: string;
 
   @IsString()

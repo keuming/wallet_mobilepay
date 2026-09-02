@@ -8,7 +8,7 @@ import { CurrentUser, AuthenticatedUser } from '../../common/decorators/current-
 import { normalizePhoneCI } from '../../common/utils/phone.util';
 
 export class SendLinkSmsDto {
-  @IsPhoneNumber('CI', { message: 'Numéro invalide.' })
+  @IsPhoneNumber(undefined, { message: 'Numéro invalide.' })
   toPhone: string;
 
   @IsUrl({}, { message: 'Lien invalide.' })

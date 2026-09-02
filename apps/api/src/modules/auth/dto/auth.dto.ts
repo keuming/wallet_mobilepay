@@ -2,7 +2,7 @@ import { IsEmail, IsEnum, IsIn, IsOptional, IsPhoneNumber, IsString, Matches, Mi
 import { UserRole } from '@prisma/client';
 
 export class RegisterDto {
-  @IsPhoneNumber('CI', { message: 'Numéro de téléphone invalide.' })
+  @IsPhoneNumber(undefined, { message: 'Numéro de téléphone invalide.' })
   phone: string;
 
   @IsString()
@@ -23,7 +23,7 @@ export class RegisterDto {
 }
 
 export class LoginDto {
-  @IsPhoneNumber('CI')
+  @IsPhoneNumber(undefined)
   phone: string;
 
   @IsString()
@@ -44,7 +44,7 @@ export class LoginDto {
 export const SUPPORTED_COUNTRIES = ['CI', 'SN', 'ML', 'BF', 'BJ', 'TG', 'NE', 'GW', 'CM', 'GA', 'CG', 'TD', 'CF', 'GQ'] as const;
 
 export class RegisterWithPinDto {
-  @IsPhoneNumber('CI', { message: 'Numéro de téléphone invalide.' })
+  @IsPhoneNumber(undefined, { message: 'Numéro de téléphone invalide.' })
   phone: string;
 
   @IsString()

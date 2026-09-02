@@ -15,7 +15,7 @@ export class CreateMerchantDto {
 }
 
 export class CreatePaymentRequestDto {
-  @IsPhoneNumber('CI')
+  @IsPhoneNumber(undefined)
   customerPhone: string;
 
   @IsInt()
@@ -57,7 +57,7 @@ export class CreatePaymentLinkDto {
 }
 
 export class TransferFromMerchantDto {
-  @IsPhoneNumber('CI', { message: 'Numéro du bénéficiaire invalide.' })
+  @IsPhoneNumber(undefined, { message: 'Numéro du bénéficiaire invalide.' })
   toPhone: string;
 
   @IsInt()
@@ -102,7 +102,7 @@ export class RecordCashDto {
 }
 
 export class DebitDirectDto {
-  @IsPhoneNumber('CI', { message: 'Numéro du client invalide.' })
+  @IsPhoneNumber(undefined, { message: 'Numéro du client invalide.' })
   customerPhone: string;
 
   @IsInt()
@@ -125,7 +125,7 @@ export class PayExternalDto {
   @IsPositive()
   amount?: number; // absent si le QR/lien a déjà un montant fixe
 
-  @IsPhoneNumber('CI', { message: 'Numéro invalide.' })
+  @IsPhoneNumber(undefined, { message: 'Numéro invalide.' })
   customerPhone: string;
 
   @IsIn(['orange', 'mtn', 'moov', 'wave'], { message: 'Opérateur Mobile Money invalide.' })
@@ -143,7 +143,7 @@ export class CreateRetailerDto {
   category?: string;
 
   @IsOptional()
-  @IsPhoneNumber('CI', { message: 'Numéro invalide.' })
+  @IsPhoneNumber(undefined, { message: 'Numéro invalide.' })
   ownerPhone?: string;
 
   @IsOptional()
