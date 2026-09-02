@@ -19,8 +19,8 @@ const SERVICE_TYPES = [
 ];
 
 interface FoundAccount {
-  id: string; // userId ou merchantId selon le type
-  label: string; // nom à afficher
+  id: string;
+  label: string;
   phone?: string;
 }
 
@@ -148,23 +148,23 @@ export default function ApprovisionnementPage() {
   return (
     <AdminShell title="Approvisionnement">
       {toast && (
-        <div style={{ background: 'rgba(18,179,116,.1)', border: '1px solid var(--mc-green)', color: 'var(--mc-green-dark, #0d7a4f)', borderRadius: 10, padding: '10px 16px', marginBottom: 16, fontWeight: 600, fontSize: 13.5 }}>
+        <div className="adm-success" style={{ marginBottom: 16, fontSize: 13.5, fontWeight: 600 }}>
           {toast}
         </div>
       )}
 
-      <p style={{ color: 'var(--mc-muted)', fontSize: 13.5, margin: '0 0 20px', maxWidth: 640 }}>
+      <p style={{ color: 'var(--adm-muted, #7b8a9a)', fontSize: 13.5, margin: '0 0 20px', maxWidth: 640 }}>
         Enregistre un approvisionnement manuel (dépôt espèces, virement, chèque reçu hors plateforme) —
         le compte sélectionné sera crédité immédiatement, avec le justificatif joint conservé pour
         traçabilité.
       </p>
 
-      <div className="mc-panel" style={{ maxWidth: 520, marginBottom: 28 }}>
+      <div className="adm-panel" style={{ maxWidth: 520, marginBottom: 28 }}>
         <div style={{ padding: 20, display: 'flex', flexDirection: 'column', gap: 12 }}>
           <div style={{ display: 'flex', gap: 8 }}>
             <button
-              className="mc-btn"
-              style={{ flex: 1, opacity: targetType === 'PARTICULIER' ? 1 : 0.5 }}
+              className={targetType === 'PARTICULIER' ? 'adm-btn' : 'adm-btn ghost'}
+              style={{ flex: 1 }}
               onClick={() => {
                 setTargetType('PARTICULIER');
                 setSelected(null);
@@ -174,8 +174,8 @@ export default function ApprovisionnementPage() {
               👤 Particulier
             </button>
             <button
-              className="mc-btn"
-              style={{ flex: 1, opacity: targetType === 'MERCHANT' ? 1 : 0.5 }}
+              className={targetType === 'MERCHANT' ? 'adm-btn' : 'adm-btn ghost'}
+              style={{ flex: 1 }}
               onClick={() => {
                 setTargetType('MERCHANT');
                 setSelected(null);
@@ -186,22 +186,22 @@ export default function ApprovisionnementPage() {
             </button>
           </div>
 
-          <div style={{ display: 'flex', gap: 8 }}>
+          <div className="adm-search-bar" style={{ margin: 0 }}>
             <input
-              className="mc-input"
+              className="adm-input"
               style={{ flex: 1 }}
               placeholder={targetType === 'PARTICULIER' ? 'Rechercher par nom ou numéro' : 'Rechercher par nom'}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && doSearch()}
             />
-            <button className="mc-btn ghost" onClick={doSearch} disabled={searching || !search}>
-              {searching ? '...' : '🔍'}
+            <button className="adm-btn ghost" onClick={doSearch} disabled={searching || !search}>
+              {searching ? '...' : '🔍 Rechercher'}
             </button>
           </div>
 
           {results.length > 0 && !selected && (
-            <div style={{ border: '1px solid var(--mc-border)', borderRadius: 8, overflow: 'hidden' }}>
+            <div style={{ border: '1px solid var(--adm-border, #26364a)', borderRadius: 8, overflow: 'hidden' }}>
               {results.map((r) => (
                 <button
                   key={r.id}
@@ -209,34 +209,35 @@ export default function ApprovisionnementPage() {
                     setSelected(r);
                     setResults([]);
                   }}
-                  style={{ display: 'block', width: '100%', textAlign: 'left', padding: '8px 12px', background: 'white', border: 'none', borderBottom: '1px solid var(--mc-border)', cursor: 'pointer', fontSize: 13 }}
+                  className="adm-btn ghost"
+                  style={{ display: 'block', width: '100%', textAlign: 'left', borderRadius: 0, borderBottom: '1px solid var(--adm-border, #26364a)' }}
                 >
-                  {r.label} {r.phone && <span style={{ color: 'var(--mc-muted)' }}>({r.phone})</span>}
+                  {r.label} {r.phone && <span style={{ opacity: 0.6 }}>({r.phone})</span>}
                 </button>
               ))}
             </div>
           )}
 
           {selected && (
-            <div style={{ background: '#f4f7f6', borderRadius: 8, padding: '8px 12px', fontSize: 13, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div className="adm-panel" style={{ padding: '10px 14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 13.5 }}>
               <span>✓ {selected.label} {selected.phone && `(${selected.phone})`}</span>
-              <button onClick={() => setSelected(null)} style={{ background: 'none', border: 'none', color: 'var(--mc-red)', cursor: 'pointer', fontSize: 12 }}>
+              <button onClick={() => setSelected(null)} className="adm-btn ghost" style={{ padding: '4px 10px', fontSize: 12 }}>
                 Changer
               </button>
             </div>
           )}
 
-          <input className="mc-input" type="number" placeholder="Montant (FCFA)" value={amount} onChange={(e) => setAmount(e.target.value)} />
+          <input className="adm-input" style={{ width: '100%' }} type="number" placeholder="Montant (FCFA)" value={amount} onChange={(e) => setAmount(e.target.value)} />
 
-          <select className="mc-input" value={serviceType} onChange={(e) => setServiceType(e.target.value)}>
+          <select className="adm-input" style={{ width: '100%' }} value={serviceType} onChange={(e) => setServiceType(e.target.value)}>
             {SERVICE_TYPES.map((s) => (
               <option key={s.value} value={s.value}>{s.label}</option>
             ))}
           </select>
 
-          <input className="mc-input" placeholder="Note (optionnel)" value={note} onChange={(e) => setNote(e.target.value)} />
+          <input className="adm-input" style={{ width: '100%' }} placeholder="Note (optionnel)" value={note} onChange={(e) => setNote(e.target.value)} />
 
-          <label style={{ fontSize: 12, color: 'var(--mc-muted)', fontWeight: 600 }}>
+          <label className="adm-modal-label">
             Justificatif (image ou PDF)
             <input
               type="file"
@@ -246,37 +247,37 @@ export default function ApprovisionnementPage() {
             />
           </label>
 
-          {error && <div className="mc-error">{error}</div>}
+          {error && <div className="adm-error">{error}</div>}
 
           <button
-            className="mc-btn"
+            className="adm-btn"
+            style={{ width: '100%', marginTop: 4 }}
             disabled={submitting || !selected || !amount || !file}
             onClick={submit}
           >
-            {submitting ? 'Enregistrement...' : 'Enregistrer l\'approvisionnement'}
+            {submitting ? 'Enregistrement...' : "Enregistrer l'approvisionnement"}
           </button>
         </div>
       </div>
 
-      <div className="mc-panel">
-        <div className="mc-panel-header">Historique</div>
-        {historyLoading ? (
-          <div style={{ padding: 18, color: 'var(--mc-muted)' }}>Chargement...</div>
-        ) : history.length === 0 ? (
-          <div style={{ padding: 18, color: 'var(--mc-muted)' }}>Aucun approvisionnement enregistré.</div>
-        ) : (
-          <table className="mc-table">
-            <thead>
-              <tr>
-                <th>Compte</th>
-                <th>Service</th>
-                <th>Montant</th>
-                <th>Justificatif</th>
-                <th>Date</th>
-              </tr>
-            </thead>
-            <tbody>
-              {history.map((h) => (
+      <div className="adm-panel">
+        <table className="adm-table">
+          <thead>
+            <tr>
+              <th>Compte</th>
+              <th>Service</th>
+              <th>Montant</th>
+              <th>Justificatif</th>
+              <th>Date</th>
+            </tr>
+          </thead>
+          <tbody>
+            {historyLoading ? (
+              <tr><td colSpan={5} style={{ textAlign: 'center', padding: 18 }}>Chargement...</td></tr>
+            ) : history.length === 0 ? (
+              <tr><td colSpan={5} style={{ textAlign: 'center', padding: 18, opacity: 0.6 }}>Aucun approvisionnement enregistré.</td></tr>
+            ) : (
+              history.map((h) => (
                 <tr key={h.id}>
                   <td>{h.targetType === 'PARTICULIER' ? '👤' : '🏪'} {h.accountLabel}</td>
                   <td>{SERVICE_TYPES.find((s) => s.value === h.serviceType)?.label ?? h.serviceType}</td>
@@ -286,17 +287,17 @@ export default function ApprovisionnementPage() {
                       href={`${API_URL}/admin/manual-funding/${h.id}/proof`}
                       target="_blank"
                       rel="noreferrer"
-                      style={{ color: 'var(--mc-green)', fontWeight: 600 }}
+                      style={{ color: 'var(--adm-accent-light, #4fd1a5)', fontWeight: 600 }}
                     >
                       📎 {h.proofFileName}
                     </a>
                   </td>
                   <td>{new Date(h.createdAt).toLocaleDateString('fr-FR')}</td>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
+              ))
+            )}
+          </tbody>
+        </table>
       </div>
     </AdminShell>
   );
