@@ -42,6 +42,7 @@ export default function CartePage() {
   const [network, setNetwork] = useState<'VISA' | 'MASTERCARD'>('VISA');
   const [requesting, setRequesting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [toast, setToast] = useState<string | null>(null);
   const [loadAmount, setLoadAmount] = useState('');
   const [busyCard, setBusyCard] = useState<string | null>(null);
 
@@ -71,6 +72,8 @@ export default function CartePage() {
         method: 'POST',
         body: JSON.stringify({ holderName, merchantId: activeMerchant.merchantId, network }),
       });
+      setToast('Demande de carte envoyée ! 🎉');
+      setTimeout(() => setToast(null), 4000);
       refresh();
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Échec de la demande.');
@@ -89,6 +92,8 @@ export default function CartePage() {
         body: JSON.stringify({ amount: Math.round(Number(loadAmount) * 100) }),
       });
       setLoadAmount('');
+      setToast('Carte rechargée avec succès ! 🎉');
+      setTimeout(() => setToast(null), 4000);
       refresh();
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Échec du chargement.');
@@ -111,6 +116,22 @@ export default function CartePage() {
 
   return (
     <MerchantShell title="Carte virtuelle">
+      {toast && (
+        <div
+          style={{
+            background: 'rgba(18,179,116,.1)',
+            border: '1px solid var(--mc-green)',
+            color: 'var(--mc-green-dark, #0d7a4f)',
+            borderRadius: 10,
+            padding: '10px 16px',
+            marginBottom: 16,
+            fontWeight: 600,
+            fontSize: 13.5,
+          }}
+        >
+          {toast}
+        </div>
+      )}
       <p style={{ color: 'var(--mc-muted)', fontSize: 13.5, margin: '0 0 20px', maxWidth: 560 }}>
         Carte Visa/Mastercard prépayée, alimentée depuis le wallet marchand — utile pour payer vos
         fournisseurs en ligne.

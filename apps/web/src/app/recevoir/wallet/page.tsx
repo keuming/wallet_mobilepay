@@ -64,7 +64,7 @@ export default function RechargerWalletPage() {
           clearInterval(interval);
           setPendingTransactionId(null);
           setNextAction(null);
-          setResult({ status: 'success', message: `${Number(amount).toLocaleString('fr-FR')} FCFA ajoutés à votre wallet.` });
+          setResult({ status: 'success', message: `Recharge réussie ! ${Number(amount).toLocaleString('fr-FR')} FCFA ajoutés à votre wallet. 🎉` });
         } else if (tx.status === 'FAILED') {
           clearInterval(interval);
           setPendingTransactionId(null);
@@ -141,7 +141,7 @@ export default function RechargerWalletPage() {
       });
 
       if (response.status === 'SUCCESS') {
-        setResult({ status: 'success', message: `${Number(amount).toLocaleString('fr-FR')} FCFA ajoutés à votre wallet.` });
+        setResult({ status: 'success', message: `Recharge réussie ! ${Number(amount).toLocaleString('fr-FR')} FCFA ajoutés à votre wallet. 🎉` });
       } else if (response.status === 'PROCESSING' || response.status === 'PENDING') {
         if (response.transactionId) {
           setPendingTransactionId(response.transactionId);

@@ -364,7 +364,7 @@ function PaymentRequestPanel({ merchantId }: { merchantId: string }) {
           }),
         });
         if (res.status === 'SUCCESS') {
-          setResult({ status: 'success', message: 'Paiement confirmé ✓' });
+          setResult({ status: 'success', message: 'Paiement confirmé avec succès ! 🎉' });
         } else if (res.paymentLink) {
           setResult({
             status: 'pending',
@@ -413,7 +413,7 @@ function PaymentRequestPanel({ merchantId }: { merchantId: string }) {
 
         if (status.status === 'SUCCESS') {
           clearInterval(interval);
-          setResult({ status: 'success', message: 'Paiement confirmé ✓' });
+          setResult({ status: 'success', message: 'Paiement confirmé avec succès ! 🎉' });
         } else if (status.status === 'FAILED') {
           clearInterval(interval);
           setResult({ status: 'pending', message: status.failureReason ?? "Le paiement a échoué." });

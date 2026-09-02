@@ -105,7 +105,7 @@ export default function RechargerPage() {
       });
 
       if (response.status === 'SUCCESS') {
-        setResult({ status: 'success', message: `${CATEGORY_LABELS[category!].label} activé pour ${phone}.` });
+        setResult({ status: 'success', message: `C'est fait ! ${CATEGORY_LABELS[category!].label} activé pour ${phone}. 🎉` });
       } else if (response.status === 'PROCESSING' || response.status === 'PENDING') {
         setResult({ status: 'pending', message: 'Votre demande est en attente de confirmation.' });
       } else if (response.status === 'FAILED') {

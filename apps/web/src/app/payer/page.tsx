@@ -87,7 +87,7 @@ function PayerContent() {
           setNextAction(null);
           setResult({
             status: 'success',
-            message: `${(effectiveAmount / 100).toLocaleString('fr-FR')} FCFA payés à ${target?.merchantName}.`,
+            message: `Paiement réussi ! ${(effectiveAmount / 100).toLocaleString('fr-FR')} FCFA payés à ${target?.merchantName}. 🎉`,
           });
         } else if (tx.status === 'FAILED') {
           clearInterval(interval);
@@ -215,7 +215,7 @@ function PayerContent() {
       if (response.status === 'SUCCESS') {
         setResult({
           status: 'success',
-          message: `${(effectiveAmount / 100).toLocaleString('fr-FR')} FCFA payés à ${target.merchantName}.`,
+          message: `Paiement réussi ! ${(effectiveAmount / 100).toLocaleString('fr-FR')} FCFA payés à ${target.merchantName}. 🎉`,
         });
       } else if (response.status === 'PROCESSING' || response.status === 'PENDING') {
         if (response.id && fundingSource === 'MOBILE_MONEY') {

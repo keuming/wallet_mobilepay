@@ -85,7 +85,7 @@ export default function WalletPage() {
           description: description || undefined,
         }),
       });
-      setFormSuccess('Transfert effectué ✓');
+      setFormSuccess('Transfert réussi ! 🎉');
       setToPhone('');
       setAmount('');
       setDescription('');

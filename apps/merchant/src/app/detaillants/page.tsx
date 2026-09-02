@@ -59,6 +59,7 @@ export default function DetaillantsPage() {
   const [actionAmount, setActionAmount] = useState('');
   const [actionSubmitting, setActionSubmitting] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
+  const [toast, setToast] = useState<string | null>(null);
 
   const load = () => {
     if (!activeMerchant) return;
@@ -121,6 +122,8 @@ export default function DetaillantsPage() {
         idempotent: true,
         body: JSON.stringify({ amount: Math.round(Number(actionAmount) * 100) }),
       });
+      setToast(actionType === 'fund' ? 'Approvisionnement réussi ! 🎉' : 'Débit réussi ! 🎉');
+      setTimeout(() => setToast(null), 4000);
       setActionRetailer(null);
       setActionType(null);
       setActionAmount('');
@@ -143,6 +146,22 @@ export default function DetaillantsPage() {
 
   return (
     <MerchantShell title="Mes détaillants">
+      {toast && (
+        <div
+          style={{
+            background: 'rgba(18,179,116,.1)',
+            border: '1px solid var(--mc-green)',
+            color: 'var(--mc-green-dark, #0d7a4f)',
+            borderRadius: 10,
+            padding: '10px 16px',
+            marginBottom: 16,
+            fontWeight: 600,
+            fontSize: 13.5,
+          }}
+        >
+          {toast}
+        </div>
+      )}
       <p style={{ color: 'var(--mc-muted)', fontSize: 13.5, margin: '0 0 16px', maxWidth: 600 }}>
         Créez et gérez vos comptes Business (détaillants) — chacun a son propre wallet et QR de
         réception. Basculez vers l'un d'eux via le sélecteur en haut du menu pour consulter son

@@ -93,7 +93,7 @@ export default function EnvoyerPage() {
           clearInterval(interval);
           setResult({
             status: 'success',
-            message: `${Number(amount).toLocaleString('fr-FR')} FCFA envoyés à ${destinationInfo?.label}.`,
+            message: `Transfert réussi ! ${Number(amount).toLocaleString('fr-FR')} FCFA envoyés à ${destinationInfo?.label}. 🎉`,
           });
           setTimeout(() => router.push('/dashboard'), 2000);
         } else if (tx.status === 'FAILED') {
@@ -148,7 +148,7 @@ export default function EnvoyerPage() {
       if (response.status === 'SUCCESS') {
         setResult({
           status: 'success',
-          message: `${Number(amount).toLocaleString('fr-FR')} FCFA envoyés à ${destinationInfo?.label}.`,
+          message: `Transfert réussi ! ${Number(amount).toLocaleString('fr-FR')} FCFA envoyés à ${destinationInfo?.label}. 🎉`,
         });
         setTimeout(() => router.push('/dashboard'), 2000);
       } else if (response.status === 'PROCESSING' || response.status === 'PENDING' || response.status === 'INITIATED') {

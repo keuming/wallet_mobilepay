@@ -63,7 +63,7 @@ export default function VenteCreditPage() {
         }),
       });
       if (res.status === 'SUCCESS') {
-        setResult({ status: 'success', message: `Crédit envoyé à ${phone} ✓` });
+        setResult({ status: 'success', message: `Vente réussie ! Crédit envoyé à ${phone}. 🎉` });
       } else if (res.status === 'PROCESSING' || res.status === 'PENDING') {
         setResult({ status: 'pending', message: 'Vente en cours de confirmation.' });
       } else {

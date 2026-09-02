@@ -24,6 +24,7 @@ export default function CartePage() {
   const [holderName, setHolderName] = useState('');
   const [requesting, setRequesting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [toast, setToast] = useState<string | null>(null);
   const [loadAmount, setLoadAmount] = useState('');
   const [loadingCard, setLoadingCard] = useState<string | null>(null);
 
@@ -38,6 +39,8 @@ export default function CartePage() {
     setError(null);
     try {
       await apiFetch('/cards', { method: 'POST', body: JSON.stringify({ holderName }) });
+      setToast('Demande de carte envoyée ! 🎉');
+      setTimeout(() => setToast(null), 4000);
       await refresh();
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Échec de la demande.');
@@ -56,6 +59,8 @@ export default function CartePage() {
         body: JSON.stringify({ amount: Math.round(Number(loadAmount) * 100) }),
       });
       setLoadAmount('');
+      setToast('Carte rechargée avec succès ! 🎉');
+      setTimeout(() => setToast(null), 4000);
       await refresh();
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Échec du chargement.');
@@ -86,6 +91,11 @@ export default function CartePage() {
       </div>
 
       <div className="mp-section">
+        {toast && (
+          <div style={{ background: 'rgba(18,179,116,.1)', border: '1px solid var(--mp-green)', color: 'var(--mp-green-dark)', borderRadius: 10, padding: '10px 16px', marginBottom: 16, fontWeight: 600, fontSize: 13.5 }}>
+            {toast}
+          </div>
+        )}
         {loading ? (
           <p style={{ color: 'var(--mp-muted)' }}>Chargement...</p>
         ) : cards.length === 0 ? (
