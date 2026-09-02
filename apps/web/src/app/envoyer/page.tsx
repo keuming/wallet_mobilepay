@@ -47,6 +47,7 @@ export default function EnvoyerPage() {
   const [destination, setDestination] = useState<Destination | null>(null);
   const [accountNumber, setAccountNumber] = useState('');
   const [destCountry, setDestCountry] = useState('CI');
+  const [recipientName, setRecipientName] = useState('');
   const [amount, setAmount] = useState('');
   const [description, setDescription] = useState('');
   const [pin, setPin] = useState('');
@@ -68,7 +69,7 @@ export default function EnvoyerPage() {
       case 0:
         return destination !== null;
       case 1:
-        return accountNumber.replace(/\D/g, '').length >= 8;
+        return accountNumber.replace(/\D/g, '').length >= 8 && (destination === 'MOBILEPAY' || recipientName.trim().length >= 2);
       case 2:
         return !!amount && Number(amount) > 0;
       case 3:
@@ -138,6 +139,7 @@ export default function EnvoyerPage() {
             amount: Math.round(Number(amount) * 100),
             pin,
             country: destCountry,
+            recipientName,
           }),
         });
       }
@@ -303,6 +305,18 @@ export default function EnvoyerPage() {
                 autoFocus
               />
             </label>
+            {destination !== 'MOBILEPAY' && (
+              <label>
+                Nom du bénéficiaire
+                <input
+                  className="mp-input"
+                  style={{ width: '100%', marginTop: 6 }}
+                  value={recipientName}
+                  onChange={(e) => setRecipientName(e.target.value)}
+                  placeholder="Nom complet"
+                />
+              </label>
+            )}
           </>
         )}
 
@@ -360,6 +374,12 @@ export default function EnvoyerPage() {
                 <span className="k">Numéro de compte</span>
                 <span className="v">{accountNumber}</span>
               </div>
+              {destination !== 'MOBILEPAY' && (
+                <div className="mp-detail-row">
+                  <span className="k">Bénéficiaire</span>
+                  <span className="v">{recipientName}</span>
+                </div>
+              )}
               {destination !== 'MOBILEPAY' && (
                 <div className="mp-detail-row">
                   <span className="k">Pays</span>
