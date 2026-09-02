@@ -633,6 +633,7 @@ export class PaymentEngineService {
       paymentMethod: 'WALLET' | 'MOBILE_MONEY' | 'CARD';
       cardId?: string;
       momoProvider?: string;
+      countryCode?: string;
     },
     idempotencyKey: string,
   ) {
@@ -658,10 +659,12 @@ export class PaymentEngineService {
   /** Source : solde du wallet MobilePay — débit immédiat, remboursement si échec. */
   private async purchaseAirtimeFromWallet(
     userId: string,
-    params: { phoneNumber: string; operatorId?: string; amount: bigint; kind: 'AIRTIME' | 'DATA' },
+    params: { phoneNumber: string; operatorId?: string; amount: bigint; kind: 'AIRTIME' | 'DATA'; countryCode?: string },
     idempotencyKey: string,
   ) {
     const label = params.kind === 'DATA' ? 'Forfait data' : 'Recharge crédit';
+    const buyer = await this.prisma.user.findUniqueOrThrow({ where: { id: userId } });
+    const countryCode = params.countryCode ?? buyer.country;
 
     return this.runSerializable(async (tx) => {
       const wallet = await tx.wallet.findUniqueOrThrow({ where: { userId } });
@@ -693,6 +696,7 @@ export class PaymentEngineService {
         amount: params.amount,
         kind: params.kind,
         reference: transaction.id,
+        countryCode,
       });
 
       const finalStatus = result.status === 'SUCCESS' ? 'SUCCESS' : 'FAILED';
@@ -762,6 +766,7 @@ export class PaymentEngineService {
       amount: bigint;
       kind: 'AIRTIME' | 'DATA';
       momoProvider?: string;
+      countryCode?: string;
     },
     idempotencyKey: string,
   ) {
@@ -809,6 +814,7 @@ export class PaymentEngineService {
       amount: params.amount,
       kind: params.kind,
       reference: transaction.id,
+      countryCode: params.countryCode ?? user.country,
     });
 
     const finalStatus = result.status === 'SUCCESS' ? 'SUCCESS' : 'FAILED';

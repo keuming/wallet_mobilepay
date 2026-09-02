@@ -8,7 +8,7 @@ import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { CurrentUser, AuthenticatedUser } from '../../common/decorators/current-user.decorator';
 
 export class PurchaseAirtimeDto {
-  @IsPhoneNumber('CI', { message: 'Numéro à recharger invalide.' })
+  @IsPhoneNumber(undefined, { message: 'Numéro à recharger invalide.' })
   phoneNumber: string;
 
   @IsInt()
@@ -32,6 +32,10 @@ export class PurchaseAirtimeDto {
   @IsOptional()
   @IsString()
   cardId?: string; // requis si paymentMethod === 'CARD'
+
+  @IsOptional()
+  @IsIn(['CI', 'SN', 'ML', 'BF', 'BJ', 'TG', 'NE', 'GW', 'CM', 'GA', 'CG', 'TD', 'CF', 'GQ'], { message: 'Pays non pris en charge.' })
+  countryCode?: string; // pays du DESTINATAIRE du crédit — défaut le pays de l'acheteur si absent
 }
 
 export class SendExternalDto {
@@ -111,12 +115,12 @@ export class AirtimeController {
   ) {}
 
   @Get('operators')
-  listOperators(@Query('phone') phone?: string) {
+  async listOperators(@Query('phone') phone?: string, @Query('country') country: string = 'CI') {
     if (phone) {
-      const operator = this.reloadly.detectOperator(phone);
-      return operator ? [operator] : this.reloadly.listKnownOperators();
+      const operator = await this.reloadly.detectOperator(phone, country);
+      return operator ? [operator] : this.reloadly.listOperatorsForCountry(country);
     }
-    return this.reloadly.listKnownOperators();
+    return this.reloadly.listOperatorsForCountry(country);
   }
 
   @Post()
@@ -135,6 +139,7 @@ export class AirtimeController {
         paymentMethod: dto.paymentMethod,
         cardId: dto.cardId,
         momoProvider: dto.momoProvider,
+        countryCode: dto.countryCode,
       },
       idempotencyKey,
     );

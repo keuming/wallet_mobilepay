@@ -71,7 +71,7 @@ export class TransferFromMerchantDto {
 }
 
 export class SellAirtimeDto {
-  @IsPhoneNumber('CI', { message: 'Numéro du client invalide.' })
+  @IsPhoneNumber(undefined, { message: 'Numéro du client invalide.' })
   phoneNumber: string;
 
   @IsInt()

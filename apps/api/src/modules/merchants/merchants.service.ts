@@ -415,6 +415,7 @@ export class MerchantsService {
       amount,
       kind: dto.kind,
       reference: transaction.id,
+      countryCode: merchant.country,
     });
 
     return this.prisma.transaction.update({
@@ -491,6 +492,7 @@ export class MerchantsService {
       businessName: link.merchant.businessName,
       status: link.merchant.status,
       transfersEnabled: link.merchant.transfersEnabled,
+      country: link.merchant.country,
     }));
   }
 

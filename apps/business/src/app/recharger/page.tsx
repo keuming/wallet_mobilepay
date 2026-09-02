@@ -39,8 +39,8 @@ export default function VenteCreditPage() {
       router.replace('/login');
       return;
     }
-    apiFetch<Operator[]>('/airtime/operators').then(setOperators);
-  }, [user, loading, router]);
+    apiFetch<Operator[]>(`/airtime/operators?country=${activeMerchant?.country ?? 'CI'}`).then(setOperators);
+  }, [user, loading, router, activeMerchant?.country]);
 
   if (loading || !user || !activeMerchant) return null;
 

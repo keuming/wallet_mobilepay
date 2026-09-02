@@ -16,6 +16,7 @@ export class UsersService {
         lastName: true,
         role: true,
         kycLevel: true,
+        country: true,
         createdAt: true,
       },
     });
@@ -45,6 +46,7 @@ export class UsersService {
         lastName: true,
         role: true,
         kycLevel: true,
+        country: true,
         createdAt: true,
       },
     });

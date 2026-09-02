@@ -17,6 +17,7 @@ interface MyMerchant {
   businessName: string;
   status: string;
   transfersEnabled: boolean;
+  country: string;
 }
 
 interface AuthContextValue {

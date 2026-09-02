@@ -10,6 +10,7 @@ interface UserProfile {
   lastName: string;
   role: string;
   kycLevel: string;
+  country: string;
 }
 
 interface AuthContextValue {

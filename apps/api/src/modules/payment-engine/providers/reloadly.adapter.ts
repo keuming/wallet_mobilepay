@@ -8,6 +8,7 @@ export interface PurchaseAirtimeParams {
   amount: bigint; // centimes
   kind: 'AIRTIME' | 'DATA';
   reference: string;
+  countryCode?: string; // code ISO 3166-1 alpha-2 — défaut 'CI' si absent
 }
 
 export interface AirtimeResult {
@@ -29,19 +30,28 @@ export interface ReloadlyBalance {
   updatedAt: string;
 }
 
-// Heuristique simplifiée par préfixe ivoirien — en production, Reloadly expose
-// un vrai endpoint de détection d'opérateur par numéro.
-const CI_OPERATOR_PREFIXES: Record<string, ReloadlyOperator> = {
-  '07': { operatorId: 'orange-ci', name: 'Orange CI', supportsData: true },
-  '05': { operatorId: 'mtn-ci', name: 'MTN CI', supportsData: true },
-  '01': { operatorId: 'moov-ci', name: 'Moov Africa CI', supportsData: true },
+// Indicatifs téléphoniques des pays couverts par HUB2 (§ multi-pays) — sert à
+// isoler le numéro local avant de l'envoyer à Reloadly, qui attend le
+// countryCode et le numéro local séparément.
+const COUNTRY_DIAL_CODES: Record<string, string> = {
+  CI: '225', SN: '221', ML: '223', BF: '226', BJ: '229', TG: '228', NE: '227',
+  GW: '245', CM: '237', GA: '241', CG: '242', TD: '235', CF: '236', GQ: '240',
 };
+
+function toLocalNumber(phoneNumber: string, countryCode: string): string {
+  const dialCode = COUNTRY_DIAL_CODES[countryCode] ?? '225';
+  return phoneNumber.replace(/^\+?/, '').replace(new RegExp(`^${dialCode}`), '');
+}
 
 /**
  * Adaptateur Reloadly (§29) — recharge de crédit téléphonique (Airtime) et
- * forfaits data. Authentification OAuth2 client_credentials contre
- * auth.reloadly.com, puis appels signés au bearer token obtenu — conforme à
- * la documentation officielle Reloadly (developers.reloadly.com).
+ * forfaits data, dans n'importe quel pays couvert (§ multi-pays, plus de
+ * 300 pays chez Reloadly). Authentification OAuth2 client_credentials contre
+ * auth.reloadly.com. Détection d'opérateur et listing par pays via les vrais
+ * endpoints Reloadly (confirmés via developers.reloadly.com et
+ * support.reloadly.com — pas devinés) :
+ *   - GET /operators/countries/{ISO}                          → liste par pays
+ *   - GET /operators/auto-detect/phone/{numéro}/countries/{ISO} → détection
  */
 @Injectable()
 export class ReloadlyAdapter {
@@ -56,15 +66,43 @@ export class ReloadlyAdapter {
     this.baseUrl = this.config.get('RELOADLY_BASE_URL', 'https://topups.reloadly.com');
   }
 
-  /** Détecte l'opérateur probable à partir du numéro (auto-detect §29). */
-  detectOperator(phoneNumber: string): ReloadlyOperator | null {
-    const local = phoneNumber.replace(/^\+225/, '').replace(/\D/g, '');
-    const prefix = local.slice(0, 2);
-    return CI_OPERATOR_PREFIXES[prefix] ?? null;
+  /** Liste tous les opérateurs disponibles pour un pays donné (§ vrai endpoint Reloadly). */
+  async listOperatorsForCountry(countryCode: string): Promise<ReloadlyOperator[]> {
+    if (!this.clientId || !this.clientSecret) {
+      return []; // mode simulé sans credentials — voir purchaseAirtime pour le flux simulé complet
+    }
+    const token = await this.getAccessToken();
+    const res = await fetch(`${this.baseUrl}/operators/countries/${countryCode}`, {
+      headers: { Authorization: `Bearer ${token}`, Accept: 'application/com.reloadly.topups-v1+json' },
+    });
+    if (!res.ok) {
+      throw new Error(`Reloadly operators-by-country error (${res.status}): ${await res.text()}`);
+    }
+    const json = await res.json();
+    return (Array.isArray(json) ? json : []).map((op: any) => ({
+      operatorId: String(op.operatorId ?? op.id),
+      name: op.name,
+      supportsData: !!op.data,
+    }));
   }
 
-  listKnownOperators(): ReloadlyOperator[] {
-    return Object.values(CI_OPERATOR_PREFIXES);
+  /** Détecte l'opérateur réel à partir du numéro + pays (§ vrai endpoint auto-detect Reloadly). */
+  async detectOperator(phoneNumber: string, countryCode: string): Promise<ReloadlyOperator | null> {
+    if (!this.clientId || !this.clientSecret) {
+      return null; // mode simulé — aucune détection possible sans credentials réels
+    }
+    const local = toLocalNumber(phoneNumber, countryCode);
+    const token = await this.getAccessToken();
+    const res = await fetch(
+      `${this.baseUrl}/operators/auto-detect/phone/${encodeURIComponent(local)}/countries/${countryCode}`,
+      { headers: { Authorization: `Bearer ${token}`, Accept: 'application/com.reloadly.topups-v1+json' } },
+    );
+    if (res.status === 404) return null; // "Could not auto detect operator" — réponse normale de Reloadly
+    if (!res.ok) {
+      throw new Error(`Reloadly auto-detect error (${res.status}): ${await res.text()}`);
+    }
+    const json = await res.json();
+    return { operatorId: String(json.operatorId ?? json.id), name: json.name, supportsData: !!json.data };
   }
 
   /**
@@ -94,15 +132,15 @@ export class ReloadlyAdapter {
   }
 
   async purchaseAirtime(params: PurchaseAirtimeParams): Promise<AirtimeResult> {
+    const countryCode = params.countryCode ?? 'CI';
+
     if (!this.clientId || !this.clientSecret) {
       // Sandbox simulé : permet de tester le flux Airtime/Data de bout en bout
       // sans compte Reloadly configuré (voir HUB2_API_KEY pour le même principe).
-      const operator = this.detectOperator(params.phoneNumber);
       return {
         providerRef: `SIMULATED-${crypto.randomUUID()}`,
         status: 'SUCCESS',
         raw: { simulated: true, kind: params.kind },
-        operatorName: operator?.name,
       };
     }
 
@@ -111,7 +149,7 @@ export class ReloadlyAdapter {
       operatorId: params.operatorId,
       amount: Number(params.amount) / 100,
       useLocalAmount: true,
-      recipientPhone: { countryCode: 'CI', number: params.phoneNumber.replace(/^\+225/, '') },
+      recipientPhone: { countryCode, number: toLocalNumber(params.phoneNumber, countryCode) },
       customIdentifier: params.reference,
     };
 

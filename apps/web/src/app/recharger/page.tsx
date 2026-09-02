@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { apiFetch, ApiError } from '../../lib/apiClient';
 import StatusModal, { ResultStatus } from '../../components/StatusModal';
 import PaymentMethodBadge, { PaymentMethodId } from '../../components/PaymentMethodBadge';
+import { useAuth } from '../../contexts/AuthContext';
 
 interface Operator {
   operatorId: string;
@@ -44,6 +45,7 @@ const STEPS = ['Catégorie', 'Opérateur', 'Bénéficiaire', 'Paiement', 'Montan
 
 export default function RechargerPage() {
   const router = useRouter();
+  const { user } = useAuth();
   const [step, setStep] = useState(0);
 
   const [category, setCategory] = useState<Category | null>(null);
@@ -59,8 +61,8 @@ export default function RechargerPage() {
   const [result, setResult] = useState<{ status: ResultStatus; message: string } | null>(null);
 
   useEffect(() => {
-    apiFetch<Operator[]>('/airtime/operators').then(setAllOperators);
-  }, []);
+    apiFetch<Operator[]>(`/airtime/operators?country=${user?.country ?? 'CI'}`).then(setAllOperators);
+  }, [user?.country]);
 
   const kind = category ? CATEGORY_TO_KIND[category] : null;
   const presetAmounts = kind === 'DATA' ? [1000, 2500, 5000, 10000] : [500, 1000, 2000, 5000];
@@ -98,6 +100,7 @@ export default function RechargerPage() {
           operatorId: operator?.operatorId,
           paymentMethod,
           momoProvider: paymentMethod === 'MOBILE_MONEY' ? momoOperator : undefined,
+          countryCode: user?.country ?? 'CI',
         }),
       });
 
