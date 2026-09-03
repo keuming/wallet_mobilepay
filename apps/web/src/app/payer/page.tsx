@@ -1,8 +1,9 @@
 'use client';
 
-import { useEffect, useState, Suspense } from 'react';
+import { useEffect, useState, useRef, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
+import jsQR from 'jsqr';
 import { apiFetch, ApiError } from '../../lib/apiClient';
 import StatusModal, { ResultStatus } from '../../components/StatusModal';
 import PaymentMethodBadge, { PaymentMethodId } from '../../components/PaymentMethodBadge';
@@ -49,6 +50,15 @@ function PayerContent() {
   const [code, setCode] = useState('');
   const [resolveError, setResolveError] = useState<string | null>(null);
   const [target, setTarget] = useState<ResolvedTarget | null>(null);
+
+  // § Scanner QR par caméra (même logique que pay.mobilepay-ci.com) — repli
+  // sur la saisie manuelle si la caméra est refusée/indisponible.
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const streamRef = useRef<MediaStream | null>(null);
+  const rafRef = useRef<number | null>(null);
+  const [cameraError, setCameraError] = useState<string | null>(null);
+  const [scanned, setScanned] = useState(false);
 
   const [amount, setAmount] = useState('');
   const [fundingSource, setFundingSource] = useState<FundingSource | null>(null);
@@ -176,6 +186,75 @@ function PayerContent() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams]);
+
+  // § Scanner QR par caméra — actif uniquement à l'étape 0, tant qu'aucun
+  // code n'a encore été détecté.
+  useEffect(() => {
+    if (step !== 0 || scanned) return;
+    let cancelled = false;
+
+    const extractCode = (raw: string): string => {
+      try {
+        const url = new URL(raw);
+        const parts = url.pathname.split('/').filter(Boolean);
+        return parts[parts.length - 1] || raw;
+      } catch {
+        return raw; // pas une URL — déjà un simple code
+      }
+    };
+
+    const tick = () => {
+      if (cancelled) return;
+      const video = videoRef.current;
+      const canvas = canvasRef.current;
+      if (video && canvas && video.readyState === video.HAVE_ENOUGH_DATA) {
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+          const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+          const result = jsQR(imageData.data, imageData.width, imageData.height);
+          if (result?.data) {
+            const extracted = extractCode(result.data);
+            setScanned(true);
+            setCode(extracted);
+            handleResolve(extracted);
+            return;
+          }
+        }
+      }
+      rafRef.current = requestAnimationFrame(tick);
+    };
+
+    const start = async () => {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+        if (cancelled) {
+          stream.getTracks().forEach((t) => t.stop());
+          return;
+        }
+        streamRef.current = stream;
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream;
+          await videoRef.current.play();
+        }
+        tick();
+      } catch {
+        setCameraError("Caméra indisponible — utilise la saisie manuelle ci-dessous.");
+      }
+    };
+
+    start();
+
+    return () => {
+      cancelled = true;
+      if (rafRef.current) cancelAnimationFrame(rafRef.current);
+      streamRef.current?.getTracks().forEach((t) => t.stop());
+      streamRef.current = null;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [step, scanned]);
 
   const canGoNext = (): boolean => {
     switch (step) {
@@ -309,9 +388,26 @@ function PayerContent() {
       {step === 0 && (
         <div className="mp-form">
           <p style={{ fontSize: 13.5, color: 'var(--mp-muted)', margin: 0 }}>
-            Scannez le QR du marchand (caméra bientôt disponible sur mobile) ou collez son code / lien
-            de paiement ci-dessous.
+            Vise le QR code du marchand, ou colle son code / lien de paiement ci-dessous.
           </p>
+
+          {!cameraError && (
+            <div style={{ position: 'relative', width: '100%', maxWidth: 280, margin: '0 auto', borderRadius: 18, overflow: 'hidden', background: '#000', aspectRatio: '1 / 1' }}>
+              <video ref={videoRef} playsInline muted style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              <div
+                style={{
+                  position: 'absolute',
+                  inset: '14%',
+                  border: '3px solid rgba(255,255,255,0.85)',
+                  borderRadius: 14,
+                  boxShadow: '0 0 0 2000px rgba(0,0,0,0.25)',
+                }}
+              />
+            </div>
+          )}
+          <canvas ref={canvasRef} style={{ display: 'none' }} />
+          {cameraError && <div style={{ fontSize: 12.5, color: 'var(--mp-muted)', textAlign: 'center' }}>{cameraError}</div>}
+
           <label>
             Code QR ou lien de paiement
             <input
