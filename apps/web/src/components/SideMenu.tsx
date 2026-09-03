@@ -77,7 +77,7 @@ export default function SideMenu({ open, onClose }: SideMenuProps) {
           <div className="mp-menu-divider" />
 
           <div style={{ padding: '10px 20px' }}>
-            <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--mp-muted)', marginBottom: 8 }}>Apparence</div>
+            <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--fz-text-secondary)', marginBottom: 8 }}>Apparence</div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8 }}>
               {THEME_OPTIONS.map((opt) => (
                 <button
@@ -86,12 +86,12 @@ export default function SideMenu({ open, onClose }: SideMenuProps) {
                   style={{
                     display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4,
                     padding: '8px 4px', borderRadius: 10,
-                    border: theme === opt.id ? '2px solid var(--mp-green)' : '1px solid var(--mp-border)',
-                    background: 'white', cursor: 'pointer',
+                    border: theme === opt.id ? '2px solid var(--fz-accent)' : '1px solid var(--fz-border)',
+                    background: 'var(--fz-surface)', cursor: 'pointer',
                   }}
                 >
                   <span style={{ width: 18, height: 18, borderRadius: '50%', background: opt.swatch, display: 'block' }} />
-                  <span style={{ fontSize: 10, fontWeight: 600, color: 'var(--mp-navy)' }}>{opt.label}</span>
+                  <span style={{ fontSize: 10, fontWeight: 600, color: 'var(--fz-text-primary)' }}>{opt.label}</span>
                 </button>
               ))}
             </div>
