@@ -92,6 +92,9 @@ export default function DashboardPage() {
     setShareStatus((s) => ({ ...s, [entry.id]: result }));
   };
 
+  const totalSent = entries.filter((e) => e.type === 'DEBIT').reduce((sum, e) => sum + e.amount, 0);
+  const totalReceived = entries.filter((e) => e.type === 'CREDIT').reduce((sum, e) => sum + e.amount, 0);
+
   if (loading || fetching || !user) {
     return (
       <div className="mp-container">
@@ -102,79 +105,79 @@ export default function DashboardPage() {
 
   return (
     <div className="mp-container">
-      <div className="mp-header">
-        <div className="mp-header-row">
-          <button className="mp-icon-btn" onClick={() => setMenuOpen(true)} title="Menu">
-            ☰
-          </button>
-          <span className="mp-brand-mark">
-            <span className="dot" />
-            Bonjour {user.firstName}
+      <div className="fz-glow" />
+
+      <div className="fz-header-row">
+        <div className="fz-profile" onClick={() => setMenuOpen(true)}>
+          <span className="fz-avatar">{user.firstName.charAt(0).toUpperCase()}</span>
+          <span className="fz-greeting">
+            <span className="hello">Bonjour</span>
+            <span className="name">{user.firstName}</span>
           </span>
-          <button
-            onClick={() => logout().then(() => router.push('/login'))}
-            className="mp-icon-btn"
-            title="Déconnexion"
-          >
-            ⏻
-          </button>
         </div>
+        <button
+          onClick={() => logout().then(() => router.push('/login'))}
+          className="fz-notif-btn"
+          title="Déconnexion"
+        >
+          ⏻
+        </button>
       </div>
 
       <SideMenu open={menuOpen} onClose={() => setMenuOpen(false)} />
 
-      <div className="mp-balance-card">
-        <div className="mp-balance-label">💳 Solde disponible</div>
-        <div className="mp-balance-amount">
-          {wallet ? formatFcfa(wallet.cachedBalance) : '—'}
-          <span className="currency">FCFA</span>
+      <div className="fz-balance-card">
+        <div className="fz-balance-top">
+          <div>
+            <span className="fz-balance-label">💳 Solde disponible</span>
+            <span className="fz-balance-amount">
+              {wallet ? formatFcfa(wallet.cachedBalance) : '—'}
+              <span className="fz-currency">FCFA</span>
+            </span>
+          </div>
+          <Link href="/recevoir" className="fz-add-money-btn">
+            + Dépôt
+          </Link>
         </div>
 
-        <div className="mp-actions">
-          <Link href="/recevoir" className="mp-action-btn">
-            <span className="icon">💰</span>
-            Dépôt
-          </Link>
-          <Link href="/envoyer" className="mp-action-btn">
-            <span className="icon">↗️</span>
-            Transfert
-          </Link>
-          <Link href="/payer" className="mp-action-btn">
-            <span className="icon">🏪</span>
-            Payer
-          </Link>
-          <Link href="/recharger" className="mp-action-btn">
-            <span className="icon">📶</span>
-            Crédit & Data
-          </Link>
+        <div className="fz-pill-row">
+          <Link href="/envoyer" className="fz-pill-btn">↗️ Transfert</Link>
+          <Link href="/payer" className="fz-pill-btn">🏪 Payer</Link>
+          <Link href="/recharger" className="fz-pill-btn">📶 Crédit & Data</Link>
         </div>
       </div>
 
-      <div className="mp-feature-list">
-        <Link href="/carte" className="mp-feature-card featured">
-          <div className="mp-feature-icon">💎</div>
-          <div className="mp-feature-text">
-            <div className="mp-feature-title">Carte virtuelle</div>
-            <div className="mp-feature-sub">Payer en ligne partout dans le monde</div>
+      <div className="fz-mini-row">
+        <div className="fz-mini-card sent">
+          <span className="fz-mini-icon">💸</span>
+          <div>
+            <span className="fz-mini-label">Envoyé</span>
+            <span className="fz-mini-amount">{formatFcfa(totalSent)} F</span>
           </div>
-          <div className="mp-feature-chevron">→</div>
-        </Link>
-        <Link href="/cartes-cadeaux" className="mp-feature-card">
-          <div className="mp-feature-icon">🎁</div>
-          <div className="mp-feature-text">
-            <div className="mp-feature-title">Cartes cadeaux</div>
-            <div className="mp-feature-sub">Amazon, Apple, Netflix et plus — dans le monde entier</div>
+        </div>
+        <div className="fz-mini-card received">
+          <span className="fz-mini-icon">💰</span>
+          <div>
+            <span className="fz-mini-label">Reçu</span>
+            <span className="fz-mini-amount">{formatFcfa(totalReceived)} F</span>
           </div>
-          <div className="mp-feature-chevron">→</div>
-        </Link>
-        <Link href="/factures" className="mp-feature-card">
-          <div className="mp-feature-icon">🧾</div>
-          <div className="mp-feature-text">
-            <div className="mp-feature-title">Factures</div>
-            <div className="mp-feature-sub">Électricité, eau, TV, internet</div>
+        </div>
+      </div>
+
+      <div className="fz-promo-banner">
+        <div className="fz-promo-top">
+          <div>
+            <div className="fz-promo-title">Carte virtuelle</div>
+            <div className="fz-promo-sub">Payer en ligne partout dans le monde</div>
           </div>
-          <div className="mp-feature-chevron">→</div>
-        </Link>
+          <Link href="/carte" className="fz-promo-btn">
+            Découvrir
+          </Link>
+        </div>
+        <div className="fz-pill-row">
+          <Link href="/cartes-cadeaux" className="fz-pill-btn">🎁 Cartes cadeaux</Link>
+          <Link href="/factures" className="fz-pill-btn">🧾 Factures</Link>
+        </div>
       </div>
 
       <div className="mp-section">
@@ -182,47 +185,48 @@ export default function DashboardPage() {
           📋 Transactions récentes
           <Link
             href="/historique"
-            style={{ marginLeft: 'auto', fontSize: 12, fontWeight: 600, color: 'var(--mp-green-dark)' }}
+            style={{ marginLeft: 'auto', fontSize: 12, fontWeight: 600, color: 'var(--fz-accent)' }}
           >
             Voir tout →
           </Link>
         </h3>
         {entries.length === 0 && (
-          <p style={{ color: 'var(--mp-muted)', fontSize: 14 }}>Aucune transaction pour le moment.</p>
+          <p style={{ color: 'var(--fz-text-secondary)', fontSize: 14 }}>Aucune transaction pour le moment.</p>
         )}
-        <div className="mp-history-list" style={{ padding: 0 }}>
+        <div className="mp-history-list" style={{ padding: 0, display: 'flex', flexDirection: 'column', gap: 10 }}>
           {groupLedgerEntries(entries).map(({ key, main: entry, feeAmount }) => {
             const name = entry.counterparty?.name ?? entry.description;
             const isExpanded = expandedId === entry.id;
             return (
-              <div
-                className={`mp-history-card ${isExpanded ? 'expanded' : ''}`}
-                key={key}
-                onClick={() => setExpandedId(isExpanded ? null : entry.id)}
-              >
-                <div className="mp-history-row">
-                  <div className={`mp-history-avatar ${entry.type === 'CREDIT' ? 'credit' : 'debit'}`}>
-                    {entry.counterparty
-                      ? entry.counterparty.name.charAt(0).toUpperCase()
-                      : entry.type === 'CREDIT'
-                        ? '↙'
-                        : '↗'}
-                  </div>
-                  <div className="mp-history-main">
-                    <div className="mp-history-name">{name}</div>
-                    <div className="mp-history-sub">
-                      {TYPE_LABELS[entry.transaction?.type] ?? entry.transaction?.type}
-                      {entry.counterparty?.phone ? ` · ${entry.counterparty.phone}` : ''}
+              <div key={key}>
+                <div
+                  className="fz-tx-card"
+                  onClick={() => setExpandedId(isExpanded ? null : entry.id)}
+                >
+                  <div className="fz-tx-left">
+                    <div className={`fz-tx-icon ${entry.type === 'DEBIT' ? 'debit' : ''}`}>
+                      {entry.counterparty
+                        ? entry.counterparty.name.charAt(0).toUpperCase()
+                        : entry.type === 'CREDIT'
+                          ? '↙'
+                          : '↗'}
+                    </div>
+                    <div>
+                      <div className="fz-tx-name">{name}</div>
+                      <div className="fz-tx-sub">
+                        {TYPE_LABELS[entry.transaction?.type] ?? entry.transaction?.type}
+                        {entry.counterparty?.phone ? ` · ${entry.counterparty.phone}` : ''}
+                      </div>
                     </div>
                   </div>
-                  <div className="mp-history-amount-block">
-                    <div className={`mp-history-amount ${entry.type === 'CREDIT' ? 'credit' : 'debit'}`}>
+                  <div style={{ textAlign: 'right' }}>
+                    <div className={`fz-tx-amount ${entry.type === 'CREDIT' ? 'credit' : 'debit'}`}>
                       {entry.type === 'CREDIT' ? '+' : '−'} {formatFcfa(entry.amount)} FCFA
                     </div>
                     {feeAmount !== null && (
                       <div className="mp-history-fee-line">+ {formatFcfa(feeAmount)} FCFA frais</div>
                     )}
-                    <div className="mp-history-time">
+                    <div style={{ fontSize: 10.5, color: 'var(--fz-text-secondary)', marginTop: 2 }}>
                       {new Date(entry.createdAt).toLocaleDateString('fr-FR')}
                     </div>
                   </div>
