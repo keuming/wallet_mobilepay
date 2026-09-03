@@ -111,7 +111,7 @@ export default function CartePage() {
               style={{
                 background: 'linear-gradient(150deg, #16345f 0%, #0f2d52 55%, #065f3c 130%)',
                 color: 'white',
-                borderRadius: 22,
+                borderRadius: 24,
                 padding: 22,
                 marginBottom: 16,
                 boxShadow: '0 16px 40px -10px rgba(15, 45, 82, 0.45)',

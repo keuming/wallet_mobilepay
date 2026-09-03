@@ -696,6 +696,51 @@ h1, h2, h3 {
   color: var(--fz-text-on-accent);
 }
 
+.fz-option-row {
+  height: 50px;
+  padding: 0 16px;
+  border-radius: 14px;
+  border: 1px solid var(--fz-border);
+  background: var(--fz-surface);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  cursor: pointer;
+  text-decoration: none;
+  transition: background 0.15s ease, transform 0.15s ease;
+}
+.fz-option-row:hover {
+  background: color-mix(in srgb, var(--fz-text-primary) 5%, var(--fz-surface));
+}
+.fz-option-row:active {
+  transform: scale(0.98);
+}
+.fz-option-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.fz-option-icon {
+  width: 20px;
+  text-align: center;
+  font-size: 15px;
+}
+.fz-option-label {
+  color: var(--fz-text-primary);
+  font-size: 14px;
+  font-weight: 500;
+}
+.fz-option-chevron {
+  color: var(--fz-text-secondary);
+  opacity: 0.7;
+  font-size: 14px;
+}
+.fz-option-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
 .mp-actions {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
@@ -1103,7 +1148,7 @@ h1, h2, h3 {
 }
 .mp-search-clear {
   border: none;
-  background: rgba(15, 45, 82, 0.06);
+  background: color-mix(in srgb, var(--fz-text-primary) 8%, transparent);
   color: var(--fz-text-secondary);
   width: 22px;
   height: 22px;
@@ -1236,8 +1281,8 @@ h1, h2, h3 {
   border-radius: 20px;
   font-size: 10.5px;
   font-weight: 700;
-  background: rgba(10, 143, 88, 0.1);
-  color: var(--mp-green-dark);
+  background: color-mix(in srgb, var(--fz-accent) 12%, transparent);
+  color: var(--fz-accent);
 }
 
 .mp-empty-state {
@@ -1282,8 +1327,8 @@ h1, h2, h3 {
 .mp-share-btn {
   width: 100%;
   margin-top: 10px;
-  background: linear-gradient(120deg, var(--mp-green) 0%, var(--mp-green-dark) 100%);
-  color: white;
+  background: var(--fz-accent);
+  color: var(--fz-text-on-accent);
   border: none;
   border-radius: 12px;
   padding: 11px;
@@ -1298,7 +1343,7 @@ h1, h2, h3 {
 }
 .mp-share-toast {
   font-size: 11.5px;
-  color: var(--mp-green-dark);
+  color: var(--fz-accent);
   text-align: center;
   margin-top: 6px;
   font-weight: 600;
@@ -1448,8 +1493,8 @@ h1, h2, h3 {
   width: 72px;
   height: 72px;
   border-radius: 22px;
-  background: linear-gradient(135deg, var(--mp-green), var(--mp-teal));
-  color: white;
+  background: var(--fz-accent);
+  color: var(--fz-text-on-accent);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1464,8 +1509,8 @@ h1, h2, h3 {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  background: rgba(10, 143, 88, 0.09);
-  color: var(--mp-green-dark);
+  background: color-mix(in srgb, var(--fz-accent) 12%, transparent);
+  color: var(--fz-accent);
   font-size: 12px;
   font-weight: 700;
   padding: 5px 12px;

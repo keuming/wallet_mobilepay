@@ -90,20 +90,20 @@ export default function ProfilPage() {
 
       {!editing ? (
         <div className="mp-form">
-          <div style={{ background: 'white', border: '1px solid var(--mp-border)', borderRadius: 16, overflow: 'hidden' }}>
+          <div style={{ background: 'var(--fz-surface)', border: '1px solid var(--fz-border)', borderRadius: 16, overflow: 'hidden' }}>
             <div className="mp-detail-row" style={{ padding: '14px 16px' }}>
               <span className="k">Prénom</span>
               <span className="v">{profile.firstName}</span>
             </div>
-            <div className="mp-detail-row" style={{ padding: '14px 16px', borderTop: '1px solid var(--mp-border)' }}>
+            <div className="mp-detail-row" style={{ padding: '14px 16px', borderTop: '1px solid var(--fz-border)' }}>
               <span className="k">Nom</span>
               <span className="v">{profile.lastName}</span>
             </div>
-            <div className="mp-detail-row" style={{ padding: '14px 16px', borderTop: '1px solid var(--mp-border)' }}>
+            <div className="mp-detail-row" style={{ padding: '14px 16px', borderTop: '1px solid var(--fz-border)' }}>
               <span className="k">Téléphone</span>
               <span className="v">{profile.phone}</span>
             </div>
-            <div className="mp-detail-row" style={{ padding: '14px 16px', borderTop: '1px solid var(--mp-border)' }}>
+            <div className="mp-detail-row" style={{ padding: '14px 16px', borderTop: '1px solid var(--fz-border)' }}>
               <span className="k">Email</span>
               <span className="v">{profile.email ?? '—'}</span>
             </div>
@@ -112,6 +112,30 @@ export default function ProfilPage() {
           <button className="mp-btn-primary" onClick={() => setEditing(true)}>
             ✏️ Modifier mon profil
           </button>
+
+          <div className="fz-option-group" style={{ marginTop: 8 }}>
+            <Link href="/code-secret" className="fz-option-row">
+              <span className="fz-option-left">
+                <span className="fz-option-icon">🔒</span>
+                <span className="fz-option-label">Code secret</span>
+              </span>
+              <span className="fz-option-chevron">→</span>
+            </Link>
+            <Link href="/deplafonnement" className="fz-option-row">
+              <span className="fz-option-left">
+                <span className="fz-option-icon">🪪</span>
+                <span className="fz-option-label">Vérification d'identité</span>
+              </span>
+              <span className="fz-option-chevron">→</span>
+            </Link>
+            <Link href="/carte" className="fz-option-row">
+              <span className="fz-option-left">
+                <span className="fz-option-icon">💳</span>
+                <span className="fz-option-label">Carte virtuelle</span>
+              </span>
+              <span className="fz-option-chevron">→</span>
+            </Link>
+          </div>
         </div>
       ) : (
         <div className="mp-form">
@@ -144,7 +168,7 @@ export default function ProfilPage() {
               placeholder="Optionnel"
             />
           </label>
-          <p style={{ fontSize: 12, color: 'var(--mp-muted)' }}>
+          <p style={{ fontSize: 12, color: 'var(--fz-text-secondary)' }}>
             Le numéro de téléphone ne peut pas être modifié ici — il sert d'identifiant de connexion.
           </p>
           <button className="mp-btn-primary" disabled={saving} onClick={handleSave}>
