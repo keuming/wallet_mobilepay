@@ -113,7 +113,7 @@ export default function FacturesPage() {
         </div>
         <div className="mp-section" style={{ textAlign: 'center' }}>
           <div style={{ fontSize: 40, marginBottom: 8 }}>{result.status === 'success' ? '✅' : '❌'}</div>
-          <p style={{ fontWeight: 700, color: 'var(--mp-navy)' }}>{result.message}</p>
+          <p style={{ fontWeight: 700, color: 'var(--fz-text-primary)' }}>{result.message}</p>
           <Link href="/dashboard" className="mp-btn-primary" style={{ display: 'block', marginTop: 20, textDecoration: 'none' }}>
             Retour à l'accueil
           </Link>
@@ -165,9 +165,9 @@ export default function FacturesPage() {
 
         {step === 2 && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            {billersLoading && <p style={{ color: 'var(--mp-muted)', fontSize: 13.5 }}>Chargement...</p>}
+            {billersLoading && <p style={{ color: 'var(--fz-text-secondary)', fontSize: 13.5 }}>Chargement...</p>}
             {!billersLoading && billers.length === 0 && (
-              <p style={{ color: 'var(--mp-muted)', fontSize: 13.5 }}>Aucun fournisseur disponible pour ce pays/type.</p>
+              <p style={{ color: 'var(--fz-text-secondary)', fontSize: 13.5 }}>Aucun fournisseur disponible pour ce pays/type.</p>
             )}
             {billers.map((b) => (
               <button
@@ -196,15 +196,31 @@ export default function FacturesPage() {
         )}
 
         {step === 4 && biller && (
-          <label>
-            Montant ({biller.localTransactionCurrencyCode})
+          <div className="fz-amount-hero">
+            <span className="fz-amount-avatar">
+              {BILL_TYPES.find((t) => t.id === billType)?.icon ?? '🧾'}
+            </span>
+            <div>
+              <div className="fz-amount-name">{biller.name}</div>
+              <div className="fz-amount-sub">{accountNumber}</div>
+            </div>
+
+            <div className="fz-amount-input-wrap">
+              <input
+                className="fz-amount-field"
+                type="number"
+                placeholder="0"
+                value={amount}
+                onChange={(e) => setAmount(e.target.value)}
+              />
+              <span className="fz-amount-currency">{biller.localTransactionCurrencyCode}</span>
+            </div>
             {biller.minLocalTransactionAmount != null && biller.maxLocalTransactionAmount != null && (
-              <p style={{ fontSize: 12, color: 'var(--mp-muted)', margin: '4px 0 8px' }}>
+              <p style={{ fontSize: 12, color: 'var(--fz-text-secondary)', margin: 0 }}>
                 Entre {biller.minLocalTransactionAmount.toLocaleString('fr-FR')} et {biller.maxLocalTransactionAmount.toLocaleString('fr-FR')}
               </p>
             )}
-            <input className="mp-input" style={{ width: '100%', marginTop: 6 }} type="number" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="Montant" />
-          </label>
+          </div>
         )}
 
         {step === 5 && biller && (

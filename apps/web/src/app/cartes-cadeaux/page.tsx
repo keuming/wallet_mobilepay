@@ -119,18 +119,18 @@ export default function CartesCadeauxPage() {
         </div>
         <div className="mp-section" style={{ textAlign: 'center' }}>
           <div style={{ fontSize: 40, marginBottom: 8 }}>{result.status === 'success' ? '✅' : '❌'}</div>
-          <p style={{ fontWeight: 700, color: 'var(--mp-navy)' }}>{result.message}</p>
+          <p style={{ fontWeight: 700, color: 'var(--fz-text-primary)' }}>{result.message}</p>
           {result.cardCode && (
             <div style={{ background: 'var(--mp-surface)', border: '1px solid var(--mp-border)', borderRadius: 14, padding: 16, marginTop: 16, textAlign: 'left' }}>
-              <p style={{ fontSize: 12, color: 'var(--mp-muted)', margin: '0 0 4px' }}>Code de la carte</p>
+              <p style={{ fontSize: 12, color: 'var(--fz-text-secondary)', margin: '0 0 4px' }}>Code de la carte</p>
               <p style={{ fontWeight: 700, fontSize: 16, fontFamily: 'monospace', margin: '0 0 12px' }}>{result.cardCode}</p>
               {result.cardPin && (
                 <>
-                  <p style={{ fontSize: 12, color: 'var(--mp-muted)', margin: '0 0 4px' }}>Code PIN</p>
+                  <p style={{ fontSize: 12, color: 'var(--fz-text-secondary)', margin: '0 0 4px' }}>Code PIN</p>
                   <p style={{ fontWeight: 700, fontSize: 16, fontFamily: 'monospace', margin: 0 }}>{result.cardPin}</p>
                 </>
               )}
-              <p style={{ fontSize: 11.5, color: 'var(--mp-muted)', marginTop: 12 }}>
+              <p style={{ fontSize: 11.5, color: 'var(--fz-text-secondary)', marginTop: 12 }}>
                 Ce code a aussi été envoyé à {recipientEmail}. Conserve-le précieusement.
               </p>
             </div>
@@ -170,9 +170,9 @@ export default function CartesCadeauxPage() {
 
         {step === 1 && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            {productsLoading && <p style={{ color: 'var(--mp-muted)', fontSize: 13.5 }}>Chargement du catalogue...</p>}
+            {productsLoading && <p style={{ color: 'var(--fz-text-secondary)', fontSize: 13.5 }}>Chargement du catalogue...</p>}
             {!productsLoading && products.length === 0 && (
-              <p style={{ color: 'var(--mp-muted)', fontSize: 13.5 }}>Aucune carte cadeau disponible pour ce pays.</p>
+              <p style={{ color: 'var(--fz-text-secondary)', fontSize: 13.5 }}>Aucune carte cadeau disponible pour ce pays.</p>
             )}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
               {products.map((p) => (
@@ -182,8 +182,8 @@ export default function CartesCadeauxPage() {
                   style={{
                     display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6,
                     padding: '10px 6px', borderRadius: 12,
-                    border: product?.productId === p.productId ? '2px solid var(--mp-green)' : '1px solid var(--mp-border)',
-                    background: product?.productId === p.productId ? 'rgba(71,182,134,.08)' : 'white',
+                    border: product?.productId === p.productId ? '2px solid var(--fz-accent)' : '1px solid var(--fz-border)',
+                    background: product?.productId === p.productId ? 'color-mix(in srgb, var(--fz-accent) 10%, transparent)' : 'var(--fz-surface)',
                     cursor: 'pointer',
                   }}
                 >
@@ -193,7 +193,7 @@ export default function CartesCadeauxPage() {
                   ) : (
                     <span style={{ fontSize: 22 }}>🎁</span>
                   )}
-                  <span style={{ fontSize: 10.5, fontWeight: 600, color: 'var(--mp-navy)', textAlign: 'center' }}>{p.brandName}</span>
+                  <span style={{ fontSize: 10.5, fontWeight: 600, color: 'var(--fz-text-primary)', textAlign: 'center' }}>{p.brandName}</span>
                 </button>
               ))}
             </div>
@@ -201,31 +201,52 @@ export default function CartesCadeauxPage() {
         )}
 
         {step === 2 && product && (
-          <div>
-            <div style={{ fontSize: 12.5, color: 'var(--mp-muted)', fontWeight: 600, marginBottom: 8 }}>
-              Montant ({product.recipientCurrencyCode})
+          <div className="fz-amount-hero">
+            {product.logoUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={product.logoUrl}
+                alt={product.brandName}
+                style={{ width: 68, height: 68, borderRadius: 22, objectFit: 'contain', background: 'var(--fz-surface)', border: '1px solid var(--fz-border)' }}
+              />
+            ) : (
+              <span className="fz-amount-avatar">🎁</span>
+            )}
+            <div>
+              <div className="fz-amount-name">{product.brandName}</div>
+              <div className="fz-amount-sub">Carte cadeau</div>
             </div>
+
             {product.denominationType === 'FIXED' && product.fixedRecipientDenominations.length > 0 ? (
-              <div className="mp-preset-grid">
+              <div className="fz-amount-chips">
                 {product.fixedRecipientDenominations.map((preset) => (
                   <button
                     key={preset}
                     type="button"
                     onClick={() => setAmount(String(preset))}
-                    className={`mp-preset-chip ${amount === String(preset) ? 'selected' : ''}`}
+                    className={`fz-amount-chip ${amount === String(preset) ? 'selected' : ''}`}
                   >
-                    {preset.toLocaleString('fr-FR')}
+                    {preset.toLocaleString('fr-FR')} {product.recipientCurrencyCode}
                   </button>
                 ))}
               </div>
             ) : (
               <>
+                <div className="fz-amount-input-wrap">
+                  <input
+                    className="fz-amount-field"
+                    type="number"
+                    placeholder="0"
+                    value={amount}
+                    onChange={(e) => setAmount(e.target.value)}
+                  />
+                  <span className="fz-amount-currency">{product.recipientCurrencyCode}</span>
+                </div>
                 {product.minRecipientDenomination != null && product.maxRecipientDenomination != null && (
-                  <p style={{ fontSize: 12, color: 'var(--mp-muted)', margin: '0 0 8px' }}>
+                  <p style={{ fontSize: 12, color: 'var(--fz-text-secondary)', margin: 0 }}>
                     Entre {product.minRecipientDenomination} et {product.maxRecipientDenomination} {product.recipientCurrencyCode}
                   </p>
                 )}
-                <input className="mp-input" style={{ width: '100%' }} type="number" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="Montant" />
               </>
             )}
           </div>
@@ -243,7 +264,7 @@ export default function CartesCadeauxPage() {
               placeholder="destinataire@email.com"
               autoFocus
             />
-            <p style={{ fontSize: 11.5, color: 'var(--mp-muted)', marginTop: 6 }}>
+            <p style={{ fontSize: 11.5, color: 'var(--fz-text-secondary)', marginTop: 6 }}>
               Le code de la carte sera envoyé à cette adresse — vérifie qu'elle est correcte.
             </p>
           </label>
