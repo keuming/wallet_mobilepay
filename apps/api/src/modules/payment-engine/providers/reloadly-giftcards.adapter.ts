@@ -68,7 +68,7 @@ export class ReloadlyGiftCardsAdapter {
   constructor(private config: ConfigService) {
     this.clientId = this.config.get('RELOADLY_CLIENT_ID', '');
     this.clientSecret = this.config.get('RELOADLY_CLIENT_SECRET', '');
-    this.baseUrl = this.config.get('RELOADLY_GIFTCARDS_BASE_URL', 'https://giftcards.reloadly.com');
+    this.baseUrl = this.config.get('RELOADLY_GIFTCARDS_BASE_URL', 'https://giftcards.reloadly.com').replace(/\/+$/, '');
   }
 
   /** Catalogue de cartes cadeaux disponibles pour un pays donné. */
@@ -77,11 +77,12 @@ export class ReloadlyGiftCardsAdapter {
     const token = await this.getAccessToken();
     // § Vrai endpoint confirmé (blog.reloadly.com) — le pays est dans le
     // CHEMIN de l'URL, pas en paramètre de requête ?countryCode=.
-    const res = await fetch(`${this.baseUrl}/countries/${countryCode}/products`, {
-      headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
+    const url = `${this.baseUrl}/countries/${countryCode}/products`;
+    const res = await fetch(url, {
+      headers: { Authorization: `Bearer ${token}`, Accept: 'application/com.reloadly.giftcards-v1+json' },
     });
     if (!res.ok) {
-      throw new Error(`Reloadly gift cards products error (${res.status}): ${await res.text()}`);
+      throw new Error(`Reloadly gift cards products error (${res.status}) sur ${url}: ${await res.text()}`);
     }
     const json = await res.json();
     const content = Array.isArray(json?.content) ? json.content : Array.isArray(json) ? json : [];
@@ -93,7 +94,7 @@ export class ReloadlyGiftCardsAdapter {
     if (!this.clientId || !this.clientSecret) return null;
     const token = await this.getAccessToken();
     const res = await fetch(`${this.baseUrl}/products/${productId}`, {
-      headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
+      headers: { Authorization: `Bearer ${token}`, Accept: 'application/com.reloadly.giftcards-v1+json' },
     });
     if (res.status === 404) return null;
     if (!res.ok) {
@@ -129,7 +130,7 @@ export class ReloadlyGiftCardsAdapter {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        Accept: 'application/json',
+        Accept: 'application/com.reloadly.giftcards-v1+json',
         Authorization: `Bearer ${token}`,
       },
       body: JSON.stringify({

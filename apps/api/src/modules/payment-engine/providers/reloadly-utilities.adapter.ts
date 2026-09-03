@@ -56,7 +56,7 @@ export class ReloadlyUtilitiesAdapter {
   constructor(private config: ConfigService) {
     this.clientId = this.config.get('RELOADLY_CLIENT_ID', '');
     this.clientSecret = this.config.get('RELOADLY_CLIENT_SECRET', '');
-    this.baseUrl = this.config.get('RELOADLY_UTILITIES_BASE_URL', 'https://utilities.reloadly.com');
+    this.baseUrl = this.config.get('RELOADLY_UTILITIES_BASE_URL', 'https://utilities.reloadly.com').replace(/\/+$/, '');
   }
 
   /** Liste des billers (factures) disponibles pour un pays, filtrable par type. */
@@ -65,11 +65,14 @@ export class ReloadlyUtilitiesAdapter {
     const token = await this.getAccessToken();
     const params = new URLSearchParams({ countryISOCode: countryCode, size: '200' });
     if (type) params.set('type', type);
-    const res = await fetch(`${this.baseUrl}/billers?${params.toString()}`, {
-      headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
+    // § Les guides officiels Reloadly (blog.reloadly.com) n'utilisent aucun
+    // en-tête Accept spécifique pour ce service — seulement Authorization.
+    const url = `${this.baseUrl}/billers?${params.toString()}`;
+    const res = await fetch(url, {
+      headers: { Authorization: `Bearer ${token}` },
     });
     if (!res.ok) {
-      throw new Error(`Reloadly utilities billers error (${res.status}): ${await res.text()}`);
+      throw new Error(`Reloadly utilities billers error (${res.status}) sur ${url}: ${await res.text()}`);
     }
     const json = await res.json();
     const content = Array.isArray(json?.content) ? json.content : Array.isArray(json) ? json : [];
