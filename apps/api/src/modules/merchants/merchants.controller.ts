@@ -1,7 +1,7 @@
 import { Body, Controller, Get, Headers, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { MerchantsService } from './merchants.service';
-import { CreateMerchantDto, CreatePaymentRequestDto, TransferFromMerchantDto, SellAirtimeDto, RecordCashDto, DebitDirectDto, CreateRetailerDto, RetailerFundDto, RetailerStatusDto } from './dto/merchants.dto';
+import { CreateMerchantDto, CreatePaymentRequestDto, TransferFromMerchantDto, SellAirtimeDto, BuyGiftCardDto, RecordCashDto, DebitDirectDto, CreateRetailerDto, RetailerFundDto, RetailerStatusDto } from './dto/merchants.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { MerchantScopeGuard } from '../../common/guards/merchant-scope.guard';
 import { CurrentUser, AuthenticatedUser } from '../../common/decorators/current-user.decorator';
@@ -71,6 +71,25 @@ export class MerchantsController {
     @Headers('idempotency-key') idempotencyKey: string,
   ) {
     return this.merchantsService.sellAirtime(merchantId, user.userId, dto, idempotencyKey);
+  }
+
+  /** Catalogue de cartes cadeaux disponibles pour un pays. */
+  @Get(':merchantId/gift-cards/products')
+  @UseGuards(JwtAuthGuard, MerchantScopeGuard)
+  listGiftCardProducts(@Query('country') country: string = 'CI') {
+    return this.merchantsService.listGiftCardProducts(country);
+  }
+
+  /** Achat de carte cadeau, financé par le wallet marchand. */
+  @Post(':merchantId/gift-cards/orders')
+  @UseGuards(JwtAuthGuard, MerchantScopeGuard)
+  buyGiftCard(
+    @Param('merchantId') merchantId: string,
+    @CurrentUser() user: AuthenticatedUser,
+    @Body() dto: BuyGiftCardDto,
+    @Headers('idempotency-key') idempotencyKey: string,
+  ) {
+    return this.merchantsService.buyGiftCard(merchantId, user.userId, dto, idempotencyKey);
   }
 
   /** Encaissement en espèces — pur journal de caisse, aucun mouvement de wallet. */

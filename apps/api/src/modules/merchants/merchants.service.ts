@@ -4,6 +4,7 @@ import * as bcrypt from 'bcrypt';
 import { PrismaService } from '../../config/prisma.service';
 import { LedgerService } from '../ledger/ledger.service';
 import { ReloadlyAdapter } from '../payment-engine/providers/reloadly.adapter';
+import { ReloadlyGiftCardsAdapter } from '../payment-engine/providers/reloadly-giftcards.adapter';
 import { normalizePhoneCI, normalizePhoneCandidates } from '../../common/utils/phone.util';
 import { CreateMerchantDto } from './dto/merchants.dto';
 
@@ -15,6 +16,7 @@ export class MerchantsService {
     private prisma: PrismaService,
     private ledger: LedgerService,
     private reloadly: ReloadlyAdapter,
+    private reloadlyGiftCards: ReloadlyGiftCardsAdapter,
   ) {}
 
   /**
@@ -362,7 +364,7 @@ export class MerchantsService {
   async sellAirtime(
     merchantId: string,
     initiatedByUserId: string,
-    dto: { phoneNumber: string; amount: number; kind: 'AIRTIME' | 'DATA'; operatorId?: string; operatorName?: string },
+    dto: { phoneNumber: string; amount: number; kind: 'AIRTIME' | 'DATA'; operatorId?: string; operatorName?: string; countryCode?: string },
     idempotencyKey: string,
   ) {
     const existing = await this.prisma.transaction.findUnique({ where: { idempotencyKey } });
@@ -417,7 +419,7 @@ export class MerchantsService {
       amount,
       kind: dto.kind,
       reference: transaction.id,
-      countryCode: merchant.country,
+      countryCode: dto.countryCode ?? merchant.country,
     });
 
     return this.prisma.transaction.update({
@@ -428,6 +430,116 @@ export class MerchantsService {
         operatorName: result.operatorName ?? dto.operatorName,
       },
     });
+  }
+
+  /** Catalogue de cartes cadeaux disponibles pour un pays (§ Gift Cards — marchand). */
+  async listGiftCardProducts(countryCode: string) {
+    return this.reloadlyGiftCards.listProducts(countryCode);
+  }
+
+  /**
+   * Achat de carte cadeau depuis le wallet marchand — débit immédiat
+   * (atomique, interne), remboursement automatique si Reloadly échoue.
+   */
+  async buyGiftCard(
+    merchantId: string,
+    initiatedByUserId: string,
+    dto: { productId: number; unitPrice: number; recipientEmail: string },
+    idempotencyKey: string,
+  ) {
+    const existing = await this.prisma.transaction.findUnique({ where: { idempotencyKey } });
+    if (existing) return existing;
+
+    const merchant = await this.prisma.merchant.findUniqueOrThrow({ where: { id: merchantId } });
+    if (merchant.status !== 'ACTIVE') {
+      throw new BadRequestException('Ce marchand doit être actif pour acheter une carte cadeau.');
+    }
+
+    const product = await this.reloadlyGiftCards.getProduct(dto.productId);
+    if (!product) throw new NotFoundException('Carte cadeau introuvable.');
+
+    const amount = BigInt(Math.round(dto.unitPrice * 100));
+    const merchantWallet = await this.getWallet(merchantId);
+    if (merchantWallet.cachedBalance < amount) {
+      throw new BadRequestException('Solde insuffisant pour cet achat.');
+    }
+
+    const description = `Carte cadeau ${product.brandName} — ${dto.recipientEmail}`;
+
+    const transaction = await this.runSerializable(async (tx) => {
+      const created = await tx.transaction.create({
+        data: {
+          type: 'GIFT_CARD',
+          status: 'PROCESSING',
+          amount,
+          sourceWalletId: merchantWallet.id,
+          initiatedByUserId,
+          description,
+          providerName: 'RELOADLY',
+          idempotencyKey,
+        },
+      });
+
+      await this.ledger.postDoubleEntry(tx, {
+        transactionId: created.id,
+        fromWalletId: merchantWallet.id,
+        toWalletId: null,
+        amount,
+        description,
+      });
+
+      return created;
+    });
+
+    const result = await this.reloadlyGiftCards.placeOrder({
+      productId: dto.productId,
+      unitPrice: dto.unitPrice,
+      recipientEmail: dto.recipientEmail,
+      senderName: merchant.businessName,
+      customIdentifier: transaction.id,
+    });
+
+    await this.prisma.giftCardOrder.create({
+      data: {
+        transactionId: transaction.id,
+        targetType: 'MERCHANT',
+        targetMerchantId: merchantId,
+        productId: dto.productId,
+        productName: product.productName,
+        brandName: product.brandName,
+        denominationValue: dto.unitPrice,
+        currencyCode: result.currencyCode || product.recipientCurrencyCode,
+        recipientEmail: dto.recipientEmail,
+        senderName: merchant.businessName,
+        status: result.status,
+        cardCode: result.cardCode,
+        cardPin: result.cardPin,
+        redeemInstructions: product.redeemInstructions,
+        failureReason: result.status === 'FAILED' ? 'Achat Reloadly refusé.' : null,
+      },
+    });
+
+    if (result.status === 'FAILED') {
+      await this.runSerializable(async (tx) => {
+        await this.ledger.postDoubleEntry(tx, {
+          transactionId: transaction.id,
+          fromWalletId: null,
+          toWalletId: merchantWallet.id,
+          amount,
+          description: `Remboursement — échec carte cadeau ${product.brandName}`,
+        });
+      });
+      return this.prisma.transaction.update({
+        where: { id: transaction.id },
+        data: { status: 'FAILED', failureReason: 'Achat de la carte cadeau refusé par le fournisseur.' },
+      });
+    }
+
+    const updated = await this.prisma.transaction.update({
+      where: { id: transaction.id },
+      data: { status: 'SUCCESS' },
+    });
+    return { ...updated, cardCode: result.cardCode, cardPin: result.cardPin };
   }
 
   private async runSerializable<T>(fn: (tx: Prisma.TransactionClient) => Promise<T>): Promise<T> {

@@ -1,4 +1,4 @@
-import { IsIn, IsInt, IsOptional, IsPositive, IsString, MaxLength, Matches, Min, MinLength } from 'class-validator';
+import { IsEmail, IsIn, IsInt, IsOptional, IsPositive, IsString, MaxLength, Matches, Min, MinLength } from 'class-validator';
 
 export class CreateMerchantDto {
   @IsString()
@@ -93,6 +93,24 @@ export class SellAirtimeDto {
   @IsOptional()
   @IsString()
   operatorName?: string;
+
+  // § Pays du DESTINATAIRE du crédit — peut différer du pays du marchand
+  // (ex: recharger un proche dans un autre pays). Défaut : pays du marchand.
+  @IsOptional()
+  @IsIn(['CI', 'SN', 'ML', 'BF', 'BJ', 'TG', 'NE', 'GW', 'CM', 'GA', 'CG', 'TD', 'CF', 'GQ'], { message: 'Pays non pris en charge.' })
+  countryCode?: string;
+}
+
+export class BuyGiftCardDto {
+  @IsInt()
+  @IsPositive()
+  productId: number;
+
+  @IsPositive()
+  unitPrice: number;
+
+  @IsEmail({}, { message: 'Adresse email du bénéficiaire invalide.' })
+  recipientEmail: string;
 }
 
 export class RecordCashDto {

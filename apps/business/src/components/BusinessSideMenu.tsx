@@ -51,6 +51,10 @@ export default function BusinessSideMenu({ open, onClose }: BusinessSideMenuProp
             <span className="icon">📞</span>
             Vente crédit/data
           </Link>
+          <Link href="/cartes-cadeaux" className="mp-menu-item" onClick={onClose}>
+            <span className="icon">🎁</span>
+            Cartes cadeaux
+          </Link>
 
           <div className="mp-menu-divider" />
 
