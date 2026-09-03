@@ -14,6 +14,7 @@ import { LedgerService } from '../ledger/ledger.service';
 import { Hub2Adapter } from './providers/hub2.adapter';
 import { ReloadlyAdapter } from './providers/reloadly.adapter';
 import { SmsAdapter } from '../sms/sms.adapter';
+import { normalizePhoneCI } from '../../common/utils/phone.util';
 
 const MAX_SERIALIZATION_RETRIES = 3;
 
@@ -100,17 +101,18 @@ export class PaymentEngineService {
       return created;
     });
 
+    const resolvedCountry = params.country ?? sender.country;
     const result = await this.hub2.initiateWithdrawal({
       walletId: '',
       amount: params.amount,
       currency: 'XOF',
-      customerPhone: params.accountNumber,
+      customerPhone: normalizePhoneCI(params.accountNumber, resolvedCountry as any),
       provider: params.operator.toLowerCase(),
       // § Le formulaire "Envoyer" ne collecte pas encore le nom du
       // bénéficiaire — à ajouter à terme. Repli générique en attendant.
       recipientName: params.recipientName ?? 'Bénéficiaire',
       reference: transaction.id,
-      country: params.country ?? sender.country,
+      country: resolvedCountry,
     });
 
     await this.prisma.transaction.update({
@@ -292,7 +294,7 @@ export class PaymentEngineService {
       walletId: '',
       amount: params.amount,
       currency: 'XOF',
-      customerPhone: params.customerPhone,
+      customerPhone: normalizePhoneCI(params.customerPhone, merchant.country as any),
       reference: transaction.id,
       provider: params.provider,
       country: merchant.country,
@@ -364,7 +366,7 @@ export class PaymentEngineService {
       walletId: '',
       amount: params.amount,
       currency: 'XOF',
-      customerPhone: params.customerPhone,
+      customerPhone: normalizePhoneCI(params.customerPhone, merchant.country as any),
       reference: transaction.id,
       provider: params.provider,
       country: merchant.country,
@@ -500,7 +502,7 @@ export class PaymentEngineService {
       walletId: '',
       amount: params.amount,
       currency: 'XOF',
-      customerPhone: params.customerPhone,
+      customerPhone: normalizePhoneCI(params.customerPhone, recipientUser.country as any),
       reference: transaction.id,
       provider: params.provider,
       country: recipientUser.country,
@@ -940,7 +942,7 @@ export class PaymentEngineService {
       walletId: wallet.id,
       amount: params.amount,
       currency: wallet.currency,
-      customerPhone: params.accountNumber,
+      customerPhone: normalizePhoneCI(params.accountNumber, user.country as any),
       reference: transaction.id,
       provider: params.operator.toLowerCase(),
       country: user.country,

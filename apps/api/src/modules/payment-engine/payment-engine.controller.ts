@@ -1,6 +1,6 @@
 import { Body, Controller, Get, Headers, Post, Query, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
-import { IsEnum, IsIn, IsInt, IsOptional, IsPhoneNumber, IsPositive, IsString } from 'class-validator';
+import { IsEnum, IsIn, IsInt, IsOptional, IsPositive, IsString, MinLength } from 'class-validator';
 import { PaymentEngineService } from './payment-engine.service';
 import { ReloadlyAdapter } from './providers/reloadly.adapter';
 import { TopupDto } from '../wallets/dto/wallets.dto';
@@ -8,7 +8,10 @@ import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { CurrentUser, AuthenticatedUser } from '../../common/decorators/current-user.decorator';
 
 export class PurchaseAirtimeDto {
-  @IsPhoneNumber(undefined, { message: 'Numéro à recharger invalide.' })
+  // § Le "+" indicatif n'est pas exigé — normalisé côté service avec le
+  // pays du destinataire (countryCode) ou celui de l'acheteur par défaut.
+  @IsString()
+  @MinLength(6, { message: 'Numéro à recharger invalide.' })
   phoneNumber: string;
 
   @IsInt()
@@ -42,7 +45,10 @@ export class SendExternalDto {
   @IsEnum(['ORANGE', 'MOOV', 'WAVE', 'MTN'])
   operator: 'ORANGE' | 'MOOV' | 'WAVE' | 'MTN';
 
-  @IsPhoneNumber(undefined, { message: 'Numéro de compte destinataire invalide.' })
+  // § Le "+" indicatif n'est pas exigé — normalisé côté service avec le
+  // pays choisi (ou celui de l'expéditeur par défaut).
+  @IsString()
+  @MinLength(6, { message: 'Numéro de compte destinataire invalide.' })
   accountNumber: string;
 
   @IsInt()

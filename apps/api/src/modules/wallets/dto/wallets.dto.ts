@@ -1,7 +1,11 @@
-import { IsIn, IsInt, IsOptional, IsPhoneNumber, IsPositive, IsString, MaxLength } from 'class-validator';
+import { IsIn, IsInt, IsOptional, IsPositive, IsString, MaxLength, MinLength } from 'class-validator';
 
 export class TransferDto {
-  @IsPhoneNumber(undefined, { message: 'Numéro du bénéficiaire invalide.' })
+  // § Le "+" indicatif n'est pas exigé ici — le service essaie tous les
+  // pays supportés (normalizePhoneCandidates) pour retrouver le compte,
+  // que le pays soit précisé ou non par l'utilisateur.
+  @IsString()
+  @MinLength(6, { message: 'Numéro du bénéficiaire invalide.' })
   toPhone: string;
 
   @IsInt()
@@ -25,7 +29,10 @@ export class TopupDto {
   @IsIn(['ORANGE', 'MOOV', 'WAVE', 'MTN'])
   operator: 'ORANGE' | 'MOOV' | 'WAVE' | 'MTN';
 
-  @IsPhoneNumber(undefined, { message: 'Numéro de compte invalide.' })
+  // § Numéro Mobile Money du titulaire lui-même — le service normalise
+  // avec son pays enregistré, le "+" n'est donc pas exigé à la saisie.
+  @IsString()
+  @MinLength(6, { message: 'Numéro de compte invalide.' })
   accountNumber: string;
 
   @IsString()

@@ -1,4 +1,4 @@
-import { IsIn, IsInt, IsOptional, IsPhoneNumber, IsPositive, IsString, MaxLength, Matches, Min, MinLength } from 'class-validator';
+import { IsIn, IsInt, IsOptional, IsPositive, IsString, MaxLength, Matches, Min, MinLength } from 'class-validator';
 
 export class CreateMerchantDto {
   @IsString()
@@ -15,7 +15,8 @@ export class CreateMerchantDto {
 }
 
 export class CreatePaymentRequestDto {
-  @IsPhoneNumber(undefined)
+  @IsString()
+  @MinLength(6, { message: 'Numéro invalide.' })
   customerPhone: string;
 
   @IsInt()
@@ -57,7 +58,8 @@ export class CreatePaymentLinkDto {
 }
 
 export class TransferFromMerchantDto {
-  @IsPhoneNumber(undefined, { message: 'Numéro du bénéficiaire invalide.' })
+  @IsString()
+  @MinLength(6, { message: 'Numéro du bénéficiaire invalide.' })
   toPhone: string;
 
   @IsInt()
@@ -71,7 +73,10 @@ export class TransferFromMerchantDto {
 }
 
 export class SellAirtimeDto {
-  @IsPhoneNumber(undefined, { message: 'Numéro du client invalide.' })
+  // § Le "+" indicatif n'est pas exigé — Reloadly reçoit le numéro local et
+  // le pays séparément (countryCode du marchand), pas besoin de format E.164.
+  @IsString()
+  @MinLength(6, { message: 'Numéro du client invalide.' })
   phoneNumber: string;
 
   @IsInt()
@@ -102,7 +107,8 @@ export class RecordCashDto {
 }
 
 export class DebitDirectDto {
-  @IsPhoneNumber(undefined, { message: 'Numéro du client invalide.' })
+  @IsString()
+  @MinLength(6, { message: 'Numéro du client invalide.' })
   customerPhone: string;
 
   @IsInt()
@@ -125,7 +131,8 @@ export class PayExternalDto {
   @IsPositive()
   amount?: number; // absent si le QR/lien a déjà un montant fixe
 
-  @IsPhoneNumber(undefined, { message: 'Numéro invalide.' })
+  @IsString()
+  @MinLength(6, { message: 'Numéro invalide.' })
   customerPhone: string;
 
   @IsIn(['orange', 'mtn', 'moov', 'wave'], { message: 'Opérateur Mobile Money invalide.' })
@@ -143,7 +150,8 @@ export class CreateRetailerDto {
   category?: string;
 
   @IsOptional()
-  @IsPhoneNumber(undefined, { message: 'Numéro invalide.' })
+  @IsString()
+  @MinLength(6, { message: 'Numéro invalide.' })
   ownerPhone?: string;
 
   @IsOptional()
