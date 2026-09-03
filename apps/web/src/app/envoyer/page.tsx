@@ -49,6 +49,7 @@ export default function EnvoyerPage() {
   const [destCountry, setDestCountry] = useState('CI');
   const [recipientName, setRecipientName] = useState('');
   const [amount, setAmount] = useState('');
+  const [walletBalance, setWalletBalance] = useState<number | null>(null);
   const [description, setDescription] = useState('');
   const [pin, setPin] = useState('');
   const [hasPin, setHasPin] = useState<boolean | null>(null);
@@ -58,6 +59,7 @@ export default function EnvoyerPage() {
 
   useEffect(() => {
     apiFetch<{ hasPin: boolean }>('/auth/pin/status').then((res) => setHasPin(res.hasPin));
+    apiFetch<{ cachedBalance: number }>('/wallet').then((w) => setWalletBalance(w.cachedBalance));
   }, []);
 
   useEffect(() => {
@@ -322,21 +324,53 @@ export default function EnvoyerPage() {
 
         {/* Étape 3 : Montant */}
         {step === 2 && (
-          <>
-            <label>
-              Montant (FCFA)
+          <div className="fz-amount-hero">
+            <span className="fz-amount-avatar">
+              {(destination === 'MOBILEPAY' ? accountNumber : recipientName || accountNumber).charAt(0).toUpperCase()}
+            </span>
+            <div>
+              <div className="fz-amount-name">
+                {destination === 'MOBILEPAY' ? accountNumber : recipientName || 'Bénéficiaire'}
+              </div>
+              <div className="fz-amount-sub">{destinationInfo?.label} · {accountNumber}</div>
+            </div>
+
+            <div className="fz-amount-input-wrap">
               <input
-                className="mp-input"
-                style={{ width: '100%', marginTop: 6 }}
+                className="fz-amount-field"
                 type="number"
                 min={1}
+                placeholder="0"
                 value={amount}
                 onChange={(e) => setAmount(e.target.value)}
                 autoFocus
               />
-            </label>
+              <span className="fz-amount-currency">FCFA</span>
+            </div>
+
+            <div className="fz-amount-chips">
+              {['1000', '5000', '10000'].map((val) => (
+                <button
+                  key={val}
+                  type="button"
+                  onClick={() => setAmount(val)}
+                  className={`fz-amount-chip ${amount === val ? 'selected' : ''}`}
+                >
+                  {Number(val).toLocaleString('fr-FR')}
+                </button>
+              ))}
+            </div>
+
+            {walletBalance !== null && (
+              <div className="fz-balance-badge">
+                <span className="dot" />
+                <span className="label">Solde :</span>
+                <span className="value">{(walletBalance / 100).toLocaleString('fr-FR')} FCFA</span>
+              </div>
+            )}
+
             {destination === 'MOBILEPAY' && (
-              <label>
+              <label style={{ width: '100%' }}>
                 Motif (optionnel)
                 <input
                   className="mp-input"
@@ -346,7 +380,7 @@ export default function EnvoyerPage() {
                 />
               </label>
             )}
-          </>
+          </div>
         )}
 
         {/* Étape 4 : Résumé — contrôle final avant validation */}
