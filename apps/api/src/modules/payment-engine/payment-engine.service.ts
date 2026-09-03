@@ -14,6 +14,7 @@ import { LedgerService } from '../ledger/ledger.service';
 import { Hub2Adapter } from './providers/hub2.adapter';
 import { ReloadlyAdapter } from './providers/reloadly.adapter';
 import { ReloadlyGiftCardsAdapter } from './providers/reloadly-giftcards.adapter';
+import { ReloadlyUtilitiesAdapter, BillerType } from './providers/reloadly-utilities.adapter';
 import { SmsAdapter } from '../sms/sms.adapter';
 import { normalizePhoneCI } from '../../common/utils/phone.util';
 
@@ -34,6 +35,7 @@ export class PaymentEngineService {
     private hub2: Hub2Adapter,
     private reloadly: ReloadlyAdapter,
     private reloadlyGiftCards: ReloadlyGiftCardsAdapter,
+    private reloadlyUtilities: ReloadlyUtilitiesAdapter,
     private sms: SmsAdapter,
   ) {}
 
@@ -765,6 +767,102 @@ export class PaymentEngineService {
       data: { status: 'SUCCESS' },
     });
     return { ...updated, cardCode: result.cardCode, cardPin: result.cardPin };
+  }
+
+  /** Liste des billers (factures) disponibles pour un pays (§ Utility Payments). */
+  async listUtilityBillers(countryCode: string, type?: BillerType) {
+    return this.reloadlyUtilities.listBillers(countryCode, type);
+  }
+
+  /**
+   * Paiement de facture depuis le wallet particulier — débit immédiat,
+   * remboursement automatique si Reloadly échoue.
+   */
+  async payUtilityBill(
+    userId: string,
+    params: { billerId: number; billerName: string; billType: string; subscriberAccountNumber: string; amount: number; pin: string },
+    idempotencyKey: string,
+  ) {
+    const existing = await this.prisma.transaction.findUnique({ where: { idempotencyKey } });
+    if (existing) return existing;
+
+    await this.verifyTransactionPin(userId, params.pin);
+    const amount = BigInt(Math.round(params.amount * 100));
+
+    const transaction = await this.runSerializable(async (tx) => {
+      const wallet = await tx.wallet.findUniqueOrThrow({ where: { userId } });
+      if (wallet.cachedBalance < amount) {
+        throw new BadRequestException('Solde insuffisant.');
+      }
+
+      const created = await tx.transaction.create({
+        data: {
+          type: 'UTILITY_PAYMENT',
+          status: 'PROCESSING',
+          amount,
+          sourceWalletId: wallet.id,
+          initiatedByUserId: userId,
+          description: `Facture ${params.billerName} — ${params.subscriberAccountNumber}`,
+          providerName: 'RELOADLY',
+          idempotencyKey,
+        },
+      });
+
+      await this.ledger.postDoubleEntry(tx, {
+        transactionId: created.id,
+        fromWalletId: wallet.id,
+        toWalletId: null,
+        amount,
+        description: `Facture ${params.billerName}`,
+      });
+
+      return created;
+    });
+
+    const result = await this.reloadlyUtilities.payBill({
+      billerId: params.billerId,
+      subscriberAccountNumber: params.subscriberAccountNumber,
+      amount: params.amount,
+      referenceId: transaction.id,
+    });
+
+    await this.prisma.utilityPaymentRecord.create({
+      data: {
+        transactionId: transaction.id,
+        targetType: 'PARTICULIER',
+        targetUserId: userId,
+        billerId: params.billerId,
+        billerName: params.billerName,
+        billType: params.billType,
+        subscriberAccountNumber: params.subscriberAccountNumber,
+        amount: params.amount,
+        currencyCode: result.currencyCode,
+        status: result.status,
+        failureReason: result.status === 'FAILED' ? 'Paiement Reloadly refusé.' : null,
+      },
+    });
+
+    if (result.status === 'FAILED') {
+      await this.runSerializable(async (tx) => {
+        const wallet = await tx.wallet.findUniqueOrThrow({ where: { userId } });
+        await this.ledger.postDoubleEntry(tx, {
+          transactionId: transaction.id,
+          fromWalletId: null,
+          toWalletId: wallet.id,
+          amount,
+          description: `Remboursement — échec facture ${params.billerName}`,
+        });
+      });
+      return this.prisma.transaction.update({
+        where: { id: transaction.id },
+        data: { status: 'FAILED', failureReason: 'Paiement de facture refusé par le fournisseur.' },
+      });
+    }
+
+    return this.prisma.transaction.update({
+      where: { id: transaction.id },
+      data: { status: result.status === 'PROCESSING' ? 'PROCESSING' : 'SUCCESS' },
+    });
   }
 
   /** Source : solde du wallet MobilePay — débit immédiat, remboursement si échec. */

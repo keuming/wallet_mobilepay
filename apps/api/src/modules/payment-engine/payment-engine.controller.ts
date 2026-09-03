@@ -192,3 +192,58 @@ export class GiftCardsController {
     );
   }
 }
+
+export class PayUtilityBillDto {
+  @IsInt()
+  @IsPositive()
+  billerId: number;
+
+  @IsString()
+  billerName: string;
+
+  @IsIn(['ELECTRICITY_BILL_PAYMENT', 'WATER_BILL_PAYMENT', 'TV_BILL_PAYMENT', 'INTERNET_BILL_PAYMENT'])
+  billType: string;
+
+  @IsString()
+  @MinLength(1, { message: 'Numéro de compte/compteur requis.' })
+  subscriberAccountNumber: string;
+
+  @IsPositive()
+  amount: number;
+
+  @IsString()
+  pin: string;
+}
+
+@ApiTags('utility-payments')
+@ApiBearerAuth()
+@UseGuards(JwtAuthGuard)
+@Controller('utility-payments')
+export class UtilityPaymentsController {
+  constructor(private paymentEngine: PaymentEngineService) {}
+
+  @Get('billers')
+  listBillers(@Query('country') country: string = 'CI', @Query('type') type?: string) {
+    return this.paymentEngine.listUtilityBillers(country, type as any);
+  }
+
+  @Post('pay')
+  pay(
+    @CurrentUser() user: AuthenticatedUser,
+    @Body() dto: PayUtilityBillDto,
+    @Headers('idempotency-key') idempotencyKey: string,
+  ) {
+    return this.paymentEngine.payUtilityBill(
+      user.userId,
+      {
+        billerId: dto.billerId,
+        billerName: dto.billerName,
+        billType: dto.billType,
+        subscriberAccountNumber: dto.subscriberAccountNumber,
+        amount: dto.amount,
+        pin: dto.pin,
+      },
+      idempotencyKey,
+    );
+  }
+}

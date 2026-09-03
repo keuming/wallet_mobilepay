@@ -73,6 +73,7 @@ enum TransactionType {
   WITHDRAWAL // retrait (cash-out)
   AIRTIME
   GIFT_CARD
+  UTILITY_PAYMENT
   CARD_LOAD // chargement d'une carte virtuelle depuis le wallet
   CARD_UNLOAD // reversement du solde carte vers le wallet
   SETTLEMENT // règlement marchand -> banque
@@ -259,6 +260,29 @@ model Merchant {
 // Encaissement en espèces (§ Phase A Business — le client paie en liquide,
 // le marchand enregistre simplement le montant pour son suivi comptable).
 // Détails d'un achat crédit/data en attente de confirmation du paiement
+// Paiement de facture (§ Reloadly Utility Payments — électricité, eau, TV,
+// internet) — trace le paiement pour l'historique du client.
+model UtilityPaymentRecord {
+  id                      String   @id @default(uuid())
+  transactionId           String   @unique
+  targetType              String   // 'PARTICULIER' | 'MERCHANT'
+  targetUserId            String?
+  targetMerchantId        String?
+  billerId                Int
+  billerName              String
+  billType                String   // ELECTRICITY_BILL_PAYMENT | WATER_BILL_PAYMENT | TV_BILL_PAYMENT | INTERNET_BILL_PAYMENT
+  subscriberAccountNumber String
+  amount                  Float
+  currencyCode            String
+  status                  String   // 'PROCESSING' | 'SUCCESS' | 'FAILED'
+  failureReason           String?
+  createdAt               DateTime @default(now())
+
+  @@index([targetUserId])
+  @@index([targetMerchantId])
+  @@map("utility_payment_records")
+}
+
 // Commande de carte cadeau (§ Reloadly Gift Cards — Amazon, Apple, Netflix,
 // etc.) — trace la commande et conserve le code/PIN livrés par Reloadly pour
 // que l'utilisateur puisse les retrouver plus tard dans son historique.

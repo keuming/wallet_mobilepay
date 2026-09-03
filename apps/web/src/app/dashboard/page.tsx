@@ -167,6 +167,14 @@ export default function DashboardPage() {
           </div>
           <div className="mp-feature-chevron">→</div>
         </Link>
+        <Link href="/factures" className="mp-feature-card">
+          <div className="mp-feature-icon">🧾</div>
+          <div className="mp-feature-text">
+            <div className="mp-feature-title">Factures</div>
+            <div className="mp-feature-sub">Électricité, eau, TV, internet</div>
+          </div>
+          <div className="mp-feature-chevron">→</div>
+        </Link>
       </div>
 
       <div className="mp-section">
