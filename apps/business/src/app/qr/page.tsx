@@ -79,7 +79,7 @@ export default function QrPage() {
 
       <div className="mp-section">
         <h3>📱 QR Codes</h3>
-        {codes.length === 0 && <p style={{ color: 'var(--mp-muted)', fontSize: 14 }}>Aucun QR généré.</p>}
+        {codes.length === 0 && <p style={{ color: 'var(--fz-text-secondary)', fontSize: 14 }}>Aucun QR généré.</p>}
         <div className="mp-history-list" style={{ padding: 0 }}>
           {codes.map((qr) => (
             <div className="mp-history-card" key={qr.code} style={{ cursor: 'default' }}>
@@ -103,7 +103,7 @@ export default function QrPage() {
 
       <div className="mp-section">
         <h3>🔗 Payment Links</h3>
-        {links.length === 0 && <p style={{ color: 'var(--mp-muted)', fontSize: 14 }}>Aucun lien créé.</p>}
+        {links.length === 0 && <p style={{ color: 'var(--fz-text-secondary)', fontSize: 14 }}>Aucun lien créé.</p>}
         <div className="mp-history-list" style={{ padding: 0 }}>
           {links.map((link) => (
             <div className="mp-history-card" key={link.slug} style={{ cursor: 'default' }}>

@@ -120,7 +120,7 @@ export default function VenteCreditPage() {
       <BusinessSideMenu open={menuOpen} onClose={() => setMenuOpen(false)} />
 
       <div className="mp-form">
-        <p style={{ color: 'var(--mp-muted)', fontSize: 13, margin: 0 }}>
+        <p style={{ color: 'var(--fz-text-secondary)', fontSize: 13, margin: 0 }}>
           Vendez du crédit d'appel ou un forfait data à un client — le montant est débité de votre
           wallet marchand et envoyé instantanément sur le téléphone du client.
         </p>
@@ -131,8 +131,8 @@ export default function VenteCreditPage() {
             className="mp-action-btn"
             style={{
               flex: 1,
-              color: kind === 'AIRTIME' ? 'white' : 'var(--mp-navy)',
-              background: kind === 'AIRTIME' ? 'var(--mp-navy)' : 'var(--mp-surface)',
+              color: kind === 'AIRTIME' ? 'white' : 'var(--fz-text-primary)',
+              background: kind === 'AIRTIME' ? 'var(--fz-text-primary)' : 'var(--mp-surface)',
               border: '1px solid var(--mp-border)',
             }}
           >
@@ -143,8 +143,8 @@ export default function VenteCreditPage() {
             className="mp-action-btn"
             style={{
               flex: 1,
-              color: kind === 'DATA' ? 'white' : 'var(--mp-navy)',
-              background: kind === 'DATA' ? 'var(--mp-navy)' : 'var(--mp-surface)',
+              color: kind === 'DATA' ? 'white' : 'var(--fz-text-primary)',
+              background: kind === 'DATA' ? 'var(--fz-text-primary)' : 'var(--mp-surface)',
               border: '1px solid var(--mp-border)',
             }}
           >
@@ -196,13 +196,13 @@ export default function VenteCreditPage() {
                     ) : (
                       <span style={{ fontSize: 18 }}>📡</span>
                     )}
-                    <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--mp-navy)', textAlign: 'center' }}>{o.name}</span>
+                    <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--fz-text-primary)', textAlign: 'center' }}>{o.name}</span>
                   </button>
                 );
               })}
           </div>
           {operators.length === 0 && (
-            <p style={{ fontSize: 12.5, color: 'var(--mp-muted)', marginTop: 6 }}>Aucun opérateur disponible pour ce pays.</p>
+            <p style={{ fontSize: 12.5, color: 'var(--fz-text-secondary)', marginTop: 6 }}>Aucun opérateur disponible pour ce pays.</p>
           )}
         </label>
 
@@ -218,7 +218,7 @@ export default function VenteCreditPage() {
         </label>
 
         <div>
-          <div style={{ fontSize: 12.5, color: 'var(--mp-muted)', fontWeight: 600, marginBottom: 8 }}>
+          <div style={{ fontSize: 12.5, color: 'var(--fz-text-secondary)', fontWeight: 600, marginBottom: 8 }}>
             Montant ({operator?.destinationCurrencyCode ?? 'FCFA'})
           </div>
           {operator?.denominationType === 'FIXED' && operator.localFixedAmounts.length > 0 ? (
@@ -230,8 +230,8 @@ export default function VenteCreditPage() {
                   onClick={() => setAmount(String(preset))}
                   className="mp-action-btn"
                   style={{
-                    color: amount === String(preset) ? 'white' : 'var(--mp-navy)',
-                    background: amount === String(preset) ? 'var(--mp-navy)' : 'var(--mp-surface)',
+                    color: amount === String(preset) ? 'white' : 'var(--fz-text-primary)',
+                    background: amount === String(preset) ? 'var(--fz-text-primary)' : 'var(--mp-surface)',
                     border: '1px solid var(--mp-border)',
                   }}
                 >
@@ -242,7 +242,7 @@ export default function VenteCreditPage() {
           ) : (
             <>
               {operator?.denominationType === 'RANGE' && operator.localMinAmount != null && operator.localMaxAmount != null && (
-                <p style={{ fontSize: 12, color: 'var(--mp-muted)', margin: '0 0 8px' }}>
+                <p style={{ fontSize: 12, color: 'var(--fz-text-secondary)', margin: '0 0 8px' }}>
                   Montant entre {operator.localMinAmount.toLocaleString('fr-FR')} et {operator.localMaxAmount.toLocaleString('fr-FR')} {operator.destinationCurrencyCode}
                 </p>
               )}
@@ -273,7 +273,7 @@ export default function VenteCreditPage() {
 
         <button
           className="mp-btn-primary"
-          style={{ background: 'linear-gradient(120deg, var(--mp-navy) 0%, #0a1f3d 100%)' }}
+          style={{ background: 'linear-gradient(120deg, var(--fz-text-primary) 0%, #0a1f3d 100%)' }}
           disabled={submitting || !phone || !amount || !operator}
           onClick={submit}
         >

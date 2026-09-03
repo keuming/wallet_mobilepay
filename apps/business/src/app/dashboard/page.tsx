@@ -44,7 +44,7 @@ export default function BusinessHomePage() {
     return (
       <div className="mp-container">
         <div className="mp-section">
-          <p style={{ color: 'var(--mp-muted)' }}>
+          <p style={{ color: 'var(--fz-text-secondary)' }}>
             Aucun marchand rattaché à ce compte. Contactez un agent MobilePay.
           </p>
         </div>
@@ -54,38 +54,59 @@ export default function BusinessHomePage() {
 
   return (
     <div className="mp-container">
-      <div className="mp-header mc-business-header">
-        <div className="mp-header-row">
-          <button className="mp-icon-btn" onClick={() => setMenuOpen(true)} title="Menu">
-            ☰
-          </button>
-          <span className="mp-brand-mark">
-            <span className="dot" />
-            {activeMerchant.businessName}
-            <span className="mc-business-badge">BUSINESS</span>
+      <div className="fz-glow" />
+
+      <div className="fz-header-row">
+        <div className="fz-profile" onClick={() => setMenuOpen(true)}>
+          <span className="fz-avatar">{activeMerchant.businessName.charAt(0).toUpperCase()}</span>
+          <span className="fz-greeting">
+            <span className="hello">Business</span>
+            <span className="name">{activeMerchant.businessName}</span>
           </span>
-          <button onClick={() => logout().then(() => router.push('/login'))} className="mp-icon-btn" title="Déconnexion">
-            ⏻
-          </button>
         </div>
+        <button onClick={() => logout().then(() => router.push('/login'))} className="fz-notif-btn" title="Déconnexion">
+          ⏻
+        </button>
       </div>
 
       <BusinessSideMenu open={menuOpen} onClose={() => setMenuOpen(false)} />
 
-      <div className="mp-balance-card">
-        <div className="mp-balance-label">💳 Encaissements aujourd'hui</div>
-        <div className="mp-balance-amount">
-          {data ? formatFcfa(data.todayCollections) : '—'}
-          <span className="currency">FCFA</span>
-        </div>
-        <div style={{ fontSize: 12, opacity: 0.8, marginTop: 6, position: 'relative' }}>
-          Solde wallet : {data ? formatFcfa(data.availableBalance) : '—'} FCFA
-        </div>
-        {cash && cash.totalCash > 0 && (
-          <div style={{ fontSize: 12, opacity: 0.8, marginTop: 2, position: 'relative' }}>
-            💵 Espèce en caisse : {formatFcfa(cash.totalCash)} FCFA
+      <div className="fz-balance-card">
+        <div className="fz-balance-top">
+          <div>
+            <span className="fz-balance-label">💰 Encaissements aujourd'hui</span>
+            <span className="fz-balance-amount">
+              {data ? formatFcfa(data.todayCollections) : '—'}
+              <span className="fz-currency">FCFA</span>
+            </span>
           </div>
-        )}
+          <Link href="/encaisser" className="fz-add-money-btn">
+            Encaisser
+          </Link>
+        </div>
+
+        <div className="fz-pill-row">
+          <Link href="/recharger" className="fz-pill-btn">📞 Crédit/Data</Link>
+          <Link href="/cartes-cadeaux" className="fz-pill-btn">🎁 Cartes cadeaux</Link>
+          <Link href="/transactions" className="fz-pill-btn">📋 Historique</Link>
+        </div>
+      </div>
+
+      <div className="fz-mini-row">
+        <div className="fz-mini-card sent">
+          <span className="fz-mini-icon">💳</span>
+          <div>
+            <span className="fz-mini-label">Solde wallet</span>
+            <span className="fz-mini-amount">{data ? formatFcfa(data.availableBalance) : '—'} F</span>
+          </div>
+        </div>
+        <div className="fz-mini-card received">
+          <span className="fz-mini-icon">💵</span>
+          <div>
+            <span className="fz-mini-label">Espèce en caisse</span>
+            <span className="fz-mini-amount">{cash ? formatFcfa(cash.totalCash) : '0'} F</span>
+          </div>
+        </div>
       </div>
 
       <div className="mp-feature-list" style={{ marginTop: 8 }}>
@@ -94,22 +115,6 @@ export default function BusinessHomePage() {
           <div className="mp-feature-text">
             <div className="mp-feature-title">Encaisser un client</div>
             <div className="mp-feature-sub">QR permanent, QR dynamique, lien ou demande</div>
-          </div>
-          <div className="mp-feature-chevron">→</div>
-        </Link>
-        <Link href="/recharger" className="mp-feature-card featured">
-          <div className="mp-feature-icon">📞</div>
-          <div className="mp-feature-text">
-            <div className="mp-feature-title">Vente crédit/data</div>
-            <div className="mp-feature-sub">Recharger le téléphone d'un client</div>
-          </div>
-          <div className="mp-feature-chevron">→</div>
-        </Link>
-        <Link href="/transactions" className="mp-feature-card">
-          <div className="mp-feature-icon">📋</div>
-          <div className="mp-feature-text">
-            <div className="mp-feature-title">Historique</div>
-            <div className="mp-feature-sub">Vérifier qu'un encaissement est bien arrivé</div>
           </div>
           <div className="mp-feature-chevron">→</div>
         </Link>
@@ -124,9 +129,9 @@ export default function BusinessHomePage() {
       </div>
 
       <div className="mp-section">
-        <p style={{ color: 'var(--mp-muted)', fontSize: 12.5, textAlign: 'center' }}>
+        <p style={{ color: 'var(--fz-text-secondary)', fontSize: 12.5, textAlign: 'center' }}>
           Pour le solde, l'historique complet, les transferts et la carte virtuelle, rendez-vous sur{' '}
-          <a href="https://marchand.mobilepay-ci.com" style={{ color: 'var(--mp-green-dark)', fontWeight: 600 }}>
+          <a href="https://marchand.mobilepay-ci.com" style={{ color: 'var(--fz-accent)', fontWeight: 600 }}>
             le Dashboard de gestion
           </a>
           .

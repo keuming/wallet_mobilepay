@@ -121,7 +121,7 @@ export default function CartesCadeauxBusinessPage() {
               ) : (
                 <span style={{ fontSize: 20 }}>🎁</span>
               )}
-              <span style={{ fontSize: 10.5, fontWeight: 600, color: 'var(--mp-navy)', textAlign: 'center' }}>{p.brandName}</span>
+              <span style={{ fontSize: 10.5, fontWeight: 600, color: 'var(--fz-text-primary)', textAlign: 'center' }}>{p.brandName}</span>
             </button>
           ))}
         </div>
@@ -141,8 +141,8 @@ export default function CartesCadeauxBusinessPage() {
                       onClick={() => setAmount(String(preset))}
                       className="mp-action-btn"
                       style={{
-                        color: amount === String(preset) ? 'white' : 'var(--mp-navy)',
-                        background: amount === String(preset) ? 'var(--mp-navy)' : 'var(--mp-surface)',
+                        color: amount === String(preset) ? 'white' : 'var(--fz-text-primary)',
+                        background: amount === String(preset) ? 'var(--fz-text-primary)' : 'var(--mp-surface)',
                         border: '1px solid var(--mp-border)',
                       }}
                     >

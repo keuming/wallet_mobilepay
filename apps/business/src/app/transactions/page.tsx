@@ -82,9 +82,9 @@ export default function TransactionsPage() {
 
       <div className="mp-section">
         {fetching ? (
-          <p style={{ color: 'var(--mp-muted)', fontSize: 14 }}>Chargement...</p>
+          <p style={{ color: 'var(--fz-text-secondary)', fontSize: 14 }}>Chargement...</p>
         ) : entries.length === 0 ? (
-          <p style={{ color: 'var(--mp-muted)', fontSize: 14 }}>Aucune transaction pour le moment.</p>
+          <p style={{ color: 'var(--fz-text-secondary)', fontSize: 14 }}>Aucune transaction pour le moment.</p>
         ) : (
           <div className="mp-history-list" style={{ padding: 0 }}>
             {entries.map((entry) => (
@@ -121,7 +121,7 @@ export default function TransactionsPage() {
           >
             ← Préc.
           </button>
-          <span style={{ color: 'var(--mp-muted)', fontSize: 13 }}>
+          <span style={{ color: 'var(--fz-text-secondary)', fontSize: 13 }}>
             Page {page} / {totalPages}
           </span>
           <button

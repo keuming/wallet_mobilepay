@@ -141,7 +141,7 @@ function CashPanel({ merchantId }: { merchantId: string }) {
 
   return (
     <div className="mp-form">
-      <p style={{ color: 'var(--mp-muted)', fontSize: 13, margin: 0 }}>
+      <p style={{ color: 'var(--fz-text-secondary)', fontSize: 13, margin: 0 }}>
         Le client paie en liquide — enregistre simplement le montant reçu pour ton suivi de caisse
         (aucun mouvement d'argent numérique).
       </p>
@@ -151,7 +151,7 @@ function CashPanel({ merchantId }: { merchantId: string }) {
       {success && <div style={{ color: 'var(--mp-green-dark)', fontSize: 13, fontWeight: 600 }}>Encaissement espèce enregistré ✓</div>}
       <button
         className="mp-btn-primary"
-        style={{ background: 'linear-gradient(120deg, var(--mp-navy) 0%, #0a1f3d 100%)' }}
+        style={{ background: 'var(--fz-accent)' }}
         disabled={submitting || !amount}
         onClick={record}
       >
@@ -174,10 +174,10 @@ function CardPanel() {
         }}
       >
         <div style={{ fontSize: 32, marginBottom: 10 }}>🔒</div>
-        <div style={{ fontWeight: 700, color: 'var(--mp-navy)', marginBottom: 6 }}>
+        <div style={{ fontWeight: 700, color: 'var(--fz-text-primary)', marginBottom: 6 }}>
           Bientôt disponible
         </div>
-        <p style={{ color: 'var(--mp-muted)', fontSize: 13, margin: 0 }}>
+        <p style={{ color: 'var(--fz-text-secondary)', fontSize: 13, margin: 0 }}>
           Le paiement par carte nécessite une connexion sécurisée directe avec HUB2 (aucune donnée
           de carte ne doit jamais transiter par cet appareil, par exigence de sécurité des réseaux
           Visa/Mastercard). Cette intégration est en cours de finalisation.
@@ -196,7 +196,7 @@ function StaticQrPanel({ merchantId }: { merchantId: string }) {
 
   return (
     <div className="mp-form">
-      <p style={{ color: 'var(--mp-muted)', fontSize: 13, margin: 0 }}>
+      <p style={{ color: 'var(--fz-text-secondary)', fontSize: 13, margin: 0 }}>
         Le client scanne ce QR fixe puis saisit lui-même le montant à payer.
       </p>
       {qr ? (
@@ -234,7 +234,7 @@ function DynamicQrPanel({ merchantId }: { merchantId: string }) {
 
   return (
     <div className="mp-form">
-      <p style={{ color: 'var(--mp-muted)', fontSize: 13, margin: 0 }}>
+      <p style={{ color: 'var(--fz-text-secondary)', fontSize: 13, margin: 0 }}>
         Montant fixe, QR temporaire à usage unique — expire après 15 minutes.
       </p>
       <input className="mp-input" placeholder="Montant (FCFA)" type="number" value={amount} onChange={(e) => setAmount(e.target.value)} />
@@ -242,7 +242,7 @@ function DynamicQrPanel({ merchantId }: { merchantId: string }) {
       {error && <div style={{ color: 'var(--mp-red)', fontSize: 13 }}>{error}</div>}
       <button
         className="mp-btn-primary"
-        style={{ background: 'linear-gradient(120deg, var(--mp-navy) 0%, #0a1f3d 100%)' }}
+        style={{ background: 'var(--fz-accent)' }}
         disabled={submitting || !amount}
         onClick={generate}
       >
@@ -284,7 +284,7 @@ function PaymentLinkPanel({ merchantId }: { merchantId: string }) {
 
   return (
     <div className="mp-form">
-      <p style={{ color: 'var(--mp-muted)', fontSize: 13, margin: 0 }}>
+      <p style={{ color: 'var(--fz-text-secondary)', fontSize: 13, margin: 0 }}>
         Lien partageable (WhatsApp, SMS...) — laissez le montant vide pour un montant libre saisi par
         le payeur.
       </p>
@@ -293,7 +293,7 @@ function PaymentLinkPanel({ merchantId }: { merchantId: string }) {
       {error && <div style={{ color: 'var(--mp-red)', fontSize: 13 }}>{error}</div>}
       <button
         className="mp-btn-primary"
-        style={{ background: 'linear-gradient(120deg, var(--mp-navy) 0%, #0a1f3d 100%)' }}
+        style={{ background: 'var(--fz-accent)' }}
         disabled={submitting}
         onClick={generate}
       >
@@ -488,13 +488,13 @@ function PaymentRequestPanel({ merchantId }: { merchantId: string }) {
 
   return (
     <div className="mp-form">
-      <p style={{ color: 'var(--mp-muted)', fontSize: 13, margin: 0 }}>
+      <p style={{ color: 'var(--fz-text-secondary)', fontSize: 13, margin: 0 }}>
         Saisis le numéro, choisis l'opérateur et le montant à débiter. Si le client a MobilePay, il
         confirme dans son app ; sinon, un prompt Mobile Money s'affiche directement sur son
         téléphone via son opérateur.
       </p>
       <input className="mp-input" placeholder="Numéro du client (+225...)" value={customerPhone} onChange={(e) => setCustomerPhone(e.target.value)} />
-      <label style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--mp-muted)' }}>
+      <label style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--fz-text-secondary)' }}>
         Opérateur du client
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8, marginTop: 6 }}>
           {MOMO_PROVIDERS.map((p) => (
@@ -515,7 +515,7 @@ function PaymentRequestPanel({ merchantId }: { merchantId: string }) {
               }}
             >
               <PaymentMethodBadge method={p.badge} size={30} />
-              <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--mp-navy)', textAlign: 'center' }}>{p.label}</span>
+              <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--fz-text-primary)', textAlign: 'center' }}>{p.label}</span>
             </button>
           ))}
         </div>
@@ -565,7 +565,7 @@ function PaymentRequestPanel({ merchantId }: { merchantId: string }) {
       )}
       <button
         className="mp-btn-primary"
-        style={{ background: 'linear-gradient(120deg, var(--mp-navy) 0%, #0a1f3d 100%)' }}
+        style={{ background: 'var(--fz-accent)' }}
         disabled={submitting || !customerPhone || !provider || !amount}
         onClick={send}
       >
@@ -628,7 +628,7 @@ function PaymentLinkResult({ link, merchantId, transactionId }: { link: string; 
         style={{
           fontSize: 12,
           fontFamily: 'monospace',
-          color: 'var(--mp-muted)',
+          color: 'var(--fz-text-secondary)',
           wordBreak: 'break-all',
           marginBottom: 10,
         }}
@@ -646,7 +646,7 @@ function PaymentLinkResult({ link, merchantId, transactionId }: { link: string; 
         <button
           onClick={handleShare}
           className="mp-btn-primary"
-          style={{ flex: 1, background: 'linear-gradient(120deg, var(--mp-navy) 0%, #0a1f3d 100%)', padding: '10px 6px', fontSize: 12.5 }}
+          style={{ flex: 1, background: 'var(--fz-accent)', padding: '10px 6px', fontSize: 12.5 }}
         >
           📤 Partager
         </button>
