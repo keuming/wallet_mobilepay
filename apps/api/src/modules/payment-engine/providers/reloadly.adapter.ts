@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import * as crypto from 'crypto';
+import { getCountryCallingCode, CountryCode } from 'libphonenumber-js';
 
 export interface PurchaseAirtimeParams {
   phoneNumber: string;
@@ -18,10 +19,33 @@ export interface AirtimeResult {
   operatorName?: string;
 }
 
+/**
+ * Opérateur Reloadly (§ champs réels de l'API — confirmés via
+ * blog.reloadly.com, pas devinés). Les montants "local*" sont dans la
+ * devise du PAYS DESTINATAIRE (celle à afficher à l'utilisateur) quand
+ * `supportsLocalAmounts` est vrai — sinon repli sur les montants "sender"
+ * (devise du compte Reloadly) convertis via `fxRate`.
+ */
 export interface ReloadlyOperator {
   operatorId: string;
   name: string;
-  supportsData: boolean;
+  logoUrls: string[]; // fournis par Reloadly — pas besoin de sourcer nous-mêmes
+  data: boolean; // supporte les forfaits data
+  bundle: boolean;
+  pin: boolean; // livraison par code PIN (recharge indirecte) vs directe
+  supportsLocalAmounts: boolean;
+  denominationType: 'FIXED' | 'RANGE';
+  senderCurrencyCode: string;
+  destinationCurrencyCode: string; // devise locale du pays destinataire
+  fixedAmounts: number[];
+  localFixedAmounts: number[];
+  minAmount: number | null;
+  maxAmount: number | null;
+  localMinAmount: number | null;
+  localMaxAmount: number | null;
+  fxRate: number;
+  countryIso: string;
+  countryName: string;
 }
 
 export interface ReloadlyBalance {
@@ -30,16 +54,40 @@ export interface ReloadlyBalance {
   updatedAt: string;
 }
 
-// Indicatifs téléphoniques des pays couverts par HUB2 (§ multi-pays) — sert à
-// isoler le numéro local avant de l'envoyer à Reloadly, qui attend le
-// countryCode et le numéro local séparément.
-const COUNTRY_DIAL_CODES: Record<string, string> = {
-  CI: '225', SN: '221', ML: '223', BF: '226', BJ: '229', TG: '228', NE: '227',
-  GW: '245', CM: '237', GA: '241', CG: '242', TD: '235', CF: '236', GQ: '240',
-};
+function mapOperator(op: any): ReloadlyOperator {
+  return {
+    operatorId: String(op.operatorId ?? op.id),
+    name: op.name,
+    logoUrls: Array.isArray(op.logoUrls) ? op.logoUrls : [],
+    data: !!op.data,
+    bundle: !!op.bundle,
+    pin: !!op.pin,
+    supportsLocalAmounts: !!op.supportsLocalAmounts,
+    denominationType: op.denominationType === 'RANGE' ? 'RANGE' : 'FIXED',
+    senderCurrencyCode: op.senderCurrencyCode ?? '',
+    destinationCurrencyCode: op.destinationCurrencyCode ?? '',
+    fixedAmounts: Array.isArray(op.fixedAmounts) ? op.fixedAmounts : [],
+    localFixedAmounts: Array.isArray(op.localFixedAmounts) ? op.localFixedAmounts : [],
+    minAmount: op.minAmount ?? null,
+    maxAmount: op.maxAmount ?? null,
+    localMinAmount: op.localMinAmount ?? null,
+    localMaxAmount: op.localMaxAmount ?? null,
+    fxRate: op.fx?.rate ?? 1,
+    countryIso: op.country?.isoName ?? '',
+    countryName: op.country?.name ?? '',
+  };
+}
 
+// § Reloadly couvre le monde entier (pas seulement les pays HUB2) — on
+// utilise libphonenumber-js pour obtenir l'indicatif de N'IMPORTE QUEL pays,
+// plutôt qu'une liste limitée maintenue à la main.
 function toLocalNumber(phoneNumber: string, countryCode: string): string {
-  const dialCode = COUNTRY_DIAL_CODES[countryCode] ?? '225';
+  let dialCode = '225';
+  try {
+    dialCode = getCountryCallingCode(countryCode as CountryCode);
+  } catch {
+    // code pays inconnu de libphonenumber-js — repli CI
+  }
   return phoneNumber.replace(/^\+?/, '').replace(new RegExp(`^${dialCode}`), '');
 }
 
@@ -79,11 +127,7 @@ export class ReloadlyAdapter {
       throw new Error(`Reloadly operators-by-country error (${res.status}): ${await res.text()}`);
     }
     const json = await res.json();
-    return (Array.isArray(json) ? json : []).map((op: any) => ({
-      operatorId: String(op.operatorId ?? op.id),
-      name: op.name,
-      supportsData: !!op.data,
-    }));
+    return (Array.isArray(json) ? json : []).map(mapOperator);
   }
 
   /** Détecte l'opérateur réel à partir du numéro + pays (§ vrai endpoint auto-detect Reloadly). */
@@ -102,7 +146,7 @@ export class ReloadlyAdapter {
       throw new Error(`Reloadly auto-detect error (${res.status}): ${await res.text()}`);
     }
     const json = await res.json();
-    return { operatorId: String(json.operatorId ?? json.id), name: json.name, supportsData: !!json.data };
+    return mapOperator(json);
   }
 
   /**

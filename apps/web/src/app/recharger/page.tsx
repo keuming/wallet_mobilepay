@@ -7,11 +7,22 @@ import { apiFetch, ApiError } from '../../lib/apiClient';
 import StatusModal, { ResultStatus } from '../../components/StatusModal';
 import PaymentMethodBadge, { PaymentMethodId } from '../../components/PaymentMethodBadge';
 import { useAuth } from '../../contexts/AuthContext';
+import { WORLD_COUNTRIES } from '../../lib/worldCountries';
 
 interface Operator {
   operatorId: string;
   name: string;
-  supportsData: boolean;
+  logoUrls: string[];
+  data: boolean;
+  denominationType: 'FIXED' | 'RANGE';
+  destinationCurrencyCode: string;
+  fixedAmounts: number[];
+  localFixedAmounts: number[];
+  minAmount: number | null;
+  maxAmount: number | null;
+  localMinAmount: number | null;
+  localMaxAmount: number | null;
+  supportsLocalAmounts: boolean;
 }
 
 type Category = 'AIRTIME' | 'CALL_PASS' | 'DATA_PASS' | 'INTERNET';
@@ -41,7 +52,9 @@ const MOMO_OPTIONS: Array<{ id: MomoOperator; badge: PaymentMethodId; label: str
   { id: 'MTN', badge: 'MTN', label: 'MTN Money' },
 ];
 
-const STEPS = ['Catégorie', 'Opérateur', 'Bénéficiaire', 'Paiement', 'Montant', 'Résumé'];
+const STEPS = ['Pays', 'Catégorie', 'Opérateur', 'Bénéficiaire', 'Paiement', 'Montant', 'Résumé'];
+
+
 
 export default function RechargerPage() {
   const router = useRouter();
@@ -49,8 +62,10 @@ export default function RechargerPage() {
   const [step, setStep] = useState(0);
 
   const [category, setCategory] = useState<Category | null>(null);
+  const [country, setCountry] = useState('CI');
   const [operator, setOperator] = useState<Operator | null>(null);
   const [allOperators, setAllOperators] = useState<Operator[]>([]);
+  const [operatorsLoading, setOperatorsLoading] = useState(false);
   const [phone, setPhone] = useState('');
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod | null>(null);
   const [momoOperator, setMomoOperator] = useState<MomoOperator | null>(null);
@@ -121,26 +136,34 @@ export default function RechargerPage() {
   };
 
   useEffect(() => {
-    apiFetch<Operator[]>(`/airtime/operators?country=${user?.country ?? 'CI'}`).then(setAllOperators);
+    if (user?.country) setCountry(user.country);
   }, [user?.country]);
 
+  useEffect(() => {
+    setOperatorsLoading(true);
+    apiFetch<Operator[]>(`/airtime/operators?country=${country}`)
+      .then(setAllOperators)
+      .finally(() => setOperatorsLoading(false));
+  }, [country]);
+
   const kind = category ? CATEGORY_TO_KIND[category] : null;
-  const presetAmounts = kind === 'DATA' ? [1000, 2500, 5000, 10000] : [500, 1000, 2000, 5000];
 
   const canGoNext = (): boolean => {
     switch (step) {
       case 0:
-        return category !== null;
+        return !!country;
       case 1:
-        return operator !== null;
+        return category !== null;
       case 2:
-        return phone.replace(/\D/g, '').length >= 8;
+        return operator !== null;
       case 3:
+        return phone.replace(/\D/g, '').length >= 8;
+      case 4:
         if (paymentMethod === 'MOBILE_MONEY') return !!momoOperator && momoAccount.replace(/\D/g, '').length >= 8;
         return paymentMethod === 'WALLET';
-      case 4:
-        return !!amount && Number(amount) > 0;
       case 5:
+        return !!amount && Number(amount) > 0;
+      case 6:
         return true;
       default:
         return false;
@@ -160,7 +183,7 @@ export default function RechargerPage() {
           operatorId: operator?.operatorId,
           paymentMethod,
           momoProvider: paymentMethod === 'MOBILE_MONEY' ? momoOperator : undefined,
-          countryCode: user?.country ?? 'CI',
+          countryCode: country,
         }),
       });
 
@@ -224,8 +247,28 @@ export default function RechargerPage() {
       </div>
 
       <div className="mp-form">
-        {/* Étape 1 : Catégorie */}
+        {/* Étape 0 : Pays du destinataire */}
         {step === 0 && (
+          <label>
+            Pays du destinataire
+            <select
+              className="mp-input"
+              style={{ width: '100%', marginTop: 6 }}
+              value={country}
+              onChange={(e) => {
+                setCountry(e.target.value);
+                setOperator(null); // la liste d'opérateurs change avec le pays
+              }}
+            >
+              {WORLD_COUNTRIES.map((c) => (
+                <option key={c.code} value={c.code}>{c.name}</option>
+              ))}
+            </select>
+          </label>
+        )}
+
+        {/* Étape 1 : Catégorie */}
+        {step === 1 && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             {(Object.keys(CATEGORY_LABELS) as Category[]).map((c) => (
               <button
@@ -241,25 +284,39 @@ export default function RechargerPage() {
           </div>
         )}
 
-        {/* Étape 2 : Opérateur télécom */}
-        {step === 1 && (
+        {/* Étape 2 : Opérateur télécom — logos quand la marque est reconnue */}
+        {step === 2 && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {operatorsLoading && <p style={{ color: 'var(--mp-muted)', fontSize: 13.5 }}>Chargement des opérateurs...</p>}
+            {!operatorsLoading && allOperators.length === 0 && (
+              <p style={{ color: 'var(--mp-muted)', fontSize: 13.5 }}>Aucun opérateur disponible pour ce pays.</p>
+            )}
             {allOperators
-              .filter((o) => kind !== 'DATA' || o.supportsData)
-              .map((o) => (
-                <button
-                  key={o.operatorId}
-                  onClick={() => setOperator(o)}
-                  className={`mp-list-card ${operator?.operatorId === o.operatorId ? 'selected' : ''}`}
-                >
-                  {o.name}
-                </button>
-              ))}
+              .filter((o) => kind !== 'DATA' || o.data)
+              .map((o) => {
+                const logo = o.logoUrls?.[2] ?? o.logoUrls?.[0];
+                return (
+                  <button
+                    key={o.operatorId}
+                    onClick={() => setOperator(o)}
+                    className={`mp-list-card ${operator?.operatorId === o.operatorId ? 'selected' : ''}`}
+                    style={{ display: 'flex', alignItems: 'center', gap: 10 }}
+                  >
+                    {logo ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={logo} alt={o.name} width={28} height={28} style={{ borderRadius: 7, objectFit: 'contain', background: 'white' }} />
+                    ) : (
+                      <span style={{ fontSize: 18 }}>📡</span>
+                    )}
+                    {o.name}
+                  </button>
+                );
+              })}
           </div>
         )}
 
         {/* Étape 3 : Numéro bénéficiaire */}
-        {step === 2 && (
+        {step === 3 && (
           <label>
             Numéro du bénéficiaire ({operator?.name})
             <input
@@ -274,7 +331,7 @@ export default function RechargerPage() {
         )}
 
         {/* Étape 4 : Mode de paiement */}
-        {step === 3 && (
+        {step === 4 && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             <button
               onClick={() => setPaymentMethod('WALLET')}
@@ -312,36 +369,46 @@ export default function RechargerPage() {
         )}
 
         {/* Étape 5 : Montant */}
-        {step === 4 && (
+        {step === 5 && (
           <div>
             <div style={{ fontSize: 12.5, color: 'var(--mp-muted)', fontWeight: 600, marginBottom: 8 }}>
-              Montant (FCFA)
+              Montant ({operator?.destinationCurrencyCode ?? 'FCFA'})
             </div>
-            <div className="mp-preset-grid" style={{ marginBottom: 10 }}>
-              {presetAmounts.map((preset) => (
-                <button
-                  key={preset}
-                  type="button"
-                  onClick={() => setAmount(String(preset))}
-                  className={`mp-preset-chip ${amount === String(preset) ? 'selected' : ''}`}
-                >
-                  {preset.toLocaleString('fr-FR')}
-                </button>
-              ))}
-            </div>
-            <input
-              className="mp-input"
-              style={{ width: '100%' }}
-              type="number"
-              placeholder="Ou montant libre"
-              value={amount}
-              onChange={(e) => setAmount(e.target.value)}
-            />
+            {operator?.denominationType === 'FIXED' && operator.localFixedAmounts.length > 0 ? (
+              <div className="mp-preset-grid" style={{ marginBottom: 10 }}>
+                {operator.localFixedAmounts.map((preset) => (
+                  <button
+                    key={preset}
+                    type="button"
+                    onClick={() => setAmount(String(preset))}
+                    className={`mp-preset-chip ${amount === String(preset) ? 'selected' : ''}`}
+                  >
+                    {preset.toLocaleString('fr-FR')}
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <>
+                {operator?.denominationType === 'RANGE' && operator.localMinAmount != null && operator.localMaxAmount != null && (
+                  <p style={{ fontSize: 12, color: 'var(--mp-muted)', margin: '0 0 8px' }}>
+                    Montant entre {operator.localMinAmount.toLocaleString('fr-FR')} et {operator.localMaxAmount.toLocaleString('fr-FR')} {operator.destinationCurrencyCode}
+                  </p>
+                )}
+                <input
+                  className="mp-input"
+                  style={{ width: '100%' }}
+                  type="number"
+                  placeholder="Montant"
+                  value={amount}
+                  onChange={(e) => setAmount(e.target.value)}
+                />
+              </>
+            )}
           </div>
         )}
 
         {/* Étape 6 : Résumé */}
-        {step === 5 && category && (
+        {step === 6 && category && (
           <>
             <div
               style={{
@@ -357,6 +424,10 @@ export default function RechargerPage() {
               <div className="mp-detail-row">
                 <span className="k">Catégorie</span>
                 <span className="v">{CATEGORY_LABELS[category].label}</span>
+              </div>
+              <div className="mp-detail-row">
+                <span className="k">Pays</span>
+                <span className="v">{WORLD_COUNTRIES.find((c) => c.code === country)?.name}</span>
               </div>
               <div className="mp-detail-row">
                 <span className="k">Bénéficiaire</span>

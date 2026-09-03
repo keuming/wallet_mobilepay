@@ -6,11 +6,18 @@ import Link from 'next/link';
 import { useAuth } from '../../contexts/AuthContext';
 import { apiFetch, ApiError } from '../../lib/apiClient';
 import BusinessSideMenu from '../../components/BusinessSideMenu';
+import { WORLD_COUNTRIES } from '../../lib/worldCountries';
 
 interface Operator {
   operatorId: string;
   name: string;
-  supportsData: boolean;
+  logoUrls: string[];
+  data: boolean;
+  denominationType: 'FIXED' | 'RANGE';
+  destinationCurrencyCode: string;
+  localFixedAmounts: number[];
+  localMinAmount: number | null;
+  localMaxAmount: number | null;
 }
 
 type Kind = 'AIRTIME' | 'DATA';
@@ -25,6 +32,7 @@ export default function VenteCreditPage() {
   const [menuOpen, setMenuOpen] = useState(false);
 
   const [kind, setKind] = useState<Kind>('AIRTIME');
+  const [country, setCountry] = useState('CI');
   const [operators, setOperators] = useState<Operator[]>([]);
   const [operator, setOperator] = useState<Operator | null>(null);
   const [phone, setPhone] = useState('');
@@ -39,12 +47,15 @@ export default function VenteCreditPage() {
       router.replace('/login');
       return;
     }
-    apiFetch<Operator[]>(`/airtime/operators?country=${activeMerchant?.country ?? 'CI'}`).then(setOperators);
+    if (activeMerchant?.country) setCountry(activeMerchant.country);
   }, [user, loading, router, activeMerchant?.country]);
 
-  if (loading || !user || !activeMerchant) return null;
+  useEffect(() => {
+    apiFetch<Operator[]>(`/airtime/operators?country=${country}`).then(setOperators);
+    setOperator(null);
+  }, [country]);
 
-  const presets = kind === 'DATA' ? [1000, 2500, 5000, 10000] : [500, 1000, 2000, 5000];
+  if (loading || !user || !activeMerchant) return null;
 
   const submit = async () => {
     setSubmitting(true);
@@ -60,6 +71,7 @@ export default function VenteCreditPage() {
           kind,
           operatorId: operator?.operatorId,
           operatorName: operator?.name,
+          countryCode: country,
         }),
       });
       if (res.status === 'SUCCESS') {
@@ -141,22 +153,57 @@ export default function VenteCreditPage() {
         </div>
 
         <label>
-          Opérateur du client
+          Pays du client
           <select
             className="mp-input"
             style={{ width: '100%', marginTop: 6 }}
-            value={operator?.operatorId ?? ''}
-            onChange={(e) => setOperator(operators.find((o) => o.operatorId === e.target.value) ?? null)}
+            value={country}
+            onChange={(e) => setCountry(e.target.value)}
           >
-            <option value="">Sélectionner...</option>
-            {operators
-              .filter((o) => kind !== 'DATA' || o.supportsData)
-              .map((o) => (
-                <option key={o.operatorId} value={o.operatorId}>
-                  {o.name}
-                </option>
-              ))}
+            {WORLD_COUNTRIES.map((c) => (
+              <option key={c.code} value={c.code}>{c.name}</option>
+            ))}
           </select>
+        </label>
+
+        <label>
+          Opérateur du client
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8, marginTop: 6 }}>
+            {operators
+              .filter((o) => kind !== 'DATA' || o.data)
+              .map((o) => {
+                const logo = o.logoUrls?.[2] ?? o.logoUrls?.[0];
+                return (
+                  <button
+                    key={o.operatorId}
+                    type="button"
+                    onClick={() => setOperator(o)}
+                    style={{
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      gap: 6,
+                      padding: '10px 6px',
+                      borderRadius: 12,
+                      border: operator?.operatorId === o.operatorId ? '2px solid var(--mp-green)' : '1px solid var(--mp-border, #e2e8e5)',
+                      background: operator?.operatorId === o.operatorId ? 'rgba(71,182,134,.08)' : 'white',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    {logo ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={logo} alt={o.name} width={28} height={28} style={{ borderRadius: 7, objectFit: 'contain', background: 'white' }} />
+                    ) : (
+                      <span style={{ fontSize: 18 }}>📡</span>
+                    )}
+                    <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--mp-navy)', textAlign: 'center' }}>{o.name}</span>
+                  </button>
+                );
+              })}
+          </div>
+          {operators.length === 0 && (
+            <p style={{ fontSize: 12.5, color: 'var(--mp-muted)', marginTop: 6 }}>Aucun opérateur disponible pour ce pays.</p>
+          )}
         </label>
 
         <label>
@@ -172,33 +219,43 @@ export default function VenteCreditPage() {
 
         <div>
           <div style={{ fontSize: 12.5, color: 'var(--mp-muted)', fontWeight: 600, marginBottom: 8 }}>
-            Montant (FCFA)
+            Montant ({operator?.destinationCurrencyCode ?? 'FCFA'})
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8, marginBottom: 10 }}>
-            {presets.map((preset) => (
-              <button
-                key={preset}
-                type="button"
-                onClick={() => setAmount(String(preset))}
-                className="mp-action-btn"
-                style={{
-                  color: amount === String(preset) ? 'white' : 'var(--mp-navy)',
-                  background: amount === String(preset) ? 'var(--mp-navy)' : 'var(--mp-surface)',
-                  border: '1px solid var(--mp-border)',
-                }}
-              >
-                {preset.toLocaleString('fr-FR')}
-              </button>
-            ))}
-          </div>
-          <input
-            className="mp-input"
-            style={{ width: '100%' }}
-            type="number"
-            placeholder="Ou montant libre"
-            value={amount}
-            onChange={(e) => setAmount(e.target.value)}
-          />
+          {operator?.denominationType === 'FIXED' && operator.localFixedAmounts.length > 0 ? (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8, marginBottom: 10 }}>
+              {operator.localFixedAmounts.map((preset) => (
+                <button
+                  key={preset}
+                  type="button"
+                  onClick={() => setAmount(String(preset))}
+                  className="mp-action-btn"
+                  style={{
+                    color: amount === String(preset) ? 'white' : 'var(--mp-navy)',
+                    background: amount === String(preset) ? 'var(--mp-navy)' : 'var(--mp-surface)',
+                    border: '1px solid var(--mp-border)',
+                  }}
+                >
+                  {preset.toLocaleString('fr-FR')}
+                </button>
+              ))}
+            </div>
+          ) : (
+            <>
+              {operator?.denominationType === 'RANGE' && operator.localMinAmount != null && operator.localMaxAmount != null && (
+                <p style={{ fontSize: 12, color: 'var(--mp-muted)', margin: '0 0 8px' }}>
+                  Montant entre {operator.localMinAmount.toLocaleString('fr-FR')} et {operator.localMaxAmount.toLocaleString('fr-FR')} {operator.destinationCurrencyCode}
+                </p>
+              )}
+              <input
+                className="mp-input"
+                style={{ width: '100%' }}
+                type="number"
+                placeholder="Montant"
+                value={amount}
+                onChange={(e) => setAmount(e.target.value)}
+              />
+            </>
+          )}
         </div>
 
         {error && <div style={{ color: 'var(--mp-red)', fontSize: 13 }}>{error}</div>}
