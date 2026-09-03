@@ -1,3 +1,74 @@
+/* ============================================================
+   § Système de thèmes Finza (§ portage du template) — 4 thèmes
+   commutables via l'attribut data-theme sur <html>. Variables
+   sémantiques --fz-*, indépendantes des --mp-* existantes pour
+   ne rien casser tant que les pages ne sont pas migrées.
+   ============================================================ */
+:root,
+[data-theme='light'] {
+  --fz-bg: #f7fbf8;
+  --fz-surface: #ffffff;
+  --fz-surface-gradient: linear-gradient(290deg, #eaf7ef 38.03%, #dff3e6 97.4%);
+  --fz-text-primary: #0b1f12;
+  --fz-text-secondary: #5a7a72;
+  --fz-text-on-accent: #ffffff;
+  --fz-accent: #0f9d58;
+  --fz-accent-glow: #66fe4c;
+  --fz-border: #e2e8e5;
+  --fz-success: #00b854;
+  --fz-error: #ef5c5c;
+  --fz-warning: #ff9900;
+  --fz-info: #007aff;
+}
+
+[data-theme='dark'] {
+  --fz-bg: #030d01;
+  --fz-surface: #0f1f0c;
+  --fz-surface-gradient: linear-gradient(290deg, #081b05 38.03%, #104108 97.4%);
+  --fz-text-primary: #ffffff;
+  --fz-text-secondary: #a7aec1;
+  --fz-text-on-accent: #0b0b0b;
+  --fz-accent: #66fe4c;
+  --fz-accent-glow: #1cc300;
+  --fz-border: rgba(255, 255, 255, 0.08);
+  --fz-success: #00d261;
+  --fz-error: #ef5c5c;
+  --fz-warning: #ff9900;
+  --fz-info: #007aff;
+}
+
+[data-theme='maroon'] {
+  --fz-bg: #1c1210;
+  --fz-surface: #2b1810;
+  --fz-surface-gradient: linear-gradient(290deg, #2b1810 38.03%, #3d2416 97.4%);
+  --fz-text-primary: #f5ede6;
+  --fz-text-secondary: #c9a98f;
+  --fz-text-on-accent: #1c1210;
+  --fz-accent: #d97b4f;
+  --fz-accent-glow: #c9a15c;
+  --fz-border: rgba(255, 255, 255, 0.08);
+  --fz-success: #00d261;
+  --fz-error: #ef5c5c;
+  --fz-warning: #ff9900;
+  --fz-info: #007aff;
+}
+
+[data-theme='turquoise'] {
+  --fz-bg: #01120f;
+  --fz-surface: #0a3d34;
+  --fz-surface-gradient: linear-gradient(290deg, #042420 38.03%, #0a3d34 97.4%);
+  --fz-text-primary: #ffffff;
+  --fz-text-secondary: #8fc7be;
+  --fz-text-on-accent: #01120f;
+  --fz-accent: #2dd4bf;
+  --fz-accent-glow: #14b8a6;
+  --fz-border: rgba(255, 255, 255, 0.08);
+  --fz-success: #00d261;
+  --fz-error: #ef5c5c;
+  --fz-warning: #ff9900;
+  --fz-info: #007aff;
+}
+
 :root {
   /* Couleur signature MobilePay CI — vert émeraude (charte officielle) */
   --mp-green: #47b686;

@@ -3,8 +3,16 @@
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '../contexts/AuthContext';
+import { useTheme, ThemeId } from '../contexts/ThemeContext';
 
 const WHATSAPP_AGENT_NUMBER = '2250504921096';
+
+const THEME_OPTIONS: { id: ThemeId; label: string; swatch: string }[] = [
+  { id: 'light', label: 'Clair', swatch: '#0f9d58' },
+  { id: 'dark', label: 'Sombre', swatch: '#66fe4c' },
+  { id: 'maroon', label: 'Marron', swatch: '#d97b4f' },
+  { id: 'turquoise', label: 'Turquoise', swatch: '#2dd4bf' },
+];
 
 interface SideMenuProps {
   open: boolean;
@@ -13,6 +21,7 @@ interface SideMenuProps {
 
 export default function SideMenu({ open, onClose }: SideMenuProps) {
   const { user, logout } = useAuth();
+  const { theme, setTheme } = useTheme();
   const router = useRouter();
 
   if (!open || !user) return null;
@@ -64,6 +73,29 @@ export default function SideMenu({ open, onClose }: SideMenuProps) {
             <span className="icon">📄</span>
             Conditions générales
           </Link>
+
+          <div className="mp-menu-divider" />
+
+          <div style={{ padding: '10px 20px' }}>
+            <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--mp-muted)', marginBottom: 8 }}>Apparence</div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8 }}>
+              {THEME_OPTIONS.map((opt) => (
+                <button
+                  key={opt.id}
+                  onClick={() => setTheme(opt.id)}
+                  style={{
+                    display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4,
+                    padding: '8px 4px', borderRadius: 10,
+                    border: theme === opt.id ? '2px solid var(--mp-green)' : '1px solid var(--mp-border)',
+                    background: 'white', cursor: 'pointer',
+                  }}
+                >
+                  <span style={{ width: 18, height: 18, borderRadius: '50%', background: opt.swatch, display: 'block' }} />
+                  <span style={{ fontSize: 10, fontWeight: 600, color: 'var(--mp-navy)' }}>{opt.label}</span>
+                </button>
+              ))}
+            </div>
+          </div>
 
           <div className="mp-menu-divider" />
 
