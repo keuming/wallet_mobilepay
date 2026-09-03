@@ -16,7 +16,7 @@ interface UserProfile {
 interface AuthContextValue {
   user: UserProfile | null;
   loading: boolean;
-  login: (phone: string, password: string) => Promise<void>;
+  login: (phone: string, password: string, country?: string) => Promise<void>;
   registerWithPin: (data: { phone: string; firstName: string; lastName: string; email?: string; pin: string; country?: string }) => Promise<void>;
   logout: () => Promise<void>;
   refreshProfile: () => Promise<void>;
@@ -42,11 +42,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const login = async (phone: string, password: string) => {
+  const login = async (phone: string, password: string, country?: string) => {
     const result = await apiFetch<{ accessToken: string; refreshToken: string }>('/auth/login', {
       method: 'POST',
       auth: false,
-      body: JSON.stringify({ phone, password }),
+      body: JSON.stringify({ phone, password, country }),
     });
     storeTokens(result.accessToken, result.refreshToken);
     await refreshProfile();

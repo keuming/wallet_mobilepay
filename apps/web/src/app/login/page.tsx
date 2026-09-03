@@ -6,11 +6,13 @@ import Link from 'next/link';
 import { useAuth } from '../../contexts/AuthContext';
 import { ApiError } from '../../lib/apiClient';
 import PasswordInput from '../../components/PasswordInput';
+import PhoneCountryInput from '../../components/PhoneCountryInput';
 
 export default function LoginPage() {
   const { login } = useAuth();
   const router = useRouter();
-  const [phone, setPhone] = useState('');
+  const [country, setCountry] = useState('CI');
+  const [localNumber, setLocalNumber] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -20,7 +22,7 @@ export default function LoginPage() {
     setError(null);
     setSubmitting(true);
     try {
-      await login(phone, password);
+      await login(localNumber, password, country);
       router.push('/dashboard');
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Connexion impossible.');
@@ -41,16 +43,12 @@ export default function LoginPage() {
       </div>
 
       <form className="mp-form" onSubmit={handleSubmit}>
-        <label>
-          Téléphone
-          <input
-            className="mp-input"
-            style={{ width: '100%', marginTop: 6 }}
-            value={phone}
-            onChange={(e) => setPhone(e.target.value)}
-            placeholder="+2250700000000"
-          />
-        </label>
+        <PhoneCountryInput
+          country={country}
+          onCountryChange={setCountry}
+          localNumber={localNumber}
+          onLocalNumberChange={setLocalNumber}
+        />
         <label>
           Mot de passe
           <PasswordInput

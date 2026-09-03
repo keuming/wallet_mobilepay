@@ -6,23 +6,7 @@ import Link from 'next/link';
 import { useAuth } from '../../contexts/AuthContext';
 import { apiFetch, ApiError } from '../../lib/apiClient';
 import PasswordInput from '../../components/PasswordInput';
-
-const COUNTRIES = [
-  { code: 'CI', label: "Côte d'Ivoire" },
-  { code: 'SN', label: 'Sénégal' },
-  { code: 'ML', label: 'Mali' },
-  { code: 'BF', label: 'Burkina Faso' },
-  { code: 'BJ', label: 'Bénin' },
-  { code: 'TG', label: 'Togo' },
-  { code: 'NE', label: 'Niger' },
-  { code: 'GW', label: 'Guinée-Bissau' },
-  { code: 'CM', label: 'Cameroun' },
-  { code: 'GA', label: 'Gabon' },
-  { code: 'CG', label: 'Congo' },
-  { code: 'TD', label: 'Tchad' },
-  { code: 'CF', label: 'République Centrafricaine' },
-  { code: 'GQ', label: 'Guinée Équatoriale' },
-];
+import PhoneCountryInput from '../../components/PhoneCountryInput';
 
 /**
  * Carte de création de compte (§ premier écran après installation de
@@ -109,33 +93,17 @@ export default function InscriptionPage() {
 
       {step === 'phone' && (
         <div className="mp-form">
-          <p style={{ color: 'var(--mp-muted)', fontSize: 13, margin: 0 }}>
+          <p style={{ color: 'var(--fz-text-secondary)', fontSize: 13, margin: 0 }}>
             On va d'abord vérifier ton numéro par SMS, pour être sûr qu'il est bien saisi.
           </p>
-          <label>
-            Pays de résidence
-            <select
-              className="mp-input"
-              style={{ width: '100%', marginTop: 6 }}
-              value={country}
-              onChange={(e) => setCountry(e.target.value)}
-            >
-              {COUNTRIES.map((c) => (
-                <option key={c.code} value={c.code}>{c.label}</option>
-              ))}
-            </select>
-          </label>
-          <label>
-            Numéro de téléphone
-            <input
-              className="mp-input"
-              style={{ width: '100%', marginTop: 6 }}
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-              placeholder="+2250700000000"
-              autoFocus
-            />
-          </label>
+          <PhoneCountryInput
+            country={country}
+            onCountryChange={setCountry}
+            localNumber={phone}
+            onLocalNumberChange={setPhone}
+            label="Numéro de téléphone"
+            autoFocus
+          />
           {error && <div className="mp-error">{error}</div>}
           <button className="mp-btn-primary" disabled={submitting || !phone} onClick={sendOtp}>
             {submitting ? 'Envoi...' : 'Envoyer le code'}

@@ -189,16 +189,26 @@ export class AuthService {
   }
 
   async login(dto: LoginDto) {
-    // § Le numéro peut être saisi en format local sans indicatif — on ne
-    // sait pas encore à quel pays il appartient, donc on essaie chaque pays
-    // supporté jusqu'à trouver le compte, plutôt que de supposer 'CI'.
-    const candidates = normalizePhoneCandidates(dto.phone);
+    // § Le numéro peut être saisi en format local sans indicatif — si le
+    // pays est fourni (sélectionné à l'écran de connexion), on l'essaie en
+    // priorité pour une résolution précise ; sinon on retente chaque pays
+    // supporté, comme avant.
+    const candidates = dto.country
+      ? [normalizePhoneCI(dto.phone, dto.country as any), ...normalizePhoneCandidates(dto.phone)]
+      : normalizePhoneCandidates(dto.phone);
     const user = await this.prisma.user.findFirst({ where: { phone: { in: candidates } } });
     if (!user || !(await bcrypt.compare(dto.password, user.passwordHash))) {
       throw new UnauthorizedException('Identifiants invalides.');
     }
     if (user.isBlocked) {
       throw new UnauthorizedException('Ce compte a été suspendu. Contactez le support.');
+    }
+
+    // § Le pays sélectionné à la connexion reflète la résidence actuelle du
+    // titulaire — on le fixe comme pays d'utilisation de l'application s'il
+    // diffère de celui enregistré.
+    if (dto.country && dto.country !== user.country) {
+      await this.prisma.user.update({ where: { id: user.id }, data: { country: dto.country } });
     }
 
     return this.issueTokens(user.id, user.role, user.phone);

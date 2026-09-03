@@ -1,9 +1,10 @@
-import { IsEmail, IsEnum, IsIn, IsOptional, IsPhoneNumber, IsString, Matches, MinLength } from 'class-validator';
+import { IsEmail, IsEnum, IsIn, IsOptional, IsString, Matches, MinLength } from 'class-validator';
 import { UserRole } from '@prisma/client';
 import { SUPPORTED_COUNTRIES } from '../../../common/utils/phone.util';
 
 export class RegisterDto {
-  @IsPhoneNumber(undefined, { message: 'Numéro de téléphone invalide.' })
+  @IsString()
+  @MinLength(6, { message: 'Numéro de téléphone invalide.' })
   phone: string;
 
   @IsString()
@@ -24,8 +25,15 @@ export class RegisterDto {
 }
 
 export class LoginDto {
-  @IsPhoneNumber(undefined)
+  // § Le "+" indicatif n'est pas exigé — normalisé côté service avec le
+  // pays sélectionné (ou tous les pays supportés en repli).
+  @IsString()
+  @MinLength(6, { message: 'Numéro de téléphone invalide.' })
   phone: string;
+
+  @IsOptional()
+  @IsIn(['CI', 'SN', 'ML', 'BF', 'BJ', 'TG', 'NE', 'GW', 'CM', 'GA', 'CG', 'TD', 'CF', 'GQ'], { message: 'Pays non pris en charge.' })
+  country?: string;
 
   @IsString()
   password: string;
@@ -44,7 +52,10 @@ export class LoginDto {
  */
 
 export class RegisterWithPinDto {
-  @IsPhoneNumber(undefined, { message: 'Numéro de téléphone invalide.' })
+  // § Le "+" indicatif n'est pas exigé — normalisé côté service avec le
+  // pays choisi à l'inscription.
+  @IsString()
+  @MinLength(6, { message: 'Numéro de téléphone invalide.' })
   phone: string;
 
   @IsString()
