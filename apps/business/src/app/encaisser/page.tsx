@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '../../contexts/AuthContext';
 import { apiFetch, ApiError } from '../../lib/apiClient';
+import PaymentMethodBadge, { PaymentMethodId } from '../../components/PaymentMethodBadge';
 import BusinessSideMenu from '../../components/BusinessSideMenu';
 import QrResultCard from '../../components/QrResultCard';
 
@@ -305,12 +306,12 @@ function PaymentLinkPanel({ merchantId }: { merchantId: string }) {
   );
 }
 
-const MOMO_PROVIDERS = [
-  { id: 'mobilepay', label: 'MobilePay' },
-  { id: 'orange', label: 'Orange Money' },
-  { id: 'mtn', label: 'MTN MoMo' },
-  { id: 'moov', label: 'Moov Money' },
-  { id: 'wave', label: 'Wave' },
+const MOMO_PROVIDERS: { id: string; label: string; badge: PaymentMethodId }[] = [
+  { id: 'mobilepay', label: 'MobilePay', badge: 'MOBILEPAY' },
+  { id: 'orange', label: 'Orange Money', badge: 'ORANGE' },
+  { id: 'mtn', label: 'MTN MoMo', badge: 'MTN' },
+  { id: 'moov', label: 'Moov Money', badge: 'MOOV' },
+  { id: 'wave', label: 'Wave', badge: 'WAVE' },
 ];
 
 function PaymentRequestPanel({ merchantId }: { merchantId: string }) {
@@ -493,14 +494,32 @@ function PaymentRequestPanel({ merchantId }: { merchantId: string }) {
         téléphone via son opérateur.
       </p>
       <input className="mp-input" placeholder="Numéro du client (+225...)" value={customerPhone} onChange={(e) => setCustomerPhone(e.target.value)} />
-      <select className="mp-input" value={provider} onChange={(e) => setProvider(e.target.value)}>
-        <option value="">Opérateur du client...</option>
-        {MOMO_PROVIDERS.map((p) => (
-          <option key={p.id} value={p.id}>
-            {p.label}
-          </option>
-        ))}
-      </select>
+      <label style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--mp-muted)' }}>
+        Opérateur du client
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8, marginTop: 6 }}>
+          {MOMO_PROVIDERS.map((p) => (
+            <button
+              key={p.id}
+              type="button"
+              onClick={() => setProvider(p.id)}
+              style={{
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                gap: 6,
+                padding: '10px 6px',
+                borderRadius: 12,
+                border: provider === p.id ? '2px solid var(--mp-green)' : '1px solid var(--mp-border, #e2e8e5)',
+                background: provider === p.id ? 'rgba(71,182,134,.08)' : 'white',
+                cursor: 'pointer',
+              }}
+            >
+              <PaymentMethodBadge method={p.badge} size={30} />
+              <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--mp-navy)', textAlign: 'center' }}>{p.label}</span>
+            </button>
+          ))}
+        </div>
+      </label>
       <input className="mp-input" placeholder="Montant (FCFA)" type="number" value={amount} onChange={(e) => setAmount(e.target.value)} />
       <input className="mp-input" placeholder="Description — optionnel" value={description} onChange={(e) => setDescription(e.target.value)} />
       {error && <div className="mp-error">{error}</div>}
