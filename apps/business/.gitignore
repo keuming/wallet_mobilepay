@@ -1,0 +1,7 @@
+
+# Fichiers générés par next-pwa (§ correction lenteur PWA) — regénérés à
+# chaque build, ne doivent pas être versionnés.
+public/sw.js
+public/sw.js.map
+public/workbox-*.js
+public/workbox-*.js.map
