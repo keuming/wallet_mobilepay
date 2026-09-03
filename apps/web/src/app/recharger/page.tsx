@@ -71,6 +71,7 @@ export default function RechargerPage() {
   const [momoOperator, setMomoOperator] = useState<MomoOperator | null>(null);
   const [momoAccount, setMomoAccount] = useState('');
   const [amount, setAmount] = useState('');
+  const [walletBalance, setWalletBalance] = useState<number | null>(null);
 
   const [submitting, setSubmitting] = useState(false);
   const [result, setResult] = useState<{ status: ResultStatus; message: string } | null>(null);
@@ -138,6 +139,10 @@ export default function RechargerPage() {
   useEffect(() => {
     if (user?.country) setCountry(user.country);
   }, [user?.country]);
+
+  useEffect(() => {
+    apiFetch<{ cachedBalance: number }>('/wallet').then((w) => setWalletBalance(w.cachedBalance));
+  }, []);
 
   useEffect(() => {
     setOperatorsLoading(true);
@@ -304,7 +309,7 @@ export default function RechargerPage() {
                   >
                     {logo ? (
                       // eslint-disable-next-line @next/next/no-img-element
-                      <img src={logo} alt={o.name} width={28} height={28} style={{ borderRadius: 7, objectFit: 'contain', background: 'white' }} />
+                      <img src={logo} alt={o.name} width={28} height={28} style={{ borderRadius: 7, objectFit: 'contain', background: 'var(--fz-surface)' }} />
                     ) : (
                       <span style={{ fontSize: 18 }}>📡</span>
                     )}
@@ -370,39 +375,61 @@ export default function RechargerPage() {
 
         {/* Étape 5 : Montant */}
         {step === 5 && (
-          <div>
-            <div style={{ fontSize: 12.5, color: 'var(--mp-muted)', fontWeight: 600, marginBottom: 8 }}>
-              Montant ({operator?.destinationCurrencyCode ?? 'FCFA'})
+          <div className="fz-amount-hero">
+            {operator?.logoUrls?.[2] || operator?.logoUrls?.[0] ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={operator.logoUrls[2] ?? operator.logoUrls[0]}
+                alt={operator.name}
+                style={{ width: 68, height: 68, borderRadius: 22, objectFit: 'contain', background: 'var(--fz-surface)', border: '1px solid var(--fz-border)' }}
+              />
+            ) : (
+              <span className="fz-amount-avatar">{operator?.name.charAt(0).toUpperCase()}</span>
+            )}
+            <div>
+              <div className="fz-amount-name">{operator?.name}</div>
+              <div className="fz-amount-sub">{phone}</div>
             </div>
+
             {operator?.denominationType === 'FIXED' && operator.localFixedAmounts.length > 0 ? (
-              <div className="mp-preset-grid" style={{ marginBottom: 10 }}>
+              <div className="fz-amount-chips">
                 {operator.localFixedAmounts.map((preset) => (
                   <button
                     key={preset}
                     type="button"
                     onClick={() => setAmount(String(preset))}
-                    className={`mp-preset-chip ${amount === String(preset) ? 'selected' : ''}`}
+                    className={`fz-amount-chip ${amount === String(preset) ? 'selected' : ''}`}
                   >
-                    {preset.toLocaleString('fr-FR')}
+                    {preset.toLocaleString('fr-FR')} {operator.destinationCurrencyCode}
                   </button>
                 ))}
               </div>
             ) : (
               <>
+                <div className="fz-amount-input-wrap">
+                  <input
+                    className="fz-amount-field"
+                    type="number"
+                    placeholder="0"
+                    value={amount}
+                    onChange={(e) => setAmount(e.target.value)}
+                  />
+                  <span className="fz-amount-currency">{operator?.destinationCurrencyCode ?? 'FCFA'}</span>
+                </div>
                 {operator?.denominationType === 'RANGE' && operator.localMinAmount != null && operator.localMaxAmount != null && (
-                  <p style={{ fontSize: 12, color: 'var(--mp-muted)', margin: '0 0 8px' }}>
-                    Montant entre {operator.localMinAmount.toLocaleString('fr-FR')} et {operator.localMaxAmount.toLocaleString('fr-FR')} {operator.destinationCurrencyCode}
+                  <p style={{ fontSize: 12, color: 'var(--fz-text-secondary)', margin: 0 }}>
+                    Entre {operator.localMinAmount.toLocaleString('fr-FR')} et {operator.localMaxAmount.toLocaleString('fr-FR')} {operator.destinationCurrencyCode}
                   </p>
                 )}
-                <input
-                  className="mp-input"
-                  style={{ width: '100%' }}
-                  type="number"
-                  placeholder="Montant"
-                  value={amount}
-                  onChange={(e) => setAmount(e.target.value)}
-                />
               </>
+            )}
+
+            {walletBalance !== null && paymentMethod === 'WALLET' && (
+              <div className="fz-balance-badge">
+                <span className="dot" />
+                <span className="label">Solde :</span>
+                <span className="value">{(walletBalance / 100).toLocaleString('fr-FR')} FCFA</span>
+              </div>
             )}
           </div>
         )}
