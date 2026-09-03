@@ -165,6 +165,10 @@ export class PurchaseGiftCardDto {
 
   @IsString()
   pin: string;
+
+  @IsOptional()
+  @IsString()
+  countryCode?: string;
 }
 
 @ApiTags('gift-cards')
@@ -187,7 +191,7 @@ export class GiftCardsController {
   ) {
     return this.paymentEngine.purchaseGiftCard(
       user.userId,
-      { productId: dto.productId, unitPrice: dto.unitPrice, recipientEmail: dto.recipientEmail, pin: dto.pin },
+      { productId: dto.productId, unitPrice: dto.unitPrice, recipientEmail: dto.recipientEmail, pin: dto.pin, countryCode: dto.countryCode },
       idempotencyKey,
     );
   }

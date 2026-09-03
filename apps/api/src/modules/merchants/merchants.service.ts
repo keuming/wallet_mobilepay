@@ -444,7 +444,7 @@ export class MerchantsService {
   async buyGiftCard(
     merchantId: string,
     initiatedByUserId: string,
-    dto: { productId: number; unitPrice: number; recipientEmail: string },
+    dto: { productId: number; unitPrice: number; recipientEmail: string; countryCode?: string },
     idempotencyKey: string,
   ) {
     const existing = await this.prisma.transaction.findUnique({ where: { idempotencyKey } });
@@ -457,6 +457,7 @@ export class MerchantsService {
 
     const product = await this.reloadlyGiftCards.getProduct(dto.productId);
     if (!product) throw new NotFoundException('Carte cadeau introuvable.');
+    const countryCode = dto.countryCode ?? product.countryIso ?? merchant.country;
 
     const amount = BigInt(Math.round(dto.unitPrice * 100));
     const merchantWallet = await this.getWallet(merchantId);
@@ -497,6 +498,7 @@ export class MerchantsService {
       recipientEmail: dto.recipientEmail,
       senderName: merchant.businessName,
       customIdentifier: transaction.id,
+      countryCode,
     });
 
     await this.prisma.giftCardOrder.create({

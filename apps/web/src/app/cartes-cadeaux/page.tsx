@@ -90,6 +90,7 @@ export default function CartesCadeauxPage() {
           unitPrice: Number(amount),
           recipientEmail,
           pin,
+          countryCode: country,
         }),
       });
       if (res.status === 'SUCCESS') {

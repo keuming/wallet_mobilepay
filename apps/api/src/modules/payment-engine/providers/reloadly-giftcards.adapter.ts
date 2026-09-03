@@ -75,7 +75,9 @@ export class ReloadlyGiftCardsAdapter {
   async listProducts(countryCode: string): Promise<GiftCardProduct[]> {
     if (!this.clientId || !this.clientSecret) return [];
     const token = await this.getAccessToken();
-    const res = await fetch(`${this.baseUrl}/products?countryCode=${countryCode}&size=100`, {
+    // § Vrai endpoint confirmé (blog.reloadly.com) — le pays est dans le
+    // CHEMIN de l'URL, pas en paramètre de requête ?countryCode=.
+    const res = await fetch(`${this.baseUrl}/countries/${countryCode}/products`, {
       headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
     });
     if (!res.ok) {
@@ -107,6 +109,7 @@ export class ReloadlyGiftCardsAdapter {
     recipientEmail: string;
     senderName: string;
     customIdentifier: string;
+    countryCode: string;
   }): Promise<GiftCardOrderResult> {
     if (!this.clientId || !this.clientSecret) {
       // Mode simulé — même principe que l'adaptateur Airtime.
@@ -131,6 +134,7 @@ export class ReloadlyGiftCardsAdapter {
       },
       body: JSON.stringify({
         productId: params.productId,
+        countryCode: params.countryCode,
         quantity: 1,
         unitPrice: params.unitPrice,
         customIdentifier: params.customIdentifier,

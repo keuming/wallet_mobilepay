@@ -673,7 +673,7 @@ export class PaymentEngineService {
    */
   async purchaseGiftCard(
     userId: string,
-    params: { productId: number; unitPrice: number; recipientEmail: string; pin: string },
+    params: { productId: number; unitPrice: number; recipientEmail: string; pin: string; countryCode?: string },
     idempotencyKey: string,
   ) {
     const existing = await this.prisma.transaction.findUnique({ where: { idempotencyKey } });
@@ -683,6 +683,7 @@ export class PaymentEngineService {
     const user = await this.prisma.user.findUniqueOrThrow({ where: { id: userId } });
     const product = await this.reloadlyGiftCards.getProduct(params.productId);
     if (!product) throw new NotFoundException('Carte cadeau introuvable.');
+    const countryCode = params.countryCode ?? product.countryIso ?? 'CI';
 
     const amount = BigInt(Math.round(params.unitPrice * 100));
 
@@ -722,6 +723,7 @@ export class PaymentEngineService {
       recipientEmail: params.recipientEmail,
       senderName: `${user.firstName} ${user.lastName}`,
       customIdentifier: transaction.id,
+      countryCode,
     });
 
     await this.prisma.giftCardOrder.create({

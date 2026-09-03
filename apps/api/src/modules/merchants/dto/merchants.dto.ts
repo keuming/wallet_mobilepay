@@ -111,6 +111,10 @@ export class BuyGiftCardDto {
 
   @IsEmail({}, { message: 'Adresse email du bénéficiaire invalide.' })
   recipientEmail: string;
+
+  @IsOptional()
+  @IsString()
+  countryCode?: string;
 }
 
 export class RecordCashDto {

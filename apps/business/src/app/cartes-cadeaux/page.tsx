@@ -58,7 +58,7 @@ export default function CartesCadeauxBusinessPage() {
         {
           method: 'POST',
           idempotent: true,
-          body: JSON.stringify({ productId: product.productId, unitPrice: Number(amount), recipientEmail }),
+          body: JSON.stringify({ productId: product.productId, unitPrice: Number(amount), recipientEmail, countryCode: country }),
         },
       );
       if (res.status === 'SUCCESS') {
