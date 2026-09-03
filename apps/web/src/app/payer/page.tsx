@@ -61,6 +61,7 @@ function PayerContent() {
   const [scanned, setScanned] = useState(false);
 
   const [amount, setAmount] = useState('');
+  const [walletBalance, setWalletBalance] = useState<number | null>(null);
   const [fundingSource, setFundingSource] = useState<FundingSource | null>(null);
   const [momoOperator, setMomoOperator] = useState<MomoOperator | null>(null);
   const [momoAccount, setMomoAccount] = useState('');
@@ -142,6 +143,7 @@ function PayerContent() {
 
   useEffect(() => {
     apiFetch<{ hasPin: boolean }>('/auth/pin/status').then((res) => setHasPin(res.hasPin));
+    apiFetch<{ cachedBalance: number }>('/wallet').then((w) => setWalletBalance(w.cachedBalance));
   }, []);
 
   const handleResolve = async (overrideCode?: string) => {
@@ -428,39 +430,56 @@ function PayerContent() {
       <div className="mp-form">
         {/* Étape 1 : Montant */}
         {step === 1 && target && (
-          <>
-            <div
-              style={{
-                background: 'var(--mp-surface)',
-                border: '1px solid var(--mp-border)',
-                borderRadius: 14,
-                padding: '14px 16px',
-              }}
-            >
-              <div style={{ fontSize: 12, color: 'var(--mp-muted)', fontWeight: 600 }}>MARCHAND</div>
-              <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--mp-navy)', marginTop: 2 }}>
-                {target.merchantName}
-              </div>
+          <div className="fz-amount-hero">
+            <span className="fz-amount-avatar">{target.merchantName.charAt(0).toUpperCase()}</span>
+            <div>
+              <div className="fz-amount-name">{target.merchantName}</div>
+              <div className="fz-amount-sub">Marchand</div>
             </div>
+
             {target.fixedAmount ? (
-              <p style={{ fontSize: 15 }}>
-                Montant fixé par le marchand :{' '}
-                <strong>{(target.fixedAmount / 100).toLocaleString('fr-FR')} FCFA</strong>
-              </p>
+              <div className="fz-amount-input-wrap">
+                <span className="fz-amount-field" style={{ maxWidth: 'none' }}>
+                  {(target.fixedAmount / 100).toLocaleString('fr-FR')}
+                </span>
+                <span className="fz-amount-currency">FCFA</span>
+              </div>
             ) : (
-              <label>
-                Montant (FCFA)
-                <input
-                  className="mp-input"
-                  style={{ width: '100%', marginTop: 6 }}
-                  type="number"
-                  value={amount}
-                  onChange={(e) => setAmount(e.target.value)}
-                  autoFocus
-                />
-              </label>
+              <>
+                <div className="fz-amount-input-wrap">
+                  <input
+                    className="fz-amount-field"
+                    type="number"
+                    placeholder="0"
+                    value={amount}
+                    onChange={(e) => setAmount(e.target.value)}
+                    autoFocus
+                  />
+                  <span className="fz-amount-currency">FCFA</span>
+                </div>
+                <div className="fz-amount-chips">
+                  {['500', '1000', '2000', '5000'].map((val) => (
+                    <button
+                      key={val}
+                      type="button"
+                      onClick={() => setAmount(val)}
+                      className={`fz-amount-chip ${amount === val ? 'selected' : ''}`}
+                    >
+                      {Number(val).toLocaleString('fr-FR')}
+                    </button>
+                  ))}
+                </div>
+              </>
             )}
-          </>
+
+            {walletBalance !== null && (
+              <div className="fz-balance-badge">
+                <span className="dot" />
+                <span className="label">Solde :</span>
+                <span className="value">{(walletBalance / 100).toLocaleString('fr-FR')} FCFA</span>
+              </div>
+            )}
+          </div>
         )}
 
         {/* Étape 2 : Mode de financement */}
