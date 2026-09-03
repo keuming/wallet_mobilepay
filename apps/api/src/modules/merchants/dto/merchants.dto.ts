@@ -117,6 +117,25 @@ export class BuyGiftCardDto {
   countryCode?: string;
 }
 
+export class PayUtilityBillDto {
+  @IsInt()
+  @IsPositive()
+  billerId: number;
+
+  @IsString()
+  billerName: string;
+
+  @IsIn(['ELECTRICITY_BILL_PAYMENT', 'WATER_BILL_PAYMENT', 'TV_BILL_PAYMENT', 'INTERNET_BILL_PAYMENT'])
+  billType: string;
+
+  @IsString()
+  @MinLength(1, { message: 'Numéro de compte/compteur requis.' })
+  subscriberAccountNumber: string;
+
+  @IsPositive()
+  amount: number;
+}
+
 export class RecordCashDto {
   @IsInt()
   @IsPositive()

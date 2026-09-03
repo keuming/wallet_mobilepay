@@ -5,6 +5,7 @@ import { PrismaService } from '../../config/prisma.service';
 import { LedgerService } from '../ledger/ledger.service';
 import { ReloadlyAdapter } from '../payment-engine/providers/reloadly.adapter';
 import { ReloadlyGiftCardsAdapter } from '../payment-engine/providers/reloadly-giftcards.adapter';
+import { ReloadlyUtilitiesAdapter, BillerType } from '../payment-engine/providers/reloadly-utilities.adapter';
 import { normalizePhoneCI, normalizePhoneCandidates } from '../../common/utils/phone.util';
 import { CreateMerchantDto } from './dto/merchants.dto';
 
@@ -17,6 +18,7 @@ export class MerchantsService {
     private ledger: LedgerService,
     private reloadly: ReloadlyAdapter,
     private reloadlyGiftCards: ReloadlyGiftCardsAdapter,
+    private reloadlyUtilities: ReloadlyUtilitiesAdapter,
   ) {}
 
   /**
@@ -542,6 +544,107 @@ export class MerchantsService {
       data: { status: 'SUCCESS' },
     });
     return { ...updated, cardCode: result.cardCode, cardPin: result.cardPin };
+  }
+
+  /** Liste des billers (factures) disponibles pour un pays (§ Utility Payments — marchand). */
+  async listUtilityBillers(countryCode: string, type?: BillerType) {
+    return this.reloadlyUtilities.listBillers(countryCode, type);
+  }
+
+  /**
+   * Paiement de facture pour le compte d'un client, financé par le wallet
+   * marchand — débit immédiat, remboursement automatique si Reloadly échoue.
+   */
+  async payUtilityBill(
+    merchantId: string,
+    initiatedByUserId: string,
+    dto: { billerId: number; billerName: string; billType: string; subscriberAccountNumber: string; amount: number },
+    idempotencyKey: string,
+  ) {
+    const existing = await this.prisma.transaction.findUnique({ where: { idempotencyKey } });
+    if (existing) return existing;
+
+    const merchant = await this.prisma.merchant.findUniqueOrThrow({ where: { id: merchantId } });
+    if (merchant.status !== 'ACTIVE') {
+      throw new BadRequestException('Ce marchand doit être actif pour payer une facture.');
+    }
+
+    const amount = BigInt(Math.round(dto.amount * 100));
+    const merchantWallet = await this.getWallet(merchantId);
+    if (merchantWallet.cachedBalance < amount) {
+      throw new BadRequestException('Solde insuffisant pour ce paiement.');
+    }
+
+    const description = `Facture ${dto.billerName} — ${dto.subscriberAccountNumber}`;
+
+    const transaction = await this.runSerializable(async (tx) => {
+      const created = await tx.transaction.create({
+        data: {
+          type: 'UTILITY_PAYMENT',
+          status: 'PROCESSING',
+          amount,
+          sourceWalletId: merchantWallet.id,
+          initiatedByUserId,
+          description,
+          providerName: 'RELOADLY',
+          idempotencyKey,
+        },
+      });
+
+      await this.ledger.postDoubleEntry(tx, {
+        transactionId: created.id,
+        fromWalletId: merchantWallet.id,
+        toWalletId: null,
+        amount,
+        description,
+      });
+
+      return created;
+    });
+
+    const result = await this.reloadlyUtilities.payBill({
+      billerId: dto.billerId,
+      subscriberAccountNumber: dto.subscriberAccountNumber,
+      amount: dto.amount,
+      referenceId: transaction.id,
+    });
+
+    await this.prisma.utilityPaymentRecord.create({
+      data: {
+        transactionId: transaction.id,
+        targetType: 'MERCHANT',
+        targetMerchantId: merchantId,
+        billerId: dto.billerId,
+        billerName: dto.billerName,
+        billType: dto.billType,
+        subscriberAccountNumber: dto.subscriberAccountNumber,
+        amount: dto.amount,
+        currencyCode: result.currencyCode,
+        status: result.status,
+        failureReason: result.status === 'FAILED' ? 'Paiement Reloadly refusé.' : null,
+      },
+    });
+
+    if (result.status === 'FAILED') {
+      await this.runSerializable(async (tx) => {
+        await this.ledger.postDoubleEntry(tx, {
+          transactionId: transaction.id,
+          fromWalletId: null,
+          toWalletId: merchantWallet.id,
+          amount,
+          description: `Remboursement — échec facture ${dto.billerName}`,
+        });
+      });
+      return this.prisma.transaction.update({
+        where: { id: transaction.id },
+        data: { status: 'FAILED', failureReason: 'Paiement de facture refusé par le fournisseur.' },
+      });
+    }
+
+    return this.prisma.transaction.update({
+      where: { id: transaction.id },
+      data: { status: result.status === 'PROCESSING' ? 'PROCESSING' : 'SUCCESS' },
+    });
   }
 
   private async runSerializable<T>(fn: (tx: Prisma.TransactionClient) => Promise<T>): Promise<T> {

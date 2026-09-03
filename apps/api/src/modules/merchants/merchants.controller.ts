@@ -1,7 +1,7 @@
 import { Body, Controller, Get, Headers, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { MerchantsService } from './merchants.service';
-import { CreateMerchantDto, CreatePaymentRequestDto, TransferFromMerchantDto, SellAirtimeDto, BuyGiftCardDto, RecordCashDto, DebitDirectDto, CreateRetailerDto, RetailerFundDto, RetailerStatusDto } from './dto/merchants.dto';
+import { CreateMerchantDto, CreatePaymentRequestDto, TransferFromMerchantDto, SellAirtimeDto, BuyGiftCardDto, PayUtilityBillDto, RecordCashDto, DebitDirectDto, CreateRetailerDto, RetailerFundDto, RetailerStatusDto } from './dto/merchants.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { MerchantScopeGuard } from '../../common/guards/merchant-scope.guard';
 import { CurrentUser, AuthenticatedUser } from '../../common/decorators/current-user.decorator';
@@ -90,6 +90,25 @@ export class MerchantsController {
     @Headers('idempotency-key') idempotencyKey: string,
   ) {
     return this.merchantsService.buyGiftCard(merchantId, user.userId, dto, idempotencyKey);
+  }
+
+  /** Catalogue de fournisseurs de factures disponibles pour un pays. */
+  @Get(':merchantId/utility-payments/billers')
+  @UseGuards(JwtAuthGuard, MerchantScopeGuard)
+  listUtilityBillers(@Query('country') country: string = 'CI', @Query('type') type?: string) {
+    return this.merchantsService.listUtilityBillers(country, type as any);
+  }
+
+  /** Paiement de facture pour un client, financé par le wallet marchand. */
+  @Post(':merchantId/utility-payments/pay')
+  @UseGuards(JwtAuthGuard, MerchantScopeGuard)
+  payUtilityBill(
+    @Param('merchantId') merchantId: string,
+    @CurrentUser() user: AuthenticatedUser,
+    @Body() dto: PayUtilityBillDto,
+    @Headers('idempotency-key') idempotencyKey: string,
+  ) {
+    return this.merchantsService.payUtilityBill(merchantId, user.userId, dto, idempotencyKey);
   }
 
   /** Encaissement en espèces — pur journal de caisse, aucun mouvement de wallet. */

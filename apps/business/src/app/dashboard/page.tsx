@@ -88,6 +88,7 @@ export default function BusinessHomePage() {
         <div className="fz-pill-row">
           <Link href="/recharger" className="fz-pill-btn">📞 Crédit/Data</Link>
           <Link href="/cartes-cadeaux" className="fz-pill-btn">🎁 Cartes cadeaux</Link>
+          <Link href="/factures" className="fz-pill-btn">🧾 Factures</Link>
           <Link href="/transactions" className="fz-pill-btn">📋 Historique</Link>
         </div>
       </div>
