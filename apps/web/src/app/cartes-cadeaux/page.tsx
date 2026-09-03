@@ -41,14 +41,18 @@ export default function CartesCadeauxPage() {
     cardPin?: string;
   } | null>(null);
 
+  const [productsError, setProductsError] = useState<string | null>(null);
+
   useEffect(() => {
     if (user?.country) setCountry(user.country);
   }, [user?.country]);
 
   useEffect(() => {
     setProductsLoading(true);
+    setProductsError(null);
     apiFetch<GiftCardProduct[]>(`/gift-cards/products?country=${country}`)
       .then(setProducts)
+      .catch((err) => setProductsError(err instanceof ApiError ? err.message : 'Impossible de charger le catalogue.'))
       .finally(() => setProductsLoading(false));
     setProduct(null);
   }, [country]);
@@ -171,7 +175,8 @@ export default function CartesCadeauxPage() {
         {step === 1 && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             {productsLoading && <p style={{ color: 'var(--fz-text-secondary)', fontSize: 13.5 }}>Chargement du catalogue...</p>}
-            {!productsLoading && products.length === 0 && (
+            {productsError && <div className="mp-error">{productsError}</div>}
+            {!productsLoading && !productsError && products.length === 0 && (
               <p style={{ color: 'var(--fz-text-secondary)', fontSize: 13.5 }}>Aucune carte cadeau disponible pour ce pays.</p>
             )}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>

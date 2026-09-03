@@ -47,11 +47,15 @@ export default function FacturesPage() {
     if (user?.country) setCountry(user.country);
   }, [user?.country]);
 
+  const [billersError, setBillersError] = useState<string | null>(null);
+
   useEffect(() => {
     if (!billType) return;
     setBillersLoading(true);
+    setBillersError(null);
     apiFetch<Biller[]>(`/utility-payments/billers?country=${country}&type=${billType}`)
       .then(setBillers)
+      .catch((err) => setBillersError(err instanceof ApiError ? err.message : 'Impossible de charger les fournisseurs.'))
       .finally(() => setBillersLoading(false));
     setBiller(null);
   }, [country, billType]);
@@ -166,7 +170,8 @@ export default function FacturesPage() {
         {step === 2 && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             {billersLoading && <p style={{ color: 'var(--fz-text-secondary)', fontSize: 13.5 }}>Chargement...</p>}
-            {!billersLoading && billers.length === 0 && (
+            {billersError && <div className="mp-error">{billersError}</div>}
+            {!billersLoading && !billersError && billers.length === 0 && (
               <p style={{ color: 'var(--fz-text-secondary)', fontSize: 13.5 }}>Aucun fournisseur disponible pour ce pays/type.</p>
             )}
             {billers.map((b) => (

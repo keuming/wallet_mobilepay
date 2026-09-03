@@ -489,7 +489,7 @@ export default function RechargerPage() {
           </>
         )}
 
-        {step !== 5 && (
+        {step !== STEPS.length - 1 && (
           <button className="mp-btn-primary" disabled={!canGoNext()} onClick={goNext}>
             Suivant
           </button>

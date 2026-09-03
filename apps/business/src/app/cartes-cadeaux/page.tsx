@@ -26,6 +26,7 @@ export default function CartesCadeauxBusinessPage() {
 
   const [country, setCountry] = useState('CI');
   const [products, setProducts] = useState<GiftCardProduct[]>([]);
+  const [productsError, setProductsError] = useState<string | null>(null);
   const [product, setProduct] = useState<GiftCardProduct | null>(null);
   const [amount, setAmount] = useState('');
   const [recipientEmail, setRecipientEmail] = useState('');
@@ -42,7 +43,10 @@ export default function CartesCadeauxBusinessPage() {
   }, [user, loading, router, activeMerchant?.country]);
 
   useEffect(() => {
-    apiFetch<GiftCardProduct[]>(`/merchants/${activeMerchant?.merchantId}/gift-cards/products?country=${country}`).then(setProducts);
+    setProductsError(null);
+    apiFetch<GiftCardProduct[]>(`/merchants/${activeMerchant?.merchantId}/gift-cards/products?country=${country}`)
+      .then(setProducts)
+      .catch((err) => setProductsError(err instanceof ApiError ? err.message : 'Impossible de charger le catalogue.'));
     setProduct(null);
   }, [country, activeMerchant?.merchantId]);
 
@@ -121,7 +125,8 @@ export default function CartesCadeauxBusinessPage() {
             </button>
           ))}
         </div>
-        {products.length === 0 && <p style={{ fontSize: 12.5, color: 'var(--mp-muted)' }}>Aucune carte cadeau disponible pour ce pays.</p>}
+        {productsError && <div className="mp-error">{productsError}</div>}
+        {!productsError && products.length === 0 && <p style={{ fontSize: 12.5, color: 'var(--fz-text-secondary)' }}>Aucune carte cadeau disponible pour ce pays.</p>}
 
         {product && (
           <>
