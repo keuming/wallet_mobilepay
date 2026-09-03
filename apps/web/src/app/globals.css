@@ -113,9 +113,10 @@ body {
   margin: 0;
   font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   font-weight: 600;
-  background: linear-gradient(180deg, var(--mp-bg-from) 0%, var(--mp-bg-to) 60%);
-  color: var(--mp-text);
+  background: var(--fz-bg);
+  color: var(--fz-text-primary);
   -webkit-font-smoothing: antialiased;
+  transition: background 0.2s ease, color 0.2s ease;
 }
 
 a {
@@ -136,24 +137,25 @@ h1, h2, h3 {
   overflow-x: hidden;
 }
 
-/* ---------- Header / Hero (fond clair, texte fonce) ---------- */
+/* ---------- Header / Hero — s'estompe dans le fond de page (§ Finza) ---------- */
 
 .mp-header {
-  background: linear-gradient(160deg, var(--mp-header-bg-1) 0%, var(--mp-header-bg-2) 100%);
-  color: var(--mp-navy);
-  padding: 26px 22px 60px;
+  background: transparent;
+  color: var(--fz-text-primary);
+  padding: 26px 22px 44px;
   position: relative;
   overflow: hidden;
-  border-radius: 0 0 30px 30px;
 }
 
 .mp-header::before {
   content: '';
   position: absolute;
   inset: -30% -10% auto auto;
-  width: 200px;
+  width: 260px;
   height: 200px;
-  background: radial-gradient(circle, rgba(18, 179, 116, 0.12) 0%, transparent 70%);
+  background: radial-gradient(circle, var(--fz-accent-glow) 0%, transparent 70%);
+  opacity: 0.25;
+  filter: blur(30px);
   pointer-events: none;
 }
 
@@ -173,22 +175,22 @@ h1, h2, h3 {
   font-weight: 700;
   font-size: 15px;
   letter-spacing: -0.01em;
-  color: var(--mp-navy);
+  color: var(--fz-text-primary);
 }
 .mp-brand-mark .dot {
   width: 7px;
   height: 7px;
   border-radius: 50%;
-  background: var(--mp-green);
+  background: var(--fz-accent);
 }
 
 .mp-icon-btn {
   width: 34px;
   height: 34px;
   border-radius: 12px;
-  background: rgba(15, 45, 82, 0.06);
-  border: 1px solid rgba(15, 45, 82, 0.08);
-  color: var(--mp-navy);
+  background: color-mix(in srgb, var(--fz-text-primary) 8%, transparent);
+  border: 1px solid var(--fz-border);
+  color: var(--fz-text-primary);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -197,7 +199,7 @@ h1, h2, h3 {
   transition: background 0.15s ease;
 }
 .mp-icon-btn:hover {
-  background: rgba(15, 45, 82, 0.12);
+  background: color-mix(in srgb, var(--fz-text-primary) 14%, transparent);
 }
 
 .mp-header h1 {
@@ -206,7 +208,7 @@ h1, h2, h3 {
   font-weight: 700;
   position: relative;
   z-index: 1;
-  color: var(--mp-navy);
+  color: var(--fz-text-primary);
 }
 .mp-header p {
   margin: 4px 0 0;
@@ -216,18 +218,18 @@ h1, h2, h3 {
   z-index: 1;
 }
 
-/* ---------- Balance hero card — carte d'impact : vert saturé, texte blanc ---------- */
+/* ---------- Balance hero card (§ Finza — dégradé de surface, halo lumineux) ---------- */
 
 .mp-balance-card {
-  margin: -42px 20px 0;
+  margin: -28px 20px 0;
   position: relative;
   z-index: 2;
-  background: linear-gradient(155deg, rgba(13, 163, 102, 0.9) 0%, rgba(10, 143, 88, 0.9) 55%, rgba(7, 107, 69, 0.9) 130%);
-  border: none;
+  background: var(--fz-surface-gradient);
+  border: 1px solid var(--fz-border);
   border-radius: var(--mp-radius);
   padding: 24px 24px 20px;
-  color: white;
-  box-shadow: var(--mp-shadow-glow);
+  color: var(--fz-text-primary);
+  box-shadow: 0 20px 40px -20px rgba(0, 0, 0, 0.35);
   overflow: hidden;
 }
 
@@ -235,13 +237,13 @@ h1, h2, h3 {
   content: '';
   position: absolute;
   inset: 0;
-  background: radial-gradient(circle at 88% -10%, rgba(255, 255, 255, 0.2) 0%, transparent 55%);
+  background: radial-gradient(circle at 88% -10%, color-mix(in srgb, var(--fz-accent-glow) 25%, transparent) 0%, transparent 55%);
   pointer-events: none;
 }
 
 .mp-balance-label {
   font-size: 12.5px;
-  color: rgba(255, 255, 255, 0.82);
+  color: var(--fz-text-secondary);
   font-weight: 500;
   display: flex;
   align-items: center;
@@ -256,12 +258,12 @@ h1, h2, h3 {
   letter-spacing: -0.02em;
   margin-top: 4px;
   position: relative;
-  color: #ffffff;
+  color: var(--fz-text-primary);
 }
 .mp-balance-amount .currency {
   font-size: 15px;
   font-weight: 500;
-  color: rgba(255, 255, 255, 0.78);
+  color: var(--fz-text-secondary);
   margin-left: 4px;
 }
 
@@ -280,20 +282,20 @@ h1, h2, h3 {
   flex-direction: column;
   align-items: center;
   gap: 6px;
-  background: rgba(255, 255, 255, 0.16);
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: color-mix(in srgb, var(--fz-text-primary) 6%, transparent);
+  border: 1px solid var(--fz-border);
   border-radius: var(--mp-radius-sm);
   padding: 12px 2px 10px;
   font-size: 13.8px;
   font-weight: 700;
-  color: #18181b;
+  color: var(--fz-text-primary);
   white-space: nowrap;
   letter-spacing: -0.2px;
   cursor: pointer;
   transition: transform 0.15s ease, background 0.15s ease;
 }
 .mp-action-btn:hover {
-  background: rgba(255, 255, 255, 0.26);
+  background: color-mix(in srgb, var(--fz-text-primary) 10%, transparent);
   transform: translateY(-2px);
   box-shadow: none;
 }
@@ -315,22 +317,22 @@ h1, h2, h3 {
   display: flex;
   align-items: center;
   gap: 14px;
-  background: var(--mp-surface);
-  border: 1px solid var(--mp-border);
+  background: var(--fz-surface);
+  border: 1px solid var(--fz-border);
   border-radius: var(--mp-radius-sm);
   padding: 14px 16px;
   box-shadow: var(--mp-shadow-sm);
   cursor: pointer;
   transition: transform 0.15s ease, box-shadow 0.15s ease;
-  color: var(--mp-navy);
+  color: var(--fz-text-primary);
 }
 .mp-feature-card:hover {
   transform: translateY(-2px);
   box-shadow: var(--mp-shadow-md);
 }
 .mp-feature-card.featured {
-  background: linear-gradient(120deg, #eefaf3, #f7fdfa);
-  border-color: rgba(10, 143, 88, 0.18);
+  background: var(--fz-surface-gradient);
+  border-color: color-mix(in srgb, var(--fz-accent) 30%, transparent);
 }
 .mp-feature-icon {
   width: 42px;
@@ -341,9 +343,9 @@ h1, h2, h3 {
   justify-content: center;
   font-size: 19px;
   flex-shrink: 0;
-  background: linear-gradient(135deg, var(--mp-green), var(--mp-teal));
-  color: white;
-  box-shadow: 0 5px 12px rgba(10, 143, 88, 0.25);
+  background: var(--fz-accent);
+  color: var(--fz-text-on-accent);
+  box-shadow: 0 5px 12px color-mix(in srgb, var(--fz-accent) 35%, transparent);
 }
 .mp-feature-text {
   flex: 1;
@@ -351,15 +353,15 @@ h1, h2, h3 {
 .mp-feature-title {
   font-weight: 700;
   font-size: 14px;
-  color: var(--mp-navy);
+  color: var(--fz-text-primary);
 }
 .mp-feature-sub {
   font-size: 12px;
-  color: var(--mp-muted);
+  color: var(--fz-text-secondary);
   margin-top: 1px;
 }
 .mp-feature-chevron {
-  color: var(--mp-muted);
+  color: var(--fz-text-secondary);
   font-size: 16px;
 }
 
@@ -370,7 +372,7 @@ h1, h2, h3 {
 }
 .mp-section h3 {
   font-size: 14.5px;
-  color: var(--mp-navy);
+  color: var(--fz-text-primary);
   font-weight: 700;
   margin: 0 0 12px;
   display: flex;
@@ -700,8 +702,8 @@ h1, h2, h3 {
 }
 
 .mp-history-card {
-  background: white;
-  border: 1px solid var(--mp-border);
+  background: var(--fz-surface);
+  border: 1px solid var(--fz-border);
   border-radius: 18px;
   padding: 14px 16px;
   cursor: pointer;
@@ -711,7 +713,7 @@ h1, h2, h3 {
   box-shadow: var(--mp-shadow-sm);
 }
 .mp-history-card.expanded {
-  border-color: rgba(10, 143, 88, 0.28);
+  border-color: color-mix(in srgb, var(--fz-accent) 30%, transparent);
   box-shadow: var(--mp-shadow-md);
 }
 
@@ -731,10 +733,10 @@ h1, h2, h3 {
   font-size: 15px;
   font-weight: 700;
   flex-shrink: 0;
-  color: white;
+  color: var(--fz-text-on-accent);
 }
 .mp-history-avatar.credit {
-  background: linear-gradient(135deg, var(--mp-green), var(--mp-teal));
+  background: var(--fz-accent);
 }
 .mp-history-avatar.debit {
   background: linear-gradient(135deg, #e07a5f, var(--mp-red));
@@ -747,14 +749,14 @@ h1, h2, h3 {
 .mp-history-name {
   font-weight: 700;
   font-size: 14px;
-  color: var(--mp-navy);
+  color: var(--fz-text-primary);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 .mp-history-sub {
   font-size: 12px;
-  color: var(--mp-muted);
+  color: var(--fz-text-secondary);
   margin-top: 1px;
 }
 
@@ -768,14 +770,14 @@ h1, h2, h3 {
   font-size: 14.5px;
 }
 .mp-history-amount.credit {
-  color: var(--mp-green-dark);
+  color: var(--fz-accent);
 }
 .mp-history-amount.debit {
   color: var(--mp-red);
 }
 .mp-history-time {
   font-size: 10.5px;
-  color: var(--mp-muted);
+  color: var(--fz-text-secondary);
   margin-top: 2px;
 }
 .mp-history-fee-line {
