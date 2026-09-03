@@ -102,11 +102,14 @@ export class QrService {
     payerUserId: string,
     code: string,
     amount: number | undefined,
-    fundingSource: 'WALLET' | 'MOBILE_MONEY',
+    fundingSource: 'WALLET' | 'MOBILE_MONEY' | 'CARD',
     pin: string,
     idempotencyKey: string,
     customerPhone?: string,
     provider?: string,
+    cardLast4?: string,
+    cardExpiryMonth?: number,
+    cardExpiryYear?: number,
   ) {
     const qr = await this.resolveQr(code);
 
@@ -128,6 +131,23 @@ export class QrService {
         { payerUserId, merchantId: qr.merchantId, amount: finalAmount, description, customerPhone, provider, pin },
         idempotencyKey,
       );
+    }
+
+    if (fundingSource === 'CARD') {
+      if (!cardLast4 || !cardExpiryMonth || !cardExpiryYear) {
+        throw new BadRequestException('Les informations de la carte sont requises.');
+      }
+      return this.paymentEngine.collectForMerchantFromCard({
+        payerUserId,
+        merchantId: qr.merchantId,
+        amount: finalAmount,
+        description,
+        idempotencyKey,
+        pin,
+        cardLast4,
+        expiryMonth: cardExpiryMonth,
+        expiryYear: cardExpiryYear,
+      });
     }
 
     return this.paymentEngine.collectForMerchant({
@@ -171,11 +191,14 @@ export class QrService {
     payerUserId: string,
     slug: string,
     amount: number | undefined,
-    fundingSource: 'WALLET' | 'MOBILE_MONEY',
+    fundingSource: 'WALLET' | 'MOBILE_MONEY' | 'CARD',
     pin: string,
     idempotencyKey: string,
     customerPhone?: string,
     provider?: string,
+    cardLast4?: string,
+    cardExpiryMonth?: number,
+    cardExpiryYear?: number,
   ) {
     const link = await this.resolvePaymentLink(slug);
     const finalAmount = link.amount ?? (amount ? BigInt(amount) : null);
@@ -189,6 +212,23 @@ export class QrService {
         { payerUserId, merchantId: link.merchantId, amount: finalAmount, description, customerPhone, provider, pin },
         idempotencyKey,
       );
+    }
+
+    if (fundingSource === 'CARD') {
+      if (!cardLast4 || !cardExpiryMonth || !cardExpiryYear) {
+        throw new BadRequestException('Les informations de la carte sont requises.');
+      }
+      return this.paymentEngine.collectForMerchantFromCard({
+        payerUserId,
+        merchantId: link.merchantId,
+        amount: finalAmount,
+        description,
+        idempotencyKey,
+        pin,
+        cardLast4,
+        expiryMonth: cardExpiryMonth,
+        expiryYear: cardExpiryYear,
+      });
     }
 
     return this.paymentEngine.collectForMerchant({

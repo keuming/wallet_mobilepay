@@ -14,7 +14,7 @@ import PasswordInput from '../../components/PasswordInput';
 // (`GET /qr/:code` pour résoudre, `POST /qr/:code/pay` pour payer). Cette page
 // web permet de saisir le code manuellement pour tester le flux de bout en bout.
 
-type FundingSource = 'WALLET' | 'MOBILE_MONEY';
+type FundingSource = 'WALLET' | 'MOBILE_MONEY' | 'CARD';
 type MomoOperator = 'ORANGE' | 'MOOV' | 'WAVE' | 'MTN';
 
 const MOMO_OPTIONS: Array<{ id: MomoOperator; badge: PaymentMethodId; label: string }> = [
@@ -65,6 +65,10 @@ function PayerContent() {
   const [fundingSource, setFundingSource] = useState<FundingSource | null>(null);
   const [momoOperator, setMomoOperator] = useState<MomoOperator | null>(null);
   const [momoAccount, setMomoAccount] = useState('');
+  const [cardName, setCardName] = useState('');
+  const [cardNumber, setCardNumber] = useState('');
+  const [cardExpiry, setCardExpiry] = useState('');
+  const [cardCvv, setCardCvv] = useState('');
   const [pin, setPin] = useState('');
   const [hasPin, setHasPin] = useState<boolean | null>(null);
 
@@ -264,6 +268,14 @@ function PayerContent() {
         return !!target?.fixedAmount || (!!amount && Number(amount) > 0);
       case 2:
         if (fundingSource === 'MOBILE_MONEY') return !!momoOperator && momoAccount.replace(/\D/g, '').length >= 8;
+        if (fundingSource === 'CARD') {
+          return (
+            cardName.trim().length >= 2 &&
+            cardNumber.replace(/\D/g, '').length === 16 &&
+            /^\d{2}\/\d{2}$/.test(cardExpiry) &&
+            cardCvv.length === 3
+          );
+        }
         return fundingSource === 'WALLET';
       case 3:
         return true;
@@ -290,6 +302,9 @@ function PayerContent() {
           pin,
           customerPhone: fundingSource === 'MOBILE_MONEY' ? momoAccount : undefined,
           provider: fundingSource === 'MOBILE_MONEY' ? momoOperator : undefined,
+          cardLast4: fundingSource === 'CARD' ? cardNumber.replace(/\D/g, '').slice(-4) : undefined,
+          cardExpiryMonth: fundingSource === 'CARD' ? Number(cardExpiry.split('/')[0]) : undefined,
+          cardExpiryYear: fundingSource === 'CARD' ? Number(`20${cardExpiry.split('/')[1]}`) : undefined,
         }),
       });
 
@@ -347,8 +362,8 @@ function PayerContent() {
         </div>
         <div className="mp-section" style={{ textAlign: 'center' }}>
           <div style={{ fontSize: 40, marginBottom: 8 }}>🔒</div>
-          <p style={{ fontWeight: 700, color: 'var(--mp-navy)' }}>Code secret requis</p>
-          <p style={{ color: 'var(--mp-muted)', fontSize: 13.5, marginBottom: 16 }}>
+          <p style={{ fontWeight: 700, color: 'var(--fz-text-primary)' }}>Code secret requis</p>
+          <p style={{ color: 'var(--fz-text-secondary)', fontSize: 13.5, marginBottom: 16 }}>
             Vous devez créer un code secret transactionnel avant de pouvoir payer.
           </p>
           <Link href="/code-secret" className="mp-btn-primary" style={{ display: 'inline-block' }}>
@@ -389,7 +404,7 @@ function PayerContent() {
       {/* Étape 0 : résolution QR/lien */}
       {step === 0 && (
         <div className="mp-form">
-          <p style={{ fontSize: 13.5, color: 'var(--mp-muted)', margin: 0 }}>
+          <p style={{ fontSize: 13.5, color: 'var(--fz-text-secondary)', margin: 0 }}>
             Vise le QR code du marchand, ou colle son code / lien de paiement ci-dessous.
           </p>
 
@@ -408,7 +423,7 @@ function PayerContent() {
             </div>
           )}
           <canvas ref={canvasRef} style={{ display: 'none' }} />
-          {cameraError && <div style={{ fontSize: 12.5, color: 'var(--mp-muted)', textAlign: 'center' }}>{cameraError}</div>}
+          {cameraError && <div style={{ fontSize: 12.5, color: 'var(--fz-text-secondary)', textAlign: 'center' }}>{cameraError}</div>}
 
           <label>
             Code QR ou lien de paiement
@@ -491,7 +506,7 @@ function PayerContent() {
             >
               💰 Solde MobilePay (rapide)
             </button>
-            <div style={{ fontSize: 12.5, color: 'var(--mp-muted)', fontWeight: 600, marginTop: 4 }}>
+            <div style={{ fontSize: 12.5, color: 'var(--fz-text-secondary)', fontWeight: 600, marginTop: 4 }}>
               MOBILE MONEY (prélèvement instantané)
             </div>
             {MOMO_OPTIONS.map((o) => (
@@ -516,6 +531,63 @@ function PayerContent() {
                 onChange={(e) => setMomoAccount(e.target.value)}
                 placeholder="Numéro Mobile Money"
               />
+            )}
+
+            <div style={{ fontSize: 12.5, color: 'var(--fz-text-secondary)', fontWeight: 600, marginTop: 4 }}>
+              CARTE
+            </div>
+            <button
+              onClick={() => setFundingSource('CARD')}
+              className={`mp-list-card ${fundingSource === 'CARD' ? 'selected' : ''}`}
+            >
+              💳 Carte virtuelle
+            </button>
+            {fundingSource === 'CARD' && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                <input
+                  className="mp-input"
+                  style={{ width: '100%' }}
+                  value={cardName}
+                  onChange={(e) => setCardName(e.target.value)}
+                  placeholder="Nom complet du titulaire"
+                  autoComplete="cc-name"
+                />
+                <input
+                  className="mp-input"
+                  style={{ width: '100%' }}
+                  value={cardNumber}
+                  onChange={(e) => {
+                    const digits = e.target.value.replace(/\D/g, '').slice(0, 16);
+                    setCardNumber(digits.replace(/(.{4})/g, '$1 ').trim());
+                  }}
+                  placeholder="1234 5678 9012 3456"
+                  inputMode="numeric"
+                  autoComplete="cc-number"
+                />
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <input
+                    className="mp-input"
+                    style={{ flex: 1 }}
+                    value={cardExpiry}
+                    onChange={(e) => {
+                      const digits = e.target.value.replace(/\D/g, '').slice(0, 4);
+                      setCardExpiry(digits.length > 2 ? `${digits.slice(0, 2)}/${digits.slice(2)}` : digits);
+                    }}
+                    placeholder="MM/AA"
+                    inputMode="numeric"
+                    autoComplete="cc-exp"
+                  />
+                  <input
+                    className="mp-input"
+                    style={{ flex: 1 }}
+                    value={cardCvv}
+                    onChange={(e) => setCardCvv(e.target.value.replace(/\D/g, '').slice(0, 3))}
+                    placeholder="CVV"
+                    inputMode="numeric"
+                    autoComplete="cc-csc"
+                  />
+                </div>
+              </div>
             )}
           </div>
         )}
@@ -546,7 +618,13 @@ function PayerContent() {
               </div>
               <div className="mp-detail-row">
                 <span className="k">Mode de paiement</span>
-                <span className="v">{fundingSource === 'WALLET' ? 'Solde MobilePay' : `Mobile Money — ${momoAccount}`}</span>
+                <span className="v">
+                  {fundingSource === 'WALLET'
+                    ? 'Solde MobilePay'
+                    : fundingSource === 'CARD'
+                      ? `Carte virtuelle •••• ${cardNumber.replace(/\D/g, '').slice(-4)}`
+                      : `Mobile Money — ${momoAccount}`}
+                </span>
               </div>
             </div>
             <button className="mp-btn-primary" onClick={goNext}>
@@ -657,7 +735,7 @@ function PayerContent() {
               padding: 14,
             }}
           >
-            <p style={{ fontSize: 12.5, color: 'var(--mp-muted)', margin: '0 0 10px' }}>
+            <p style={{ fontSize: 12.5, color: 'var(--fz-text-secondary)', margin: '0 0 10px' }}>
               Ouvre ce lien pour confirmer ton paiement :
             </p>
             <a href={nextAction.url} target="_blank" rel="noreferrer" className="mp-btn-primary" style={{ display: 'block', textAlign: 'center', textDecoration: 'none' }}>

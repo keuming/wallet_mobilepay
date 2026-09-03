@@ -68,13 +68,16 @@ export class QrController {
     @CurrentUser() user: AuthenticatedUser,
     @Param('code') code: string,
     @Body('amount') amount: number | undefined,
-    @Body('fundingSource') fundingSource: 'WALLET' | 'MOBILE_MONEY',
+    @Body('fundingSource') fundingSource: 'WALLET' | 'MOBILE_MONEY' | 'CARD',
     @Body('pin') pin: string,
     @Body('customerPhone') customerPhone: string | undefined,
     @Body('provider') provider: string | undefined,
+    @Body('cardLast4') cardLast4: string | undefined,
+    @Body('cardExpiryMonth') cardExpiryMonth: number | undefined,
+    @Body('cardExpiryYear') cardExpiryYear: number | undefined,
     @Headers('idempotency-key') idempotencyKey: string,
   ) {
-    return this.qrService.payQr(user.userId, code, amount, fundingSource, pin, idempotencyKey, customerPhone, provider);
+    return this.qrService.payQr(user.userId, code, amount, fundingSource, pin, idempotencyKey, customerPhone, provider, cardLast4, cardExpiryMonth, cardExpiryYear);
   }
 
   @Post('payment-links/:slug/pay')
@@ -83,13 +86,16 @@ export class QrController {
     @CurrentUser() user: AuthenticatedUser,
     @Param('slug') slug: string,
     @Body('amount') amount: number | undefined,
-    @Body('fundingSource') fundingSource: 'WALLET' | 'MOBILE_MONEY',
+    @Body('fundingSource') fundingSource: 'WALLET' | 'MOBILE_MONEY' | 'CARD',
     @Body('pin') pin: string,
     @Body('customerPhone') customerPhone: string | undefined,
     @Body('provider') provider: string | undefined,
+    @Body('cardLast4') cardLast4: string | undefined,
+    @Body('cardExpiryMonth') cardExpiryMonth: number | undefined,
+    @Body('cardExpiryYear') cardExpiryYear: number | undefined,
     @Headers('idempotency-key') idempotencyKey: string,
   ) {
-    return this.qrService.payPaymentLink(user.userId, slug, amount, fundingSource, pin, idempotencyKey, customerPhone, provider);
+    return this.qrService.payPaymentLink(user.userId, slug, amount, fundingSource, pin, idempotencyKey, customerPhone, provider, cardLast4, cardExpiryMonth, cardExpiryYear);
   }
 
   // --- Paiement PUBLIC, sans connexion (§ pay.mobilepay-ci.com) — client sans

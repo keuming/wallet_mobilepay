@@ -251,6 +251,89 @@ export class PaymentEngineService {
   }
 
   /**
+   * Paiement marchand financé par la carte virtuelle du payeur (§ parcours
+   * Payer repensé) — le formulaire imite un paiement carte classique (nom,
+   * 16 chiffres, expiration, CVV), mais la carte étant émise et détenue en
+   * interne (pas encore de partenaire émetteur réel connecté), on ne
+   * vérifie/stocke jamais un vrai PAN/CVV complet : on confirme que les 4
+   * derniers chiffres et la date correspondent bien à LA carte active du
+   * titulaire authentifié, puis le code secret autorise le débit.
+   */
+  async collectForMerchantFromCard(params: {
+    payerUserId: string;
+    merchantId: string;
+    amount: bigint;
+    description: string;
+    idempotencyKey: string;
+    pin: string;
+    cardLast4: string;
+    expiryMonth: number;
+    expiryYear: number;
+  }) {
+    const existing = await this.prisma.transaction.findUnique({
+      where: { idempotencyKey: params.idempotencyKey },
+    });
+    if (existing) return existing;
+
+    await this.verifyTransactionPin(params.payerUserId, params.pin);
+
+    const card = await this.prisma.virtualCard.findFirst({
+      where: { ownerUserId: params.payerUserId, status: 'ACTIVE' },
+    });
+    if (!card) throw new NotFoundException('Aucune carte virtuelle active sur ce compte.');
+    if (!card.maskedPan?.endsWith(params.cardLast4) || card.expiryMonth !== params.expiryMonth || card.expiryYear !== params.expiryYear) {
+      throw new BadRequestException('Les informations de la carte ne correspondent pas.');
+    }
+    if (card.balance < params.amount) {
+      throw new BadRequestException('Solde de la carte insuffisant.');
+    }
+
+    const merchant = await this.prisma.merchant.findUniqueOrThrow({ where: { id: params.merchantId } });
+    if (merchant.status !== 'ACTIVE') {
+      throw new BadRequestException("Ce marchand n'est pas actif et ne peut pas encaisser.");
+    }
+
+    const feeAmount = this.ledger.computeFee(params.amount, merchant.feeRateBps);
+    const netAmount = params.amount - feeAmount;
+
+    return this.runSerializable(async (tx) => {
+      const merchantWallet = await tx.wallet.findUniqueOrThrow({ where: { merchantId: params.merchantId } });
+
+      const transaction = await tx.transaction.create({
+        data: {
+          type: 'PAYMENT',
+          status: 'SUCCESS',
+          amount: params.amount,
+          feeAmount,
+          sourceWalletId: null,
+          destWalletId: merchantWallet.id,
+          initiatedByUserId: params.payerUserId,
+          description: `${params.description} (carte virtuelle)`,
+          idempotencyKey: params.idempotencyKey,
+        },
+      });
+
+      await tx.virtualCard.update({
+        where: { id: card.id },
+        data: { balance: { decrement: params.amount } },
+      });
+
+      // § La carte n'est pas un wallet interne au ledger — crédit du
+      // marchand sans contrepartie wallet (origine externe), comme pour un
+      // approvisionnement manuel.
+      await this.ledger.postDoubleEntry(tx, {
+        transactionId: transaction.id,
+        fromWalletId: null,
+        toWalletId: merchantWallet.id,
+        amount: netAmount,
+        description: params.description,
+      });
+
+      return transaction;
+    });
+  }
+
+  /**
    * Paiement marchand financé par un Mobile Money externe (§ parcours Payer
    * repensé) — l'argent ne transite jamais par le wallet interne du payeur :
    * HUB2 collecte directement sur son compte Mobile Money, puis le marchand
