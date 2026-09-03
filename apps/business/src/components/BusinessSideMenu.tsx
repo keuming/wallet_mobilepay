@@ -68,6 +68,10 @@ export default function BusinessSideMenu({ open, onClose }: BusinessSideMenuProp
             <span className="icon">🧾</span>
             Factures
           </Link>
+          <Link href="/confidentialite" className="mp-menu-item" onClick={onClose}>
+            <span className="icon">🔒</span>
+            Politique de confidentialité
+          </Link>
 
           <div className="mp-menu-divider" />
 

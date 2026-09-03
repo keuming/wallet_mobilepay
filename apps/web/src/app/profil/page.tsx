@@ -135,6 +135,13 @@ export default function ProfilPage() {
               </span>
               <span className="fz-option-chevron">→</span>
             </Link>
+            <Link href="/confidentialite" className="fz-option-row">
+              <span className="fz-option-left">
+                <span className="fz-option-icon">🔒</span>
+                <span className="fz-option-label">Politique de confidentialité</span>
+              </span>
+              <span className="fz-option-chevron">→</span>
+            </Link>
           </div>
         </div>
       ) : (

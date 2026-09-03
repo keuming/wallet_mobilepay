@@ -210,6 +210,13 @@ export default function InscriptionPage() {
           <button className="mp-btn-primary" disabled={submitting || !canSubmit} type="submit">
             {submitting ? 'Création...' : 'Créer mon compte'}
           </button>
+          <p style={{ fontSize: 11.5, color: 'var(--fz-text-secondary)', textAlign: 'center', margin: 0 }}>
+            En créant un compte, tu acceptes notre{' '}
+            <Link href="/confidentialite" style={{ color: 'var(--fz-accent)', fontWeight: 600 }}>
+              politique de confidentialité
+            </Link>
+            .
+          </p>
         </form>
       )}
     </div>
