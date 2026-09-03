@@ -751,15 +751,19 @@ h1, h2, h3 {
 }
 
 .mp-input {
-  padding: 13px 15px;
+  padding: 15px 16px;
   border: 1.5px solid var(--fz-border);
-  background: var(--fz-surface);
-  border-radius: var(--mp-radius-sm);
+  background: transparent;
+  border-radius: 12px;
   font-size: 15px;
   font-family: inherit;
   color: var(--fz-text-primary);
   transition: border-color 0.15s ease, box-shadow 0.15s ease;
   outline: none;
+}
+.mp-input::placeholder {
+  color: var(--fz-text-secondary);
+  opacity: 0.7;
 }
 .mp-input:focus {
   border-color: var(--fz-accent);
@@ -830,26 +834,15 @@ h1, h2, h3 {
 .mp-page-header {
   background: transparent;
   color: var(--fz-text-primary);
-  padding: 20px 22px 24px;
+  padding: 20px 22px 12px;
   position: relative;
-  overflow: hidden;
-}
-.mp-page-header::before {
-  content: '';
-  position: absolute;
-  inset: -40% -10% auto auto;
-  width: 180px;
-  height: 180px;
-  background: radial-gradient(circle, var(--fz-accent-glow) 0%, transparent 70%);
-  opacity: 0.2;
-  filter: blur(24px);
-  pointer-events: none;
 }
 .mp-page-header h1 {
-  margin: 10px 0 0;
-  font-size: 18px;
-  font-weight: 700;
+  margin: 14px 0 0;
+  font-size: 17px;
+  font-weight: 600;
   color: var(--fz-text-primary);
+  text-align: center;
   position: relative;
 }
 .mp-back-link {
