@@ -19,7 +19,7 @@ interface MethodMeta {
 }
 
 const METHODS: Record<PaymentMethodId, MethodMeta> = {
-  MOBILEPAY: { label: 'MobilePay', fallbackBg: 'linear-gradient(135deg,#0a8f58,#0d9488)', fallbackEmoji: '💚', logoFile: 'mobilepay.png' },
+  MOBILEPAY: { label: 'MobilePay', fallbackBg: 'linear-gradient(135deg,#47b686,#0d9488)', fallbackEmoji: '💚', logoFile: 'mobilepay.png' },
   ORANGE: { label: 'Orange Money', fallbackBg: '#FF6600', fallbackEmoji: '🟠', logoFile: 'orange-money.png' },
   MOOV: { label: 'Moov Money', fallbackBg: '#0072CE', fallbackEmoji: '🔵', logoFile: 'moov-money.png' },
   WAVE: { label: 'Wave', fallbackBg: '#1DC8E8', fallbackEmoji: '💙', logoFile: 'wave.png' },

@@ -1,7 +1,7 @@
 :root {
   --mc-navy: #0f2d52;
-  --mc-green: #0a8f58;
-  --mc-green-dark: #076b42;
+  --mc-green: #47b686;
+  --mc-green-dark: #2e835e;
   --mc-bg: #f4f7f6;
   --mc-panel: #ffffff;
   --mc-border: #e2e8e5;
@@ -157,7 +157,7 @@ body {
 .mc-table tr:last-child td { border-bottom: none; }
 
 .mc-badge { display: inline-block; padding: 3px 9px; border-radius: 20px; font-size: 11px; font-weight: 600; }
-.mc-badge.green { background: rgba(10,143,88,.12); color: var(--mc-green); }
+.mc-badge.green { background: rgba(71,182,134,.12); color: var(--mc-green); }
 .mc-badge.red { background: rgba(192,68,44,.12); color: var(--mc-red); }
 .mc-badge.amber { background: rgba(184,121,10,.12); color: var(--mc-amber); }
 .mc-badge.gray { background: rgba(90,122,148,.12); color: var(--mc-muted); }

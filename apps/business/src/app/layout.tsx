@@ -6,7 +6,7 @@ export const metadata = {
   title: 'MobilePay Business — Encaissement',
   description: 'Application mobile marchand MobilePay CI — encaissement client',
   manifest: '/manifest.json',
-  themeColor: '#0a8f58',
+  themeColor: '#47b686',
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {
