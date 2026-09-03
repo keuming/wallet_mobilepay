@@ -1,6 +1,6 @@
-import { Body, Controller, Get, Headers, Post, Query, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Headers, Param, Post, Query, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
-import { IsEnum, IsIn, IsInt, IsOptional, IsPositive, IsString, MinLength } from 'class-validator';
+import { IsEmail, IsEnum, IsIn, IsInt, IsOptional, IsPositive, IsString, MinLength } from 'class-validator';
 import { PaymentEngineService } from './payment-engine.service';
 import { ReloadlyAdapter } from './providers/reloadly.adapter';
 import { TopupDto } from '../wallets/dto/wallets.dto';
@@ -147,6 +147,47 @@ export class AirtimeController {
         momoProvider: dto.momoProvider,
         countryCode: dto.countryCode,
       },
+      idempotencyKey,
+    );
+  }
+}
+
+export class PurchaseGiftCardDto {
+  @IsInt()
+  @IsPositive()
+  productId: number;
+
+  @IsPositive()
+  unitPrice: number;
+
+  @IsEmail({}, { message: 'Adresse email du bénéficiaire invalide.' })
+  recipientEmail: string;
+
+  @IsString()
+  pin: string;
+}
+
+@ApiTags('gift-cards')
+@ApiBearerAuth()
+@UseGuards(JwtAuthGuard)
+@Controller('gift-cards')
+export class GiftCardsController {
+  constructor(private paymentEngine: PaymentEngineService) {}
+
+  @Get('products')
+  listProducts(@Query('country') country: string = 'CI') {
+    return this.paymentEngine.listGiftCardProducts(country);
+  }
+
+  @Post('orders')
+  purchase(
+    @CurrentUser() user: AuthenticatedUser,
+    @Body() dto: PurchaseGiftCardDto,
+    @Headers('idempotency-key') idempotencyKey: string,
+  ) {
+    return this.paymentEngine.purchaseGiftCard(
+      user.userId,
+      { productId: dto.productId, unitPrice: dto.unitPrice, recipientEmail: dto.recipientEmail, pin: dto.pin },
       idempotencyKey,
     );
   }

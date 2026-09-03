@@ -159,6 +159,14 @@ export default function DashboardPage() {
           </div>
           <div className="mp-feature-chevron">→</div>
         </Link>
+        <Link href="/cartes-cadeaux" className="mp-feature-card">
+          <div className="mp-feature-icon">🎁</div>
+          <div className="mp-feature-text">
+            <div className="mp-feature-title">Cartes cadeaux</div>
+            <div className="mp-feature-sub">Amazon, Apple, Netflix et plus — dans le monde entier</div>
+          </div>
+          <div className="mp-feature-chevron">→</div>
+        </Link>
       </div>
 
       <div className="mp-section">

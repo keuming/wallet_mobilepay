@@ -13,6 +13,7 @@ import { PrismaService } from '../../config/prisma.service';
 import { LedgerService } from '../ledger/ledger.service';
 import { Hub2Adapter } from './providers/hub2.adapter';
 import { ReloadlyAdapter } from './providers/reloadly.adapter';
+import { ReloadlyGiftCardsAdapter } from './providers/reloadly-giftcards.adapter';
 import { SmsAdapter } from '../sms/sms.adapter';
 import { normalizePhoneCI } from '../../common/utils/phone.util';
 
@@ -32,6 +33,7 @@ export class PaymentEngineService {
     private ledger: LedgerService,
     private hub2: Hub2Adapter,
     private reloadly: ReloadlyAdapter,
+    private reloadlyGiftCards: ReloadlyGiftCardsAdapter,
     private sms: SmsAdapter,
   ) {}
 
@@ -656,6 +658,113 @@ export class PaymentEngineService {
       default:
         return this.purchaseAirtimeFromWallet(userId, params, idempotencyKey);
     }
+  }
+
+  /** Catalogue de cartes cadeaux disponibles pour un pays (§ Gift Cards). */
+  async listGiftCardProducts(countryCode: string) {
+    return this.reloadlyGiftCards.listProducts(countryCode);
+  }
+
+  /**
+   * Achat de carte cadeau depuis le wallet particulier — débit immédiat
+   * (atomique, interne), remboursement automatique si Reloadly échoue.
+   */
+  async purchaseGiftCard(
+    userId: string,
+    params: { productId: number; unitPrice: number; recipientEmail: string; pin: string },
+    idempotencyKey: string,
+  ) {
+    const existing = await this.prisma.transaction.findUnique({ where: { idempotencyKey } });
+    if (existing) return existing;
+
+    await this.verifyTransactionPin(userId, params.pin);
+    const user = await this.prisma.user.findUniqueOrThrow({ where: { id: userId } });
+    const product = await this.reloadlyGiftCards.getProduct(params.productId);
+    if (!product) throw new NotFoundException('Carte cadeau introuvable.');
+
+    const amount = BigInt(Math.round(params.unitPrice * 100));
+
+    const transaction = await this.runSerializable(async (tx) => {
+      const wallet = await tx.wallet.findUniqueOrThrow({ where: { userId } });
+      if (wallet.cachedBalance < amount) {
+        throw new BadRequestException('Solde insuffisant.');
+      }
+
+      const created = await tx.transaction.create({
+        data: {
+          type: 'GIFT_CARD',
+          status: 'PROCESSING',
+          amount,
+          sourceWalletId: wallet.id,
+          initiatedByUserId: userId,
+          description: `Carte cadeau ${product.brandName} — ${params.recipientEmail}`,
+          providerName: 'RELOADLY',
+          idempotencyKey,
+        },
+      });
+
+      await this.ledger.postDoubleEntry(tx, {
+        transactionId: created.id,
+        fromWalletId: wallet.id,
+        toWalletId: null,
+        amount,
+        description: `Carte cadeau ${product.brandName}`,
+      });
+
+      return created;
+    });
+
+    const result = await this.reloadlyGiftCards.placeOrder({
+      productId: params.productId,
+      unitPrice: params.unitPrice,
+      recipientEmail: params.recipientEmail,
+      senderName: `${user.firstName} ${user.lastName}`,
+      customIdentifier: transaction.id,
+    });
+
+    await this.prisma.giftCardOrder.create({
+      data: {
+        transactionId: transaction.id,
+        targetType: 'PARTICULIER',
+        targetUserId: userId,
+        productId: params.productId,
+        productName: product.productName,
+        brandName: product.brandName,
+        denominationValue: params.unitPrice,
+        currencyCode: result.currencyCode || product.recipientCurrencyCode,
+        recipientEmail: params.recipientEmail,
+        senderName: `${user.firstName} ${user.lastName}`,
+        status: result.status,
+        cardCode: result.cardCode,
+        cardPin: result.cardPin,
+        redeemInstructions: product.redeemInstructions,
+        failureReason: result.status === 'FAILED' ? 'Achat Reloadly refusé.' : null,
+      },
+    });
+
+    if (result.status === 'FAILED') {
+      // Remboursement — le débit était interne et instantané, l'annuler est sûr.
+      await this.runSerializable(async (tx) => {
+        const wallet = await tx.wallet.findUniqueOrThrow({ where: { userId } });
+        await this.ledger.postDoubleEntry(tx, {
+          transactionId: transaction.id,
+          fromWalletId: null,
+          toWalletId: wallet.id,
+          amount,
+          description: `Remboursement — échec carte cadeau ${product.brandName}`,
+        });
+      });
+      return this.prisma.transaction.update({
+        where: { id: transaction.id },
+        data: { status: 'FAILED', failureReason: 'Achat de la carte cadeau refusé par le fournisseur.' },
+      });
+    }
+
+    const updated = await this.prisma.transaction.update({
+      where: { id: transaction.id },
+      data: { status: 'SUCCESS' },
+    });
+    return { ...updated, cardCode: result.cardCode, cardPin: result.cardPin };
   }
 
   /** Source : solde du wallet MobilePay — débit immédiat, remboursement si échec. */

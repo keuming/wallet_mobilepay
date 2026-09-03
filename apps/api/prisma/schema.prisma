@@ -72,6 +72,7 @@ enum TransactionType {
   TOPUP // recharge de wallet (cash-in via provider)
   WITHDRAWAL // retrait (cash-out)
   AIRTIME
+  GIFT_CARD
   CARD_LOAD // chargement d'une carte virtuelle depuis le wallet
   CARD_UNLOAD // reversement du solde carte vers le wallet
   SETTLEMENT // règlement marchand -> banque
@@ -258,6 +259,34 @@ model Merchant {
 // Encaissement en espèces (§ Phase A Business — le client paie en liquide,
 // le marchand enregistre simplement le montant pour son suivi comptable).
 // Détails d'un achat crédit/data en attente de confirmation du paiement
+// Commande de carte cadeau (§ Reloadly Gift Cards — Amazon, Apple, Netflix,
+// etc.) — trace la commande et conserve le code/PIN livrés par Reloadly pour
+// que l'utilisateur puisse les retrouver plus tard dans son historique.
+model GiftCardOrder {
+  id                 String   @id @default(uuid())
+  transactionId      String   @unique
+  targetType         String   // 'PARTICULIER' | 'MERCHANT'
+  targetUserId       String?
+  targetMerchantId   String?
+  productId          Int
+  productName        String
+  brandName          String
+  denominationValue  Float
+  currencyCode       String
+  recipientEmail     String
+  senderName         String
+  status             String   // 'PROCESSING' | 'SUCCESS' | 'FAILED'
+  cardCode           String?  // rempli une fois la commande livrée
+  cardPin            String?
+  redeemInstructions String?  @db.Text
+  failureReason      String?
+  createdAt          DateTime @default(now())
+
+  @@index([targetUserId])
+  @@index([targetMerchantId])
+  @@map("gift_card_orders")
+}
+
 // Mobile Money (§ correction sécurité — Reloadly ne doit JAMAIS être appelé
 // avant que le webhook HUB2 confirme réellement le paiement du client).
 model PendingAirtimeDelivery {
