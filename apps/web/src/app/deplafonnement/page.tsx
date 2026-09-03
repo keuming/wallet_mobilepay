@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '../../contexts/AuthContext';
 import { apiFetch, ApiError } from '../../lib/apiClient';
+import StatusModal from '../../components/StatusModal';
 
 const DOCUMENT_TYPES = ['CNI', 'Passeport', 'Permis de conduire'];
 
@@ -93,6 +94,7 @@ export default function DeplafonnementPage() {
   const [location, setLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [locating, setLocating] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [submitError, setSubmitError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
@@ -125,7 +127,7 @@ export default function DeplafonnementPage() {
   const canSubmit = documentRef && recto && verso && selfie && location;
 
   const handleSubmit = async () => {
-    setError(null);
+    setSubmitError(null);
     setSubmitting(true);
     try {
       await apiFetch('/kyc', {
@@ -144,7 +146,7 @@ export default function DeplafonnementPage() {
       });
       setSuccess(true);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Échec de la demande.');
+      setSubmitError(err instanceof ApiError ? err.message : 'Échec de la demande.');
     } finally {
       setSubmitting(false);
     }
@@ -263,6 +265,10 @@ export default function DeplafonnementPage() {
           {submitting ? 'Envoi...' : 'Envoyer ma demande'}
         </button>
       </div>
+
+      {submitError && (
+        <StatusModal status="failed" message={submitError} onClose={() => setSubmitError(null)} />
+      )}
     </div>
   );
 }

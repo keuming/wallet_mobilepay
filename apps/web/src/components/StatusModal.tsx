@@ -6,7 +6,7 @@ export type ResultStatus = 'success' | 'failed' | 'pending' | 'unknown';
 
 const CONFIG: Record<ResultStatus, { icon: string; defaultTitle: string }> = {
   success: { icon: '✓', defaultTitle: 'Opération réussie' },
-  failed: { icon: '✕', defaultTitle: 'Échec de l\'opération' },
+  failed: { icon: '!', defaultTitle: "Ça n'a pas fonctionné" },
   pending: { icon: '⏳', defaultTitle: 'Opération en attente' },
   unknown: { icon: '⚠️', defaultTitle: 'Statut inconnu' },
 };

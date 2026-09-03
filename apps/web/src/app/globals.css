@@ -1037,7 +1037,7 @@ h1, h2, h3 {
   font-size: 30px;
   margin: 0 auto 16px;
 }
-.mp-result-icon.success { background: rgba(10, 143, 88, 0.12); color: var(--mp-green-dark); }
+.mp-result-icon.success { background: rgba(71, 182, 134, 0.15); color: var(--mp-green-dark); }
 .mp-result-icon.failed { background: rgba(214, 69, 69, 0.12); color: #b91c1c; }
 .mp-result-icon.pending { background: rgba(234, 179, 8, 0.15); color: #a16207; }
 .mp-result-icon.unknown { background: rgba(249, 115, 22, 0.14); color: #c2410c; }

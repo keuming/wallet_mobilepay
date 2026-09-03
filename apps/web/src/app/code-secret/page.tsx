@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { useAuth } from '../../contexts/AuthContext';
 import { apiFetch, ApiError } from '../../lib/apiClient';
 import PasswordInput from '../../components/PasswordInput';
+import StatusModal from '../../components/StatusModal';
 
 function PinInput({ value, onChange, label }: { value: string; onChange: (v: string) => void; label: string }) {
   return (
@@ -123,13 +124,14 @@ export default function CodeSecretPage() {
         <PinInput value={confirmPin} onChange={setConfirmPin} label="Confirmer le nouveau code" />
         {mismatch && <div className="mp-error">Les deux codes ne correspondent pas.</div>}
 
-        {error && <div className="mp-error">{error}</div>}
         {success && <div className="mp-success">Code secret enregistré ✓</div>}
 
         <button className="mp-btn-primary" disabled={submitting || !canSubmit} onClick={handleSubmit}>
           {submitting ? 'Enregistrement...' : useReset ? 'Réinitialiser le code' : hasPin ? 'Modifier le code' : 'Créer le code'}
         </button>
       </div>
+
+      {error && <StatusModal status="failed" message={error} onClose={() => setError(null)} />}
     </div>
   );
 }

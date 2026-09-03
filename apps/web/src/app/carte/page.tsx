@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { apiFetch, ApiError } from '../../lib/apiClient';
+import StatusModal, { ResultStatus } from '../../components/StatusModal';
 
 interface Card {
   id: string;
@@ -23,8 +24,7 @@ export default function CartePage() {
   const [loading, setLoading] = useState(true);
   const [holderName, setHolderName] = useState('');
   const [requesting, setRequesting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [toast, setToast] = useState<string | null>(null);
+  const [result, setResult] = useState<{ status: ResultStatus; message: string } | null>(null);
   const [loadAmount, setLoadAmount] = useState('');
   const [loadingCard, setLoadingCard] = useState<string | null>(null);
 
@@ -36,14 +36,12 @@ export default function CartePage() {
 
   const requestCard = async () => {
     setRequesting(true);
-    setError(null);
     try {
       await apiFetch('/cards', { method: 'POST', body: JSON.stringify({ holderName }) });
-      setToast('Demande de carte envoyée ! 🎉');
-      setTimeout(() => setToast(null), 4000);
+      setResult({ status: 'success', message: 'Demande de carte envoyée ! 🎉' });
       await refresh();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Échec de la demande.');
+      setResult({ status: 'failed', message: err instanceof ApiError ? err.message : 'Échec de la demande.' });
     } finally {
       setRequesting(false);
     }
@@ -51,7 +49,6 @@ export default function CartePage() {
 
   const loadCard = async (cardId: string) => {
     setLoadingCard(cardId);
-    setError(null);
     try {
       await apiFetch(`/cards/${cardId}/load`, {
         method: 'POST',
@@ -59,25 +56,23 @@ export default function CartePage() {
         body: JSON.stringify({ amount: Math.round(Number(loadAmount) * 100) }),
       });
       setLoadAmount('');
-      setToast('Carte rechargée avec succès ! 🎉');
-      setTimeout(() => setToast(null), 4000);
+      setResult({ status: 'success', message: 'Carte rechargée avec succès ! 🎉' });
       await refresh();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Échec du chargement.');
+      setResult({ status: 'failed', message: err instanceof ApiError ? err.message : 'Échec du chargement.' });
     } finally {
       setLoadingCard(null);
     }
   };
 
   const toggleFreeze = async (card: Card) => {
-    setError(null);
     try {
       await apiFetch(`/cards/${card.id}/${card.status === 'FROZEN' ? 'unfreeze' : 'freeze'}`, {
         method: 'PATCH',
       });
       await refresh();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Action impossible.');
+      setResult({ status: 'failed', message: err instanceof ApiError ? err.message : 'Action impossible.' });
     }
   };
 
@@ -91,11 +86,6 @@ export default function CartePage() {
       </div>
 
       <div className="mp-section">
-        {toast && (
-          <div style={{ background: 'rgba(18,179,116,.1)', border: '1px solid var(--mp-green)', color: 'var(--mp-green-dark)', borderRadius: 10, padding: '10px 16px', marginBottom: 16, fontWeight: 600, fontSize: 13.5 }}>
-            {toast}
-          </div>
-        )}
         {loading ? (
           <p style={{ color: 'var(--mp-muted)' }}>Chargement...</p>
         ) : cards.length === 0 ? (
@@ -110,7 +100,6 @@ export default function CartePage() {
               value={holderName}
               onChange={(e) => setHolderName(e.target.value)}
             />
-            {error && <div className="mp-error">{error}</div>}
             <button className="mp-btn-primary" disabled={requesting || !holderName} onClick={requestCard}>
               {requesting ? 'Demande en cours...' : 'Demander une carte'}
             </button>
@@ -208,8 +197,11 @@ export default function CartePage() {
             </div>
           ))
         )}
-        {error && cards.length > 0 && <div className="mp-error">{error}</div>}
       </div>
+
+      {result && (
+        <StatusModal status={result.status} message={result.message} onClose={() => setResult(null)} />
+      )}
     </div>
   );
 }

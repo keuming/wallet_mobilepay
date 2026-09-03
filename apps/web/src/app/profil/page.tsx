@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '../../contexts/AuthContext';
 import { apiFetch, ApiError } from '../../lib/apiClient';
+import StatusModal from '../../components/StatusModal';
 
 interface FullProfile {
   id: string;
@@ -146,7 +147,6 @@ export default function ProfilPage() {
           <p style={{ fontSize: 12, color: 'var(--mp-muted)' }}>
             Le numéro de téléphone ne peut pas être modifié ici — il sert d'identifiant de connexion.
           </p>
-          {error && <div className="mp-error">{error}</div>}
           <button className="mp-btn-primary" disabled={saving} onClick={handleSave}>
             {saving ? 'Enregistrement...' : 'Enregistrer'}
           </button>
@@ -155,6 +155,8 @@ export default function ProfilPage() {
           </button>
         </div>
       )}
+
+      {error && <StatusModal status="failed" message={error} onClose={() => setError(null)} />}
     </div>
   );
 }
