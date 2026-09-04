@@ -7,9 +7,10 @@ import { ReloadlyGiftCardsAdapter } from './providers/reloadly-giftcards.adapter
 import { ReloadlyUtilitiesAdapter } from './providers/reloadly-utilities.adapter';
 import { LedgerModule } from '../ledger/ledger.module';
 import { SmsModule } from '../sms/sms.module';
+import { PricingModule } from '../pricing/pricing.module';
 
 @Module({
-  imports: [LedgerModule, SmsModule],
+  imports: [LedgerModule, SmsModule, PricingModule],
   providers: [PaymentEngineService, Hub2Adapter, ReloadlyAdapter, ReloadlyGiftCardsAdapter, ReloadlyUtilitiesAdapter],
   controllers: [PaymentEngineController, AirtimeController, GiftCardsController, UtilityPaymentsController],
   exports: [PaymentEngineService, Hub2Adapter, ReloadlyAdapter, ReloadlyGiftCardsAdapter, ReloadlyUtilitiesAdapter],

@@ -30,6 +30,8 @@ export default function RechargerWalletPage() {
   const [operator, setOperator] = useState<Operator | null>(null);
   const [accountNumber, setAccountNumber] = useState('');
   const [amount, setAmount] = useState('');
+  const [feeAmount, setFeeAmount] = useState<number | null>(null);
+  const [feeLoading, setFeeLoading] = useState(false);
   const [pin, setPin] = useState('');
   const [hasPin, setHasPin] = useState<boolean | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -45,6 +47,15 @@ export default function RechargerWalletPage() {
   useEffect(() => {
     apiFetch<{ hasPin: boolean }>('/auth/pin/status').then((res) => setHasPin(res.hasPin));
   }, []);
+
+  useEffect(() => {
+    if (step !== 3 || !amount) return;
+    setFeeLoading(true);
+    apiFetch<{ feeAmount: string }>(`/pricing/preview?amount=${amount}`)
+      .then((res) => setFeeAmount(Number(res.feeAmount)))
+      .catch(() => setFeeAmount(null))
+      .finally(() => setFeeLoading(false));
+  }, [step, amount]);
 
   const pollTransactionStatus = (transactionId: string) => {
     let attempts = 0;
@@ -304,6 +315,10 @@ export default function RechargerWalletPage() {
                 🔍 Vérifiez avant de continuer
               </div>
               <div className="mp-detail-row">
+                <span className="k">Objet</span>
+                <span className="v">Dépôt sur mon wallet MobilePay</span>
+              </div>
+              <div className="mp-detail-row">
                 <span className="k">Source</span>
                 <span className="v">{selectedLabel}</span>
               </div>
@@ -315,6 +330,12 @@ export default function RechargerWalletPage() {
                 <span className="k">Montant</span>
                 <span className="v" style={{ fontSize: 16, color: 'var(--mp-green-dark)' }}>
                   {Number(amount).toLocaleString('fr-FR')} FCFA
+                </span>
+              </div>
+              <div className="mp-detail-row">
+                <span className="k">Frais de transaction</span>
+                <span className="v">
+                  {feeLoading ? '...' : feeAmount !== null ? `${(feeAmount / 100).toLocaleString('fr-FR')} FCFA` : '—'}
                 </span>
               </div>
             </div>

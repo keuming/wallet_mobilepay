@@ -15,6 +15,7 @@ import { Hub2Adapter } from './providers/hub2.adapter';
 import { ReloadlyAdapter } from './providers/reloadly.adapter';
 import { ReloadlyGiftCardsAdapter } from './providers/reloadly-giftcards.adapter';
 import { ReloadlyUtilitiesAdapter, BillerType } from './providers/reloadly-utilities.adapter';
+import { PricingService } from '../pricing/pricing.service';
 import { SmsAdapter } from '../sms/sms.adapter';
 import { normalizePhoneCI } from '../../common/utils/phone.util';
 
@@ -36,6 +37,7 @@ export class PaymentEngineService {
     private reloadly: ReloadlyAdapter,
     private reloadlyGiftCards: ReloadlyGiftCardsAdapter,
     private reloadlyUtilities: ReloadlyUtilitiesAdapter,
+    private pricingService: PricingService,
     private sms: SmsAdapter,
   ) {}
 
@@ -1261,7 +1263,15 @@ export class PaymentEngineService {
    * Appelé par WebhooksService une fois la signature HUB2 vérifiée : finalise
    * le top-up en créditant réellement le wallet, ou marque l'échec.
    */
-  async completeTopup(transactionId: string, success: boolean, failureReason?: string) {
+  async completeTopup(transactionId: string, success: boolean, failureReason?: string, hub2FeeAmount: bigint = 0n) {
+    // § La tarification (§ pourcentage + frais fixe MobilePay, paramétrable
+    // en back-office) doit être calculée AVANT la transaction Prisma — un
+    // appel réseau/DB externe dans une transaction Serializable risquerait
+    // un conflit de verrou inutile.
+    const transactionBefore = await this.prisma.transaction.findUnique({ where: { id: transactionId } });
+    const ourFee = transactionBefore ? await this.pricingService.computeOurFee(transactionBefore.amount) : 0n;
+    const totalFee = hub2FeeAmount + ourFee;
+
     return this.runSerializable(async (tx) => {
       const transaction = await tx.transaction.findUnique({ where: { id: transactionId } });
       if (!transaction) throw new NotFoundException('Transaction introuvable.');
@@ -1278,17 +1288,21 @@ export class PaymentEngineService {
         });
       }
 
+      // § Le client reçoit le montant net des frais (HUB2 + MobilePay) —
+      // cohérent avec la pratique standard des opérateurs mobile money.
+      const netAmount = transaction.amount - totalFee > 0n ? transaction.amount - totalFee : 0n;
+
       await this.ledger.postDoubleEntry(tx, {
         transactionId: transaction.id,
         fromWalletId: null,
         toWalletId: transaction.destWalletId!,
-        amount: transaction.amount,
+        amount: netAmount,
         description: 'Recharge confirmée (HUB2)',
       });
 
       return tx.transaction.update({
         where: { id: transactionId },
-        data: { status: 'SUCCESS' },
+        data: { status: 'SUCCESS', feeAmount: totalFee },
       });
     });
   }
