@@ -1,13 +1,13 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { apiFetch, ApiError } from '../lib/apiClient';
 
 const MOMO_PROVIDERS = [
-  { id: 'orange', label: 'Orange Money' },
-  { id: 'mtn', label: 'MTN MoMo' },
-  { id: 'moov', label: 'Moov Money' },
-  { id: 'wave', label: 'Wave' },
+  { id: 'orange', label: 'Orange Money', dialCode: '225' },
+  { id: 'mtn', label: 'MTN MoMo', dialCode: '225' },
+  { id: 'moov', label: 'Moov Money', dialCode: '225' },
+  { id: 'wave', label: 'Wave', dialCode: '225' },
 ];
 
 interface ResolvedTarget {
@@ -19,6 +19,15 @@ interface ResolvedTarget {
   description?: string | null;
 }
 
+interface PaymentResponse {
+  id: string;
+  status: string;
+  nextActionType?: string | null;
+  nextActionMessage?: string | null;
+  nextActionUrl?: string | null;
+  failureReason?: string | null;
+}
+
 function fcfa(cents: number): string {
   return (cents / 100).toLocaleString('fr-FR');
 }
@@ -28,6 +37,11 @@ function fcfa(cents: number): string {
  * MobilePay. Le client choisit soit de payer avec son solde MobilePay (s'il
  * en a un, redirection vers le wallet), soit avec un autre Mobile Money
  * (Orange/MTN/Moov/Wave), directement sur cette page sans connexion.
+ *
+ * § Corrigé : le parcours PAY-IN suit désormais réellement la confirmation
+ * jusqu'au bout (sondage du statut, saisie du code OTP si l'opérateur
+ * l'exige, message final clair) au lieu de rester sur un message statique
+ * sans savoir si le paiement a vraiment abouti.
  */
 export default function CheckoutPage({
   resolveEndpoint,
@@ -50,12 +64,15 @@ export default function CheckoutPage({
   const [loadError, setLoadError] = useState<string | null>(null);
   const [mode, setMode] = useState<'choice' | 'external'>('choice');
 
-  const [customerPhone, setCustomerPhone] = useState('');
+  const [localNumber, setLocalNumber] = useState('');
   const [provider, setProvider] = useState('');
   const [amount, setAmount] = useState('');
   const [submitting, setSubmitting] = useState(false);
-  const [result, setResult] = useState<{ status: string; message: string } | null>(null);
+  const [otpCode, setOtpCode] = useState('');
+  const [transactionId, setTransactionId] = useState<string | null>(null);
+  const [result, setResult] = useState<{ status: 'pending' | 'otp' | 'success' | 'failed'; message: string } | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
     apiFetch<ResolvedTarget>(resolveEndpoint)
@@ -63,36 +80,97 @@ export default function CheckoutPage({
       .catch((err) => setLoadError(err instanceof ApiError ? err.message : 'Introuvable.'));
   }, [resolveEndpoint]);
 
+  useEffect(() => () => { if (pollRef.current) clearInterval(pollRef.current); }, []);
+
   const businessName =
     target?.merchant?.businessName ??
     target?.businessName ??
     (target?.ownerUser ? `${target.ownerUser.firstName} ${target.ownerUser.lastName}` : undefined);
   const fixedAmount = target?.fixedAmount ?? target?.amount ?? null;
+  const dialCode = MOMO_PROVIDERS.find((p) => p.id === provider)?.dialCode ?? '225';
+
+  const applyResponse = (res: PaymentResponse) => {
+    setTransactionId(res.id);
+    if (res.status === 'SUCCESS') {
+      if (pollRef.current) clearInterval(pollRef.current);
+      setResult({ status: 'success', message: 'Paiement confirmé ✓' });
+    } else if (res.status === 'FAILED') {
+      if (pollRef.current) clearInterval(pollRef.current);
+      setResult({ status: 'failed', message: res.failureReason ?? "Le paiement n'a pas pu être finalisé." });
+    } else if (res.nextActionType === 'otp') {
+      if (pollRef.current) clearInterval(pollRef.current);
+      setResult({
+        status: 'otp',
+        message: res.nextActionMessage ?? 'Saisis le code reçu par SMS pour confirmer.',
+      });
+    } else if (res.nextActionType === 'redirect' && res.nextActionUrl) {
+      window.location.href = res.nextActionUrl;
+    } else {
+      setResult({
+        status: 'pending',
+        message: res.nextActionMessage ?? 'Vérifie ton téléphone et valide avec ton code Mobile Money pour finaliser le paiement.',
+      });
+    }
+  };
+
+  const startPolling = (id: string) => {
+    let attempts = 0;
+    pollRef.current = setInterval(async () => {
+      attempts += 1;
+      if (attempts > 40) { // ~2 minutes à 3s d'intervalle
+        if (pollRef.current) clearInterval(pollRef.current);
+        setResult({ status: 'pending', message: "La confirmation prend plus de temps que prévu. Vérifie ton historique Mobile Money." });
+        return;
+      }
+      try {
+        const res = await apiFetch<PaymentResponse>(`/public/transactions/${id}/status`);
+        applyResponse(res);
+      } catch {
+        // erreur réseau ponctuelle — on retente au prochain tick
+      }
+    }, 3000);
+  };
 
   const submit = async () => {
     setSubmitting(true);
     setError(null);
     setResult(null);
     try {
-      const res = await apiFetch<{ status: string }>(payExternalEndpoint, {
+      const res = await apiFetch<PaymentResponse>(payExternalEndpoint, {
         method: 'POST',
         idempotent: true,
         body: JSON.stringify({
-          customerPhone,
+          customerPhone: `+${dialCode}${localNumber.replace(/\D/g, '')}`,
           provider,
           amount: fixedAmount ? undefined : Math.round(Number(amount) * 100),
         }),
       });
-      if (res.status === 'SUCCESS') {
-        setResult({ status: 'success', message: 'Paiement confirmé ✓' });
-      } else {
-        setResult({
-          status: 'pending',
-          message: 'Vérifie ton téléphone et valide avec ton code Mobile Money pour finaliser le paiement.',
-        });
+      applyResponse(res);
+      if (res.status !== 'SUCCESS' && res.status !== 'FAILED' && res.nextActionType !== 'otp') {
+        startPolling(res.id);
       }
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Échec du paiement.");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const submitOtp = async () => {
+    if (!transactionId) return;
+    setSubmitting(true);
+    setError(null);
+    try {
+      const res = await apiFetch<PaymentResponse>(`/public/transactions/${transactionId}/authenticate`, {
+        method: 'POST',
+        body: JSON.stringify({ confirmationCode: otpCode }),
+      });
+      applyResponse(res);
+      if (res.status !== 'SUCCESS' && res.status !== 'FAILED') {
+        startPolling(transactionId);
+      }
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Code invalide.');
     } finally {
       setSubmitting(false);
     }
@@ -103,7 +181,7 @@ export default function CheckoutPage({
       <div className="mp-container" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', textAlign: 'center', padding: 24 }}>
         <div>
           <div style={{ fontSize: 40, marginBottom: 12 }}>😕</div>
-          <p style={{ color: 'var(--mp-muted)' }}>{loadError}</p>
+          <p style={{ color: 'var(--fz-text-secondary)' }}>{loadError}</p>
         </div>
       </div>
     );
@@ -135,7 +213,7 @@ export default function CheckoutPage({
         )}
       </div>
 
-      {target && mode === 'choice' && (
+      {target && mode === 'choice' && !result && (
         <div className="mp-feature-list">
           <a
             href={walletAppPath === 'envoyer' ? `${walletAppUrl}/envoyer` : `${walletAppUrl}/${walletAppPath}?${walletAppQueryKey}=${identifier}`}
@@ -159,44 +237,85 @@ export default function CheckoutPage({
         </div>
       )}
 
-      {target && mode === 'external' && (
+      {target && mode === 'external' && !result && (
         <div className="mp-form">
           <button
-            onClick={() => {
-              setMode('choice');
-              setResult(null);
-              setError(null);
-            }}
+            onClick={() => { setMode('choice'); setError(null); }}
             className="mp-btn-ghost"
             style={{ alignSelf: 'flex-start', padding: '6px 12px', fontSize: 12.5 }}
           >
             ← Retour
           </button>
-          <input className="mp-input" placeholder="Ton numéro (+225...)" value={customerPhone} onChange={(e) => setCustomerPhone(e.target.value)} />
           <select className="mp-input" value={provider} onChange={(e) => setProvider(e.target.value)}>
             <option value="">Ton opérateur...</option>
             {MOMO_PROVIDERS.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.label}
-              </option>
+              <option key={p.id} value={p.id}>{p.label}</option>
             ))}
           </select>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <span
+              className="mp-input"
+              style={{ width: 60, flexShrink: 0, textAlign: 'center', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+            >
+              +{dialCode}
+            </span>
+            <input
+              className="mp-input"
+              style={{ flex: 1 }}
+              placeholder="0700000000"
+              inputMode="tel"
+              value={localNumber}
+              onChange={(e) => setLocalNumber(e.target.value.replace(/\D/g, ''))}
+            />
+          </div>
           {!fixedAmount && (
             <input className="mp-input" type="number" placeholder="Montant (FCFA)" value={amount} onChange={(e) => setAmount(e.target.value)} />
           )}
           {error && <div className="mp-error">{error}</div>}
-          {result && (
-            <div style={{ fontSize: 13, fontWeight: 600, color: result.status === 'success' ? 'var(--mp-green-dark)' : '#b8790a' }}>
-              {result.message}
-            </div>
-          )}
           <button
             className="mp-btn-primary"
-            disabled={submitting || !customerPhone || !provider || (!fixedAmount && !amount)}
+            disabled={submitting || !localNumber || !provider || (!fixedAmount && !amount)}
             onClick={submit}
           >
             {submitting ? 'Envoi...' : 'Payer maintenant'}
           </button>
+        </div>
+      )}
+
+      {result && (
+        <div className="mp-form" style={{ textAlign: 'center' }}>
+          {result.status === 'otp' ? (
+            <>
+              <p style={{ fontSize: 13.5, color: 'var(--fz-text-secondary)' }}>{result.message}</p>
+              <input
+                className="mp-input"
+                placeholder="Code reçu par SMS"
+                inputMode="numeric"
+                value={otpCode}
+                onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, ''))}
+                autoFocus
+              />
+              {error && <div className="mp-error">{error}</div>}
+              <button className="mp-btn-primary" disabled={submitting || otpCode.length < 4} onClick={submitOtp}>
+                {submitting ? 'Vérification...' : 'Confirmer le code'}
+              </button>
+            </>
+          ) : (
+            <>
+              <div style={{ fontSize: 40, marginBottom: 8 }}>
+                {result.status === 'success' ? '✅' : result.status === 'failed' ? '❌' : '⏳'}
+              </div>
+              <p style={{ fontSize: 14.5, fontWeight: 600, color: 'var(--fz-text-primary)' }}>{result.message}</p>
+              {result.status === 'failed' && (
+                <button
+                  className="mp-btn-primary"
+                  onClick={() => { setResult(null); setMode('external'); setError(null); }}
+                >
+                  Réessayer
+                </button>
+              )}
+            </>
+          )}
         </div>
       )}
     </div>

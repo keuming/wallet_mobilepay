@@ -5,12 +5,16 @@ import { CreateDynamicQrDto, CreatePaymentLinkDto, PayExternalDto } from '../mer
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { MerchantScopeGuard } from '../../common/guards/merchant-scope.guard';
 import { CurrentUser, AuthenticatedUser } from '../../common/decorators/current-user.decorator';
+import { PaymentEngineService } from '../payment-engine/payment-engine.service';
 
 @ApiTags('qr')
 @ApiBearerAuth()
 @Controller()
 export class QrController {
-  constructor(private qrService: QrService) {}
+  constructor(
+    private qrService: QrService,
+    private paymentEngine: PaymentEngineService,
+  ) {}
 
   // --- Particulier ---
   @Get('users/me/qr')
@@ -116,5 +120,22 @@ export class QrController {
     @Headers('idempotency-key') idempotencyKey: string,
   ) {
     return this.qrService.payPaymentLinkExternal(slug, dto.amount, dto.customerPhone, dto.provider, idempotencyKey);
+  }
+
+  /**
+   * Suivi du paiement pour un payeur SANS compte (§ pay.mobilepay-ci.com) —
+   * volontairement public : ce visiteur n'a pas de jeton d'authentification.
+   * Restreint côté service aux seules transactions "invité" (voir
+   * getPublicGuestTransactionStatus) — jamais une vraie transaction privée.
+   */
+  @Get('public/transactions/:id/status')
+  publicTransactionStatus(@Param('id') id: string) {
+    return this.paymentEngine.getPublicGuestTransactionStatus(id);
+  }
+
+  /** Confirmation du code OTP pour ce même paiement invité. */
+  @Post('public/transactions/:id/authenticate')
+  publicAuthenticate(@Param('id') id: string, @Body('confirmationCode') confirmationCode: string) {
+    return this.paymentEngine.authenticateGuestTransaction(id, confirmationCode);
   }
 }

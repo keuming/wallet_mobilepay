@@ -579,6 +579,39 @@ export class PaymentEngineService {
   }
 
   /**
+   * Statut d'une transaction initiée par un payeur SANS compte MobilePay
+   * (§ pay.mobilepay-ci.com) — public par nécessité (le payeur n'a pas de
+   * jeton d'authentification), mais restreint aux seules transactions du
+   * compte "invité" partagé : impossible de consulter une vraie transaction
+   * d'un utilisateur réel par ce biais, même en devinant son identifiant.
+   */
+  async getPublicGuestTransactionStatus(transactionId: string) {
+    const guest = await this.getOrCreateGuestUser();
+    const transaction = await this.prisma.transaction.findUnique({ where: { id: transactionId } });
+    if (!transaction || transaction.initiatedByUserId !== guest.id) {
+      throw new NotFoundException('Transaction introuvable.');
+    }
+    return {
+      id: transaction.id,
+      status: transaction.status,
+      nextActionType: transaction.nextActionType,
+      nextActionMessage: transaction.nextActionMessage,
+      nextActionUrl: transaction.nextActionUrl,
+      failureReason: transaction.failureReason,
+    };
+  }
+
+  /** Confirmation OTP pour un paiement invité — même restriction que ci-dessus. */
+  async authenticateGuestTransaction(transactionId: string, confirmationCode: string) {
+    const guest = await this.getOrCreateGuestUser();
+    const transaction = await this.prisma.transaction.findUnique({ where: { id: transactionId } });
+    if (!transaction || transaction.initiatedByUserId !== guest.id) {
+      throw new NotFoundException('Transaction introuvable.');
+    }
+    return this.authenticateDebitDirect(transactionId, confirmationCode);
+  }
+
+  /**
    * Paiement public d'un marchand via Mobile Money externe (§ pay.mobilepay-ci.com)
    * — pour un client SANS compte MobilePay, scannant un QR ou ouvrant un lien.
    * Même mécanique que `debitDirect`, mais initiée par le CLIENT lui-même
