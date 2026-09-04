@@ -49,6 +49,8 @@ export default function EnvoyerPage() {
   const [destCountry, setDestCountry] = useState('CI');
   const [recipientName, setRecipientName] = useState('');
   const [amount, setAmount] = useState('');
+  const [feeAmount, setFeeAmount] = useState<number | null>(null);
+  const [feeLoading, setFeeLoading] = useState(false);
   const [walletBalance, setWalletBalance] = useState<number | null>(null);
   const [description, setDescription] = useState('');
   const [pin, setPin] = useState('');
@@ -65,6 +67,15 @@ export default function EnvoyerPage() {
   useEffect(() => {
     if (user?.country) setDestCountry(user.country);
   }, [user?.country]);
+
+  useEffect(() => {
+    if (step !== 3 || !amount) return;
+    setFeeLoading(true);
+    apiFetch<{ feeAmount: string }>(`/pricing/preview?amount=${amount}`)
+      .then((res) => setFeeAmount(Number(res.feeAmount)))
+      .catch(() => setFeeAmount(null))
+      .finally(() => setFeeLoading(false));
+  }, [step, amount]);
 
   const canGoNext = (): boolean => {
     switch (step) {
@@ -256,6 +267,9 @@ export default function EnvoyerPage() {
         {/* Étape 1 : Destination */}
         {step === 0 && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <p style={{ color: 'var(--fz-text-secondary)', fontSize: 13, margin: '0 0 4px' }}>
+              Veuillez choisir où envoyer l'argent : un compte MobilePay, ou un Mobile Money externe.
+            </p>
             {DESTINATIONS.map((d) => (
               <button
                 key={d.id}
@@ -281,6 +295,9 @@ export default function EnvoyerPage() {
         {/* Étape 2 : Numéro de compte */}
         {step === 1 && (
           <>
+            <p style={{ color: 'var(--fz-text-secondary)', fontSize: 13, margin: '0 0 12px' }}>
+              Indique le numéro du destinataire{destination !== 'MOBILEPAY' ? ', et son pays' : ''}.
+            </p>
             {destination !== 'MOBILEPAY' && (
               <label>
                 Pays du destinataire
@@ -325,6 +342,9 @@ export default function EnvoyerPage() {
         {/* Étape 3 : Montant */}
         {step === 2 && (
           <div className="fz-amount-hero">
+            <p style={{ color: 'var(--fz-text-secondary)', fontSize: 13, margin: '0 0 4px', textAlign: 'center' }}>
+              Indique le montant à envoyer.
+            </p>
             <span className="fz-amount-avatar">
               {(destination === 'MOBILEPAY' ? accountNumber : recipientName || accountNumber).charAt(0).toUpperCase()}
             </span>
@@ -386,16 +406,23 @@ export default function EnvoyerPage() {
         {/* Étape 4 : Résumé — contrôle final avant validation */}
         {step === 3 && (
           <>
+            <p style={{ color: 'var(--fz-text-secondary)', fontSize: 13, margin: '0 0 12px' }}>
+              Vérifie les détails avant de continuer vers la confirmation.
+            </p>
             <div
               style={{
-                background: 'var(--mp-surface)',
-                border: '1.5px solid var(--mp-green)',
+                background: 'var(--fz-surface)',
+                border: '1.5px solid var(--fz-accent)',
                 borderRadius: 16,
                 padding: '16px 18px',
               }}
             >
-              <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--mp-green-dark)', marginBottom: 10, textTransform: 'uppercase', letterSpacing: 0.4 }}>
+              <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--fz-accent)', marginBottom: 10, textTransform: 'uppercase', letterSpacing: 0.4 }}>
                 🔍 Vérifiez avant de continuer
+              </div>
+              <div className="mp-detail-row">
+                <span className="k">Objet</span>
+                <span className="v">Transfert d'argent</span>
               </div>
               <div className="mp-detail-row">
                 <span className="k">Destination</span>
@@ -422,8 +449,14 @@ export default function EnvoyerPage() {
               )}
               <div className="mp-detail-row">
                 <span className="k">Montant</span>
-                <span className="v" style={{ fontSize: 16, color: 'var(--mp-green-dark)' }}>
+                <span className="v" style={{ fontSize: 16, color: 'var(--fz-accent)' }}>
                   {Number(amount).toLocaleString('fr-FR')} FCFA
+                </span>
+              </div>
+              <div className="mp-detail-row">
+                <span className="k">Frais de transaction</span>
+                <span className="v">
+                  {feeLoading ? '...' : feeAmount !== null ? `${(feeAmount / 100).toLocaleString('fr-FR')} FCFA` : '—'}
                 </span>
               </div>
               {destination === 'MOBILEPAY' && description && (

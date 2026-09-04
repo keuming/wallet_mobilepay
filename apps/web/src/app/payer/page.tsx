@@ -61,6 +61,8 @@ function PayerContent() {
   const [scanned, setScanned] = useState(false);
 
   const [amount, setAmount] = useState('');
+  const [feeAmount, setFeeAmount] = useState<number | null>(null);
+  const [feeLoading, setFeeLoading] = useState(false);
   const [walletBalance, setWalletBalance] = useState<number | null>(null);
   const [fundingSource, setFundingSource] = useState<FundingSource | null>(null);
   const [momoOperator, setMomoOperator] = useState<MomoOperator | null>(null);
@@ -288,6 +290,16 @@ function PayerContent() {
 
   const effectiveAmount = target?.fixedAmount ?? (amount ? Math.round(Number(amount) * 100) : 0);
 
+  useEffect(() => {
+    if (step !== 3 || !effectiveAmount) return;
+    setFeeLoading(true);
+    apiFetch<{ feeAmount: string }>(`/pricing/preview?amount=${effectiveAmount / 100}`)
+      .then((res) => setFeeAmount(Number(res.feeAmount)))
+      .catch(() => setFeeAmount(null))
+      .finally(() => setFeeLoading(false));
+  }, [step, effectiveAmount]);
+
+
   const handleSubmit = async () => {
     if (!target) return;
     setSubmitting(true);
@@ -446,6 +458,9 @@ function PayerContent() {
         {/* Étape 1 : Montant */}
         {step === 1 && target && (
           <div className="fz-amount-hero">
+            <p style={{ color: 'var(--fz-text-secondary)', fontSize: 13, margin: '0 0 4px', textAlign: 'center' }}>
+              Indique le montant à payer à {target.merchantName}.
+            </p>
             <span className="fz-amount-avatar">{target.merchantName.charAt(0).toUpperCase()}</span>
             <div>
               <div className="fz-amount-name">{target.merchantName}</div>
@@ -500,6 +515,9 @@ function PayerContent() {
         {/* Étape 2 : Mode de financement */}
         {step === 2 && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            <p style={{ color: 'var(--fz-text-secondary)', fontSize: 13, margin: '0 0 4px' }}>
+              Veuillez choisir le moyen de paiement digital pour ce paiement.
+            </p>
             <button
               onClick={() => setFundingSource('WALLET')}
               className={`mp-list-card ${fundingSource === 'WALLET' ? 'selected' : ''}`}
@@ -595,16 +613,23 @@ function PayerContent() {
         {/* Étape 3 : Résumé */}
         {step === 3 && target && (
           <>
+            <p style={{ color: 'var(--fz-text-secondary)', fontSize: 13, margin: '0 0 12px' }}>
+              Vérifie les détails avant de continuer vers la confirmation.
+            </p>
             <div
               style={{
-                background: 'var(--mp-surface)',
-                border: '1.5px solid var(--mp-green)',
+                background: 'var(--fz-surface)',
+                border: '1.5px solid var(--fz-accent)',
                 borderRadius: 16,
                 padding: '16px 18px',
               }}
             >
-              <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--mp-green-dark)', marginBottom: 10, textTransform: 'uppercase', letterSpacing: 0.4 }}>
+              <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--fz-accent)', marginBottom: 10, textTransform: 'uppercase', letterSpacing: 0.4 }}>
                 🔍 Vérifiez avant de continuer
+              </div>
+              <div className="mp-detail-row">
+                <span className="k">Objet</span>
+                <span className="v">Paiement marchand</span>
               </div>
               <div className="mp-detail-row">
                 <span className="k">Marchand</span>
@@ -612,8 +637,14 @@ function PayerContent() {
               </div>
               <div className="mp-detail-row">
                 <span className="k">Montant</span>
-                <span className="v" style={{ fontSize: 16, color: 'var(--mp-green-dark)' }}>
+                <span className="v" style={{ fontSize: 16, color: 'var(--fz-accent)' }}>
                   {(effectiveAmount / 100).toLocaleString('fr-FR')} FCFA
+                </span>
+              </div>
+              <div className="mp-detail-row">
+                <span className="k">Frais de transaction</span>
+                <span className="v">
+                  {feeLoading ? '...' : feeAmount !== null ? `${(feeAmount / 100).toLocaleString('fr-FR')} FCFA` : '—'}
                 </span>
               </div>
               <div className="mp-detail-row">

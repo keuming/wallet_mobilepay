@@ -38,6 +38,8 @@ export default function FacturesPage() {
   const [biller, setBiller] = useState<Biller | null>(null);
   const [accountNumber, setAccountNumber] = useState('');
   const [amount, setAmount] = useState('');
+  const [feeAmount, setFeeAmount] = useState<number | null>(null);
+  const [feeLoading, setFeeLoading] = useState(false);
   const [pin, setPin] = useState('');
 
   const [submitting, setSubmitting] = useState(false);
@@ -59,6 +61,15 @@ export default function FacturesPage() {
       .finally(() => setBillersLoading(false));
     setBiller(null);
   }, [country, billType]);
+
+  useEffect(() => {
+    if (step !== 5 || !amount) return;
+    setFeeLoading(true);
+    apiFetch<{ feeAmount: string }>(`/pricing/preview?amount=${amount}`)
+      .then((res) => setFeeAmount(Number(res.feeAmount)))
+      .catch(() => setFeeAmount(null))
+      .finally(() => setFeeLoading(false));
+  }, [step, amount]);
 
   const canGoNext = (): boolean => {
     switch (step) {
@@ -142,6 +153,9 @@ export default function FacturesPage() {
       <div className="mp-form">
         {step === 0 && (
           <label>
+            <p style={{ color: 'var(--fz-text-secondary)', fontSize: 13, margin: '0 0 12px' }}>
+              Choisis le pays du service à payer.
+            </p>
             Pays
             <select className="mp-input" style={{ width: '100%', marginTop: 6 }} value={country} onChange={(e) => setCountry(e.target.value)}>
               {WORLD_COUNTRIES.map((c) => (
@@ -152,23 +166,31 @@ export default function FacturesPage() {
         )}
 
         {step === 1 && (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 10 }}>
-            {BILL_TYPES.map((t) => (
-              <button
-                key={t.id}
-                onClick={() => setBillType(t.id)}
-                className={`mp-list-card ${billType === t.id ? 'selected' : ''}`}
-                style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, padding: 16 }}
-              >
-                <span style={{ fontSize: 26 }}>{t.icon}</span>
-                {t.label}
-              </button>
-            ))}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            <p style={{ color: 'var(--fz-text-secondary)', fontSize: 13, margin: '0 0 4px' }}>
+              Veuillez choisir le type de service à payer.
+            </p>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 10 }}>
+              {BILL_TYPES.map((t) => (
+                <button
+                  key={t.id}
+                  onClick={() => setBillType(t.id)}
+                  className={`mp-list-card ${billType === t.id ? 'selected' : ''}`}
+                  style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, padding: 16 }}
+                >
+                  <span style={{ fontSize: 26 }}>{t.icon}</span>
+                  {t.label}
+                </button>
+              ))}
+            </div>
           </div>
         )}
 
         {step === 2 && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <p style={{ color: 'var(--fz-text-secondary)', fontSize: 13, margin: '0 0 4px' }}>
+              Veuillez choisir le fournisseur exact du service.
+            </p>
             {billersLoading && <p style={{ color: 'var(--fz-text-secondary)', fontSize: 13.5 }}>Chargement...</p>}
             {billersError && <div className="mp-error">{billersError}</div>}
             {!billersLoading && !billersError && billers.length === 0 && (
@@ -188,6 +210,9 @@ export default function FacturesPage() {
 
         {step === 3 && (
           <label>
+            <p style={{ color: 'var(--fz-text-secondary)', fontSize: 13, margin: '0 0 12px' }}>
+              Saisis le numéro de compte ou de compteur à payer.
+            </p>
             Numéro de compte / compteur
             <input
               className="mp-input"
@@ -202,6 +227,9 @@ export default function FacturesPage() {
 
         {step === 4 && biller && (
           <div className="fz-amount-hero">
+            <p style={{ color: 'var(--fz-text-secondary)', fontSize: 13, margin: '0 0 4px', textAlign: 'center' }}>
+              Indique le montant à payer pour {biller.name}.
+            </p>
             <span className="fz-amount-avatar">
               {BILL_TYPES.find((t) => t.id === billType)?.icon ?? '🧾'}
             </span>
@@ -230,9 +258,19 @@ export default function FacturesPage() {
 
         {step === 5 && biller && (
           <>
+            <p style={{ color: 'var(--fz-text-secondary)', fontSize: 13, margin: '0 0 12px' }}>
+              Vérifie les détails, puis confirme le paiement avec ton code secret pour valider la transaction.
+            </p>
+            <div className="mp-detail-row"><span className="k">Objet</span><span className="v">Facture {biller.name}</span></div>
             <div className="mp-detail-row"><span className="k">Fournisseur</span><span className="v">{biller.name}</span></div>
             <div className="mp-detail-row"><span className="k">Compte</span><span className="v">{accountNumber}</span></div>
             <div className="mp-detail-row"><span className="k">Montant</span><span className="v">{Number(amount).toLocaleString('fr-FR')} {biller.localTransactionCurrencyCode}</span></div>
+            <div className="mp-detail-row">
+              <span className="k">Frais de transaction</span>
+              <span className="v">
+                {feeLoading ? '...' : feeAmount !== null ? `${(feeAmount / 100).toLocaleString('fr-FR')} FCFA` : '—'}
+              </span>
+            </div>
             <label style={{ display: 'block', marginTop: 16 }}>
               Code secret
               <PasswordInput className="mp-input" style={{ width: '100%', marginTop: 6 }} value={pin} onChange={(e) => setPin(e.target.value)} placeholder="••••" inputMode="numeric" />

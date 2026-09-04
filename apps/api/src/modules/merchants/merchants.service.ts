@@ -6,6 +6,7 @@ import { LedgerService } from '../ledger/ledger.service';
 import { ReloadlyAdapter } from '../payment-engine/providers/reloadly.adapter';
 import { ReloadlyGiftCardsAdapter } from '../payment-engine/providers/reloadly-giftcards.adapter';
 import { ReloadlyUtilitiesAdapter, BillerType } from '../payment-engine/providers/reloadly-utilities.adapter';
+import { PricingService } from '../pricing/pricing.service';
 import { normalizePhoneCI, normalizePhoneCandidates } from '../../common/utils/phone.util';
 import { CreateMerchantDto } from './dto/merchants.dto';
 
@@ -19,6 +20,7 @@ export class MerchantsService {
     private reloadly: ReloadlyAdapter,
     private reloadlyGiftCards: ReloadlyGiftCardsAdapter,
     private reloadlyUtilities: ReloadlyUtilitiesAdapter,
+    private pricingService: PricingService,
   ) {}
 
   /**
@@ -462,9 +464,10 @@ export class MerchantsService {
     const countryCode = dto.countryCode ?? product.countryIso ?? merchant.country;
 
     const amount = BigInt(Math.round(dto.unitPrice * 100));
+    const ourFee = await this.pricingService.computeOurFee(amount);
     const merchantWallet = await this.getWallet(merchantId);
-    if (merchantWallet.cachedBalance < amount) {
-      throw new BadRequestException('Solde insuffisant pour cet achat.');
+    if (merchantWallet.cachedBalance < amount + ourFee) {
+      throw new BadRequestException('Solde insuffisant pour cet achat (frais inclus).');
     }
 
     const description = `Carte cadeau ${product.brandName} — ${dto.recipientEmail}`;
@@ -475,6 +478,7 @@ export class MerchantsService {
           type: 'GIFT_CARD',
           status: 'PROCESSING',
           amount,
+          feeAmount: ourFee,
           sourceWalletId: merchantWallet.id,
           initiatedByUserId,
           description,
@@ -490,6 +494,16 @@ export class MerchantsService {
         amount,
         description,
       });
+
+      if (ourFee > 0n) {
+        await this.ledger.postDoubleEntry(tx, {
+          transactionId: created.id,
+          fromWalletId: merchantWallet.id,
+          toWalletId: null,
+          amount: ourFee,
+          description: 'Frais de transaction MobilePay',
+        });
+      }
 
       return created;
     });
@@ -529,7 +543,7 @@ export class MerchantsService {
           transactionId: transaction.id,
           fromWalletId: null,
           toWalletId: merchantWallet.id,
-          amount,
+          amount: amount + ourFee,
           description: `Remboursement — échec carte cadeau ${product.brandName}`,
         });
       });
@@ -570,9 +584,10 @@ export class MerchantsService {
     }
 
     const amount = BigInt(Math.round(dto.amount * 100));
+    const ourFee = await this.pricingService.computeOurFee(amount);
     const merchantWallet = await this.getWallet(merchantId);
-    if (merchantWallet.cachedBalance < amount) {
-      throw new BadRequestException('Solde insuffisant pour ce paiement.');
+    if (merchantWallet.cachedBalance < amount + ourFee) {
+      throw new BadRequestException('Solde insuffisant pour ce paiement (frais inclus).');
     }
 
     const description = `Facture ${dto.billerName} — ${dto.subscriberAccountNumber}`;
@@ -583,6 +598,7 @@ export class MerchantsService {
           type: 'UTILITY_PAYMENT',
           status: 'PROCESSING',
           amount,
+          feeAmount: ourFee,
           sourceWalletId: merchantWallet.id,
           initiatedByUserId,
           description,
@@ -598,6 +614,16 @@ export class MerchantsService {
         amount,
         description,
       });
+
+      if (ourFee > 0n) {
+        await this.ledger.postDoubleEntry(tx, {
+          transactionId: created.id,
+          fromWalletId: merchantWallet.id,
+          toWalletId: null,
+          amount: ourFee,
+          description: 'Frais de transaction MobilePay',
+        });
+      }
 
       return created;
     });
@@ -631,7 +657,7 @@ export class MerchantsService {
           transactionId: transaction.id,
           fromWalletId: null,
           toWalletId: merchantWallet.id,
-          amount,
+          amount: amount + ourFee,
           description: `Remboursement — échec facture ${dto.billerName}`,
         });
       });

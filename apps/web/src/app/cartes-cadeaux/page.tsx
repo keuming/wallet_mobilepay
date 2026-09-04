@@ -30,6 +30,8 @@ export default function CartesCadeauxPage() {
   const [productsLoading, setProductsLoading] = useState(false);
   const [product, setProduct] = useState<GiftCardProduct | null>(null);
   const [amount, setAmount] = useState('');
+  const [feeAmount, setFeeAmount] = useState<number | null>(null);
+  const [feeLoading, setFeeLoading] = useState(false);
   const [recipientEmail, setRecipientEmail] = useState('');
   const [pin, setPin] = useState('');
 
@@ -56,6 +58,15 @@ export default function CartesCadeauxPage() {
       .finally(() => setProductsLoading(false));
     setProduct(null);
   }, [country]);
+
+  useEffect(() => {
+    if (step !== 4 || !amount) return;
+    setFeeLoading(true);
+    apiFetch<{ feeAmount: string }>(`/pricing/preview?amount=${amount}`)
+      .then((res) => setFeeAmount(Number(res.feeAmount)))
+      .catch(() => setFeeAmount(null))
+      .finally(() => setFeeLoading(false));
+  }, [step, amount]);
 
   const canGoNext = (): boolean => {
     switch (step) {
@@ -162,18 +173,26 @@ export default function CartesCadeauxPage() {
 
       <div className="mp-form">
         {step === 0 && (
-          <label>
-            Pays de la carte cadeau
-            <select className="mp-input" style={{ width: '100%', marginTop: 6 }} value={country} onChange={(e) => setCountry(e.target.value)}>
-              {WORLD_COUNTRIES.map((c) => (
-                <option key={c.code} value={c.code}>{c.name}</option>
-              ))}
-            </select>
-          </label>
+          <>
+            <p style={{ color: 'var(--fz-text-secondary)', fontSize: 13, margin: '0 0 12px' }}>
+              Choisis le pays où sera utilisée la carte cadeau.
+            </p>
+            <label>
+              Pays de la carte cadeau
+              <select className="mp-input" style={{ width: '100%', marginTop: 6 }} value={country} onChange={(e) => setCountry(e.target.value)}>
+                {WORLD_COUNTRIES.map((c) => (
+                  <option key={c.code} value={c.code}>{c.name}</option>
+                ))}
+              </select>
+            </label>
+          </>
         )}
 
         {step === 1 && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <p style={{ color: 'var(--fz-text-secondary)', fontSize: 13, margin: '0 0 4px' }}>
+              Veuillez choisir la marque de la carte cadeau à acheter.
+            </p>
             {productsLoading && <p style={{ color: 'var(--fz-text-secondary)', fontSize: 13.5 }}>Chargement du catalogue...</p>}
             {productsError && <div className="mp-error">{productsError}</div>}
             {!productsLoading && !productsError && products.length === 0 && (
@@ -207,6 +226,9 @@ export default function CartesCadeauxPage() {
 
         {step === 2 && product && (
           <div className="fz-amount-hero">
+            <p style={{ color: 'var(--fz-text-secondary)', fontSize: 13, margin: '0 0 4px', textAlign: 'center' }}>
+              Indique le montant de la carte {product.brandName}.
+            </p>
             {product.logoUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img
@@ -259,6 +281,9 @@ export default function CartesCadeauxPage() {
 
         {step === 3 && (
           <label>
+            <p style={{ color: 'var(--fz-text-secondary)', fontSize: 13, margin: '0 0 12px' }}>
+              Indique l'adresse email qui recevra le code de la carte.
+            </p>
             Email du bénéficiaire
             <input
               className="mp-input"
@@ -277,6 +302,13 @@ export default function CartesCadeauxPage() {
 
         {step === 4 && product && (
           <>
+            <p style={{ color: 'var(--fz-text-secondary)', fontSize: 13, margin: '0 0 12px' }}>
+              Vérifie les détails, puis confirme le paiement avec ton code secret pour valider l'achat.
+            </p>
+            <div className="mp-detail-row">
+              <span className="k">Objet</span>
+              <span className="v">Carte cadeau {product.brandName}</span>
+            </div>
             <div className="mp-detail-row">
               <span className="k">Carte</span>
               <span className="v">{product.brandName}</span>
@@ -284,6 +316,12 @@ export default function CartesCadeauxPage() {
             <div className="mp-detail-row">
               <span className="k">Montant</span>
               <span className="v">{Number(amount).toLocaleString('fr-FR')} {product.recipientCurrencyCode}</span>
+            </div>
+            <div className="mp-detail-row">
+              <span className="k">Frais de transaction</span>
+              <span className="v">
+                {feeLoading ? '...' : feeAmount !== null ? `${(feeAmount / 100).toLocaleString('fr-FR')} FCFA` : '—'}
+              </span>
             </div>
             <div className="mp-detail-row">
               <span className="k">Bénéficiaire</span>

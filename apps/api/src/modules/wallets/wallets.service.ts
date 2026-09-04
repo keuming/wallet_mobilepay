@@ -11,6 +11,7 @@ import { PrismaService } from '../../config/prisma.service';
 import { LedgerService } from '../ledger/ledger.service';
 import { normalizePhoneCandidates } from '../../common/utils/phone.util';
 import { TransferDto } from './dto/wallets.dto';
+import { PricingService } from '../pricing/pricing.service';
 
 const MAX_SERIALIZATION_RETRIES = 3;
 
@@ -19,6 +20,7 @@ export class WalletsService {
   constructor(
     private prisma: PrismaService,
     private ledger: LedgerService,
+    private pricingService: PricingService,
   ) {}
 
   async getWalletByUserId(userId: string) {
@@ -172,6 +174,8 @@ export class WalletsService {
     }
 
     const amount = BigInt(dto.amount);
+    const feeAmount = await this.pricingService.computeOurFee(amount);
+    const netAmount = amount - feeAmount > 0n ? amount - feeAmount : 0n;
 
     return this.runSerializable(async (tx) => {
       const senderWallet = await tx.wallet.findUniqueOrThrow({ where: { userId: senderId } });
@@ -184,6 +188,7 @@ export class WalletsService {
           type: 'TRANSFER',
           status: 'SUCCESS',
           amount,
+          feeAmount,
           sourceWalletId: senderWallet.id,
           destWalletId: recipientWallet.id,
           initiatedByUserId: senderId,
@@ -196,9 +201,22 @@ export class WalletsService {
         transactionId: transaction.id,
         fromWalletId: senderWallet.id,
         toWalletId: recipientWallet.id,
-        amount,
+        amount: netAmount,
         description: dto.description ?? 'Transfert P2P',
       });
+
+      // § Le débit de l'expéditeur doit couvrir le montant plein (frais
+      // inclus) : débit supplémentaire du delta de frais, sans contrepartie
+      // wallet (revenu plateforme — pas encore modélisé en wallet dédié).
+      if (feeAmount > 0n) {
+        await this.ledger.postDoubleEntry(tx, {
+          transactionId: transaction.id,
+          fromWalletId: senderWallet.id,
+          toWalletId: null,
+          amount: feeAmount,
+          description: 'Frais MobilePay',
+        });
+      }
 
       return transaction;
     });

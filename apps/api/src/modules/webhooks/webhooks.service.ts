@@ -113,6 +113,7 @@ export class WebhooksService {
         transaction.id,
         verification.status === 'SUCCESS',
         verification.failureReason,
+        verification.hub2FeeAmount ?? 0n,
       );
     }
     if (transaction.type === 'AIRTIME' && transaction.providerName === 'HUB2') {
@@ -122,6 +123,7 @@ export class WebhooksService {
         transaction.id,
         verification.status === 'SUCCESS',
         verification.failureReason,
+        verification.hub2FeeAmount ?? 0n,
       );
     }
 

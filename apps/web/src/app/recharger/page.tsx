@@ -72,6 +72,8 @@ export default function RechargerPage() {
   const [momoAccount, setMomoAccount] = useState('');
   const [amount, setAmount] = useState('');
   const [walletBalance, setWalletBalance] = useState<number | null>(null);
+  const [feeAmount, setFeeAmount] = useState<number | null>(null);
+  const [feeLoading, setFeeLoading] = useState(false);
 
   const [submitting, setSubmitting] = useState(false);
   const [result, setResult] = useState<{ status: ResultStatus; message: string } | null>(null);
@@ -143,6 +145,15 @@ export default function RechargerPage() {
   useEffect(() => {
     apiFetch<{ cachedBalance: number }>('/wallet').then((w) => setWalletBalance(w.cachedBalance));
   }, []);
+
+  useEffect(() => {
+    if (step !== 6 || !amount) return;
+    setFeeLoading(true);
+    apiFetch<{ feeAmount: string }>(`/pricing/preview?amount=${amount}`)
+      .then((res) => setFeeAmount(Number(res.feeAmount)))
+      .catch(() => setFeeAmount(null))
+      .finally(() => setFeeLoading(false));
+  }, [step, amount]);
 
   useEffect(() => {
     setOperatorsLoading(true);
@@ -474,6 +485,10 @@ export default function RechargerPage() {
                 🔍 Vérifiez avant de continuer
               </div>
               <div className="mp-detail-row">
+                <span className="k">Objet</span>
+                <span className="v">{CATEGORY_LABELS[category].label} — {operator?.name}</span>
+              </div>
+              <div className="mp-detail-row">
                 <span className="k">Catégorie</span>
                 <span className="v">{CATEGORY_LABELS[category].label}</span>
               </div>
@@ -495,8 +510,14 @@ export default function RechargerPage() {
               </div>
               <div className="mp-detail-row">
                 <span className="k">Montant</span>
-                <span className="v" style={{ fontSize: 16, color: 'var(--mp-green-dark)' }}>
+                <span className="v" style={{ fontSize: 16, color: 'var(--fz-accent)' }}>
                   {Number(amount).toLocaleString('fr-FR')} FCFA
+                </span>
+              </div>
+              <div className="mp-detail-row">
+                <span className="k">Frais de transaction</span>
+                <span className="v">
+                  {feeLoading ? '...' : feeAmount !== null ? `${(feeAmount / 100).toLocaleString('fr-FR')} FCFA` : '—'}
                 </span>
               </div>
             </div>

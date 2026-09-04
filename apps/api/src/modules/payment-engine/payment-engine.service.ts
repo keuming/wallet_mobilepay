@@ -199,8 +199,9 @@ export class PaymentEngineService {
       throw new BadRequestException('Ce marchand n\'est pas actif et ne peut pas encaisser.');
     }
 
-    const feeAmount = this.ledger.computeFee(params.amount, merchant.feeRateBps);
-    const netAmount = params.amount - feeAmount;
+    const merchantFee = this.ledger.computeFee(params.amount, merchant.feeRateBps);
+    const netAmount = params.amount - merchantFee;
+    const ourFee = await this.pricingService.computeOurFee(params.amount);
 
     return this.runSerializable(async (tx) => {
       const payerWallet = await tx.wallet.findUniqueOrThrow({
@@ -215,7 +216,7 @@ export class PaymentEngineService {
           type: 'PAYMENT',
           status: 'SUCCESS',
           amount: params.amount,
-          feeAmount,
+          feeAmount: merchantFee + ourFee,
           sourceWalletId: payerWallet.id,
           destWalletId: merchantWallet.id,
           initiatedByUserId: params.payerUserId,
@@ -238,13 +239,25 @@ export class PaymentEngineService {
       // Le débit du payeur doit couvrir le montant plein (frais inclus) :
       // on complète par un débit supplémentaire du delta de frais, sans contrepartie
       // wallet (elle ira vers le wallet plateforme une fois celui-ci modélisé).
-      if (feeAmount > 0n) {
+      if (merchantFee > 0n) {
         await this.ledger.postDoubleEntry(tx, {
           transactionId: transaction.id,
           fromWalletId: payerWallet.id,
           toWalletId: null,
-          amount: feeAmount,
+          amount: merchantFee,
           description: 'Frais MobilePay',
+        });
+      }
+
+      // § Nos frais internes (§ tarification particulier) — s'ajoutent au
+      // débit du payeur, distincts de la commission marchand ci-dessus.
+      if (ourFee > 0n) {
+        await this.ledger.postDoubleEntry(tx, {
+          transactionId: transaction.id,
+          fromWalletId: payerWallet.id,
+          toWalletId: null,
+          amount: ourFee,
+          description: 'Frais de transaction MobilePay',
         });
       }
 
@@ -295,8 +308,12 @@ export class PaymentEngineService {
       throw new BadRequestException("Ce marchand n'est pas actif et ne peut pas encaisser.");
     }
 
-    const feeAmount = this.ledger.computeFee(params.amount, merchant.feeRateBps);
-    const netAmount = params.amount - feeAmount;
+    const merchantFee = this.ledger.computeFee(params.amount, merchant.feeRateBps);
+    const netAmount = params.amount - merchantFee;
+    const ourFee = await this.pricingService.computeOurFee(params.amount);
+    if (card.balance < params.amount + ourFee) {
+      throw new BadRequestException('Solde de la carte insuffisant (frais inclus).');
+    }
 
     return this.runSerializable(async (tx) => {
       const merchantWallet = await tx.wallet.findUniqueOrThrow({ where: { merchantId: params.merchantId } });
@@ -306,7 +323,7 @@ export class PaymentEngineService {
           type: 'PAYMENT',
           status: 'SUCCESS',
           amount: params.amount,
-          feeAmount,
+          feeAmount: merchantFee + ourFee,
           sourceWalletId: null,
           destWalletId: merchantWallet.id,
           initiatedByUserId: params.payerUserId,
@@ -317,7 +334,7 @@ export class PaymentEngineService {
 
       await tx.virtualCard.update({
         where: { id: card.id },
-        data: { balance: { decrement: params.amount } },
+        data: { balance: { decrement: params.amount + ourFee } },
       });
 
       // § La carte n'est pas un wallet interne au ledger — crédit du
@@ -360,7 +377,8 @@ export class PaymentEngineService {
       throw new BadRequestException('Ce marchand n\'est pas actif et ne peut pas encaisser.');
     }
 
-    const feeAmount = this.ledger.computeFee(params.amount, merchant.feeRateBps);
+    const merchantFee = this.ledger.computeFee(params.amount, merchant.feeRateBps);
+    const ourFee = await this.pricingService.computeOurFee(params.amount);
     const merchantWallet = await this.prisma.wallet.findUniqueOrThrow({
       where: { merchantId: params.merchantId },
     });
@@ -370,7 +388,7 @@ export class PaymentEngineService {
         type: 'PAYMENT',
         status: 'PROCESSING',
         amount: params.amount,
-        feeAmount,
+        feeAmount: merchantFee + ourFee,
         destWalletId: merchantWallet.id,
         initiatedByUserId: params.payerUserId,
         description: params.description,
@@ -621,7 +639,7 @@ export class PaymentEngineService {
   }
 
   /** Finalise un paiement marchand externe depuis le webhook HUB2. */
-  async completeExternalMerchantPayment(transactionId: string, success: boolean, failureReason?: string) {
+  async completeExternalMerchantPayment(transactionId: string, success: boolean, failureReason?: string, hub2FeeAmount: bigint = 0n) {
     return this.runSerializable(async (tx) => {
       const transaction = await tx.transaction.findUnique({ where: { id: transactionId } });
       if (!transaction) throw new NotFoundException('Transaction introuvable.');
@@ -638,7 +656,8 @@ export class PaymentEngineService {
         });
       }
 
-      const netAmount = transaction.amount - transaction.feeAmount;
+      const totalFee = transaction.feeAmount + hub2FeeAmount;
+      const netAmount = transaction.amount - totalFee > 0n ? transaction.amount - totalFee : 0n;
       await this.ledger.postDoubleEntry(tx, {
         transactionId: transaction.id,
         fromWalletId: null,
@@ -647,7 +666,7 @@ export class PaymentEngineService {
         description: transaction.description ?? 'Paiement marchand (Mobile Money)',
       });
 
-      return tx.transaction.update({ where: { id: transactionId }, data: { status: 'SUCCESS' } });
+      return tx.transaction.update({ where: { id: transactionId }, data: { status: 'SUCCESS', feeAmount: totalFee } });
     });
   }
 
@@ -771,11 +790,12 @@ export class PaymentEngineService {
     const countryCode = params.countryCode ?? product.countryIso ?? 'CI';
 
     const amount = BigInt(Math.round(params.unitPrice * 100));
+    const ourFee = await this.pricingService.computeOurFee(amount);
 
     const transaction = await this.runSerializable(async (tx) => {
       const wallet = await tx.wallet.findUniqueOrThrow({ where: { userId } });
-      if (wallet.cachedBalance < amount) {
-        throw new BadRequestException('Solde insuffisant.');
+      if (wallet.cachedBalance < amount + ourFee) {
+        throw new BadRequestException('Solde insuffisant (frais inclus).');
       }
 
       const created = await tx.transaction.create({
@@ -783,6 +803,7 @@ export class PaymentEngineService {
           type: 'GIFT_CARD',
           status: 'PROCESSING',
           amount,
+          feeAmount: ourFee,
           sourceWalletId: wallet.id,
           initiatedByUserId: userId,
           description: `Carte cadeau ${product.brandName} — ${params.recipientEmail}`,
@@ -798,6 +819,16 @@ export class PaymentEngineService {
         amount,
         description: `Carte cadeau ${product.brandName}`,
       });
+
+      if (ourFee > 0n) {
+        await this.ledger.postDoubleEntry(tx, {
+          transactionId: created.id,
+          fromWalletId: wallet.id,
+          toWalletId: null,
+          amount: ourFee,
+          description: 'Frais de transaction MobilePay',
+        });
+      }
 
       return created;
     });
@@ -839,7 +870,7 @@ export class PaymentEngineService {
           transactionId: transaction.id,
           fromWalletId: null,
           toWalletId: wallet.id,
-          amount,
+          amount: amount + ourFee,
           description: `Remboursement — échec carte cadeau ${product.brandName}`,
         });
       });
@@ -875,11 +906,12 @@ export class PaymentEngineService {
 
     await this.verifyTransactionPin(userId, params.pin);
     const amount = BigInt(Math.round(params.amount * 100));
+    const ourFee = await this.pricingService.computeOurFee(amount);
 
     const transaction = await this.runSerializable(async (tx) => {
       const wallet = await tx.wallet.findUniqueOrThrow({ where: { userId } });
-      if (wallet.cachedBalance < amount) {
-        throw new BadRequestException('Solde insuffisant.');
+      if (wallet.cachedBalance < amount + ourFee) {
+        throw new BadRequestException('Solde insuffisant (frais inclus).');
       }
 
       const created = await tx.transaction.create({
@@ -887,6 +919,7 @@ export class PaymentEngineService {
           type: 'UTILITY_PAYMENT',
           status: 'PROCESSING',
           amount,
+          feeAmount: ourFee,
           sourceWalletId: wallet.id,
           initiatedByUserId: userId,
           description: `Facture ${params.billerName} — ${params.subscriberAccountNumber}`,
@@ -902,6 +935,16 @@ export class PaymentEngineService {
         amount,
         description: `Facture ${params.billerName}`,
       });
+
+      if (ourFee > 0n) {
+        await this.ledger.postDoubleEntry(tx, {
+          transactionId: created.id,
+          fromWalletId: wallet.id,
+          toWalletId: null,
+          amount: ourFee,
+          description: 'Frais de transaction MobilePay',
+        });
+      }
 
       return created;
     });
@@ -936,7 +979,7 @@ export class PaymentEngineService {
           transactionId: transaction.id,
           fromWalletId: null,
           toWalletId: wallet.id,
-          amount,
+          amount: amount + ourFee,
           description: `Remboursement — échec facture ${params.billerName}`,
         });
       });
@@ -961,6 +1004,7 @@ export class PaymentEngineService {
     const label = params.kind === 'DATA' ? 'Forfait data' : 'Recharge crédit';
     const buyer = await this.prisma.user.findUniqueOrThrow({ where: { id: userId } });
     const countryCode = params.countryCode ?? buyer.country;
+    const ourFee = await this.pricingService.computeOurFee(params.amount);
 
     return this.runSerializable(async (tx) => {
       const wallet = await tx.wallet.findUniqueOrThrow({ where: { userId } });
@@ -970,6 +1014,7 @@ export class PaymentEngineService {
           type: 'AIRTIME',
           status: 'PROCESSING',
           amount: params.amount,
+          feeAmount: ourFee,
           sourceWalletId: wallet.id,
           initiatedByUserId: userId,
           description: `${label} ${params.phoneNumber} (wallet)`,
@@ -985,6 +1030,18 @@ export class PaymentEngineService {
         amount: params.amount,
         description: `${label} ${params.phoneNumber}`,
       });
+
+      // § Nos frais internes (§ tarification) — débit supplémentaire, le
+      // destinataire reçoit bien le montant plein demandé sur son téléphone.
+      if (ourFee > 0n) {
+        await this.ledger.postDoubleEntry(tx, {
+          transactionId: transaction.id,
+          fromWalletId: wallet.id,
+          toWalletId: null,
+          amount: ourFee,
+          description: 'Frais de transaction MobilePay',
+        });
+      }
 
       const result = await this.reloadly.purchaseAirtime({
         phoneNumber: params.phoneNumber,
@@ -1012,7 +1069,7 @@ export class PaymentEngineService {
           transactionId: transaction.id,
           fromWalletId: null,
           toWalletId: wallet.id,
-          amount: params.amount,
+          amount: params.amount + ourFee,
           description: `Remboursement — échec ${label.toLowerCase()}`,
         });
       }
@@ -1140,7 +1197,7 @@ export class PaymentEngineService {
    * CONFIRMÉ (succès ou échec réel, jamais une supposition) — ne déclenche
    * Reloadly que si le paiement a effectivement réussi.
    */
-  async completeAirtimeMobileMoneyDeposit(transactionId: string, paymentSuccess: boolean, failureReason?: string) {
+  async completeAirtimeMobileMoneyDeposit(transactionId: string, paymentSuccess: boolean, failureReason?: string, hub2FeeAmount: bigint = 0n) {
     const transaction = await this.prisma.transaction.findUniqueOrThrow({ where: { id: transactionId } });
     if (transaction.status === 'SUCCESS' || transaction.status === 'FAILED') {
       return transaction; // déjà traité — idempotence webhook
@@ -1164,10 +1221,17 @@ export class PaymentEngineService {
       });
     }
 
+    // § Le client paie le montant plein sur son Mobile Money ; nos frais +
+    // ceux de HUB2 réduisent le montant réellement acheté chez Reloadly
+    // (même logique que le Dépôt — cohérence de la tarification).
+    const ourFee = await this.pricingService.computeOurFee(transaction.amount);
+    const totalFee = ourFee + hub2FeeAmount;
+    const purchaseAmount = transaction.amount - totalFee > 0n ? transaction.amount - totalFee : 0n;
+
     const result = await this.reloadly.purchaseAirtime({
       phoneNumber: pending.phoneNumber,
       operatorId: pending.operatorId ?? undefined,
-      amount: transaction.amount,
+      amount: purchaseAmount,
       kind: pending.kind as 'AIRTIME' | 'DATA',
       reference: transaction.id,
       countryCode: pending.countryCode,
@@ -1193,6 +1257,7 @@ export class PaymentEngineService {
       where: { id: transactionId },
       data: {
         status: finalStatus,
+        feeAmount: totalFee,
         operatorName: result.operatorName,
         failureReason: finalStatus === 'FAILED' ? 'Paiement reçu mais échec de la livraison Reloadly — remboursement à traiter manuellement.' : undefined,
       },
