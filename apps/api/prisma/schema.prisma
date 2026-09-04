@@ -283,6 +283,21 @@ model UtilityPaymentRecord {
   @@map("utility_payment_records")
 }
 
+// Type de charge (§ catégorie de dépense personnalisée par l'utilisateur) —
+// affichée dans un menu déroulant lors des transferts et paiements, permet
+// un suivi budgétaire personnel (relevé de dépenses par période/catégorie).
+model ExpenseCategory {
+  id        String   @id @default(uuid())
+  userId    String
+  label     String
+  icon      String? // emoji, ex: "🏠"
+  createdAt DateTime @default(now())
+
+  @@unique([userId, label])
+  @@index([userId])
+  @@map("expense_categories")
+}
+
 // Tarification particulier (§ paramétrable en back-office — permet des
 // périodes promotionnelles sans redéploiement). Un seul enregistrement actif
 // à la fois ; les frais HUB2 eux-mêmes ne sont jamais paramétrés ici — ils
@@ -549,6 +564,7 @@ model Transaction {
 
   initiatedByUserId String
   description       String?
+  expenseCategoryId String?
 
   idempotencyKey String? @unique // évite les doublons sur retry client
 
@@ -581,6 +597,7 @@ model Transaction {
   @@index([status])
   @@index([sourceWalletId])
   @@index([destWalletId])
+  @@index([expenseCategoryId])
   @@index([createdAt])
   @@map("transactions")
 }

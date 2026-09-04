@@ -18,6 +18,7 @@ import { NotificationsModule } from './modules/notifications/notifications.modul
 import { AdminModule } from './modules/admin/admin.module';
 import { CardsModule } from './modules/cards/cards.module';
 import { PricingModule } from './modules/pricing/pricing.module';
+import { ExpensesModule } from './modules/expenses/expenses.module';
 import { IdempotencyMiddleware } from './common/middleware/idempotency.middleware';
 
 @Module({
@@ -40,6 +41,7 @@ import { IdempotencyMiddleware } from './common/middleware/idempotency.middlewar
     AdminModule,
     CardsModule,
     PricingModule,
+    ExpensesModule,
   ],
 })
 export class AppModule implements NestModule {

@@ -62,6 +62,8 @@ function PayerContent() {
 
   const [amount, setAmount] = useState('');
   const [feeAmount, setFeeAmount] = useState<number | null>(null);
+  const [categories, setCategories] = useState<{ id: string; label: string; icon: string | null }[]>([]);
+  const [expenseCategoryId, setExpenseCategoryId] = useState('');
   const [feeLoading, setFeeLoading] = useState(false);
   const [walletBalance, setWalletBalance] = useState<number | null>(null);
   const [fundingSource, setFundingSource] = useState<FundingSource | null>(null);
@@ -150,6 +152,7 @@ function PayerContent() {
   useEffect(() => {
     apiFetch<{ hasPin: boolean }>('/auth/pin/status').then((res) => setHasPin(res.hasPin));
     apiFetch<{ cachedBalance: number }>('/wallet').then((w) => setWalletBalance(w.cachedBalance));
+    apiFetch<{ id: string; label: string; icon: string | null }[]>('/expenses/categories').then(setCategories);
   }, []);
 
   const handleResolve = async (overrideCode?: string) => {
@@ -321,6 +324,12 @@ function PayerContent() {
       });
 
       if (response.status === 'SUCCESS') {
+        if (expenseCategoryId && response.id) {
+          apiFetch(`/expenses/transactions/${response.id}/category`, {
+            method: 'PATCH',
+            body: JSON.stringify({ categoryId: expenseCategoryId }),
+          }).catch(() => {});
+        }
         setResult({
           status: 'success',
           message: `Paiement réussi ! ${(effectiveAmount / 100).toLocaleString('fr-FR')} FCFA payés à ${target.merchantName}. 🎉`,
@@ -658,6 +667,22 @@ function PayerContent() {
                 </span>
               </div>
             </div>
+            {categories.length > 0 && (
+              <label>
+                Type de charge (optionnel)
+                <select
+                  className="mp-input"
+                  style={{ width: '100%', marginTop: 6 }}
+                  value={expenseCategoryId}
+                  onChange={(e) => setExpenseCategoryId(e.target.value)}
+                >
+                  <option value="">Aucune catégorie</option>
+                  {categories.map((c) => (
+                    <option key={c.id} value={c.id}>{c.icon} {c.label}</option>
+                  ))}
+                </select>
+              </label>
+            )}
             <button className="mp-btn-primary" onClick={goNext}>
               ✅ Continuer vers la validation
             </button>

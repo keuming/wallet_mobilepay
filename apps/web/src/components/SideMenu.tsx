@@ -69,6 +69,14 @@ export default function SideMenu({ open, onClose }: SideMenuProps) {
             <span className="icon">🔒</span>
             Modifier mon code secret
           </Link>
+          <Link href="/categories-depenses" className="mp-menu-item" onClick={onClose}>
+            <span className="icon">🏷️</span>
+            Types de charges
+          </Link>
+          <Link href="/releve-depenses" className="mp-menu-item" onClick={onClose}>
+            <span className="icon">📊</span>
+            Relevé de dépenses
+          </Link>
           <Link href="/cgu" className="mp-menu-item" onClick={onClose}>
             <span className="icon">📄</span>
             Conditions générales

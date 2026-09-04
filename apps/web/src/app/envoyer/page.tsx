@@ -50,6 +50,8 @@ export default function EnvoyerPage() {
   const [recipientName, setRecipientName] = useState('');
   const [amount, setAmount] = useState('');
   const [feeAmount, setFeeAmount] = useState<number | null>(null);
+  const [categories, setCategories] = useState<{ id: string; label: string; icon: string | null }[]>([]);
+  const [expenseCategoryId, setExpenseCategoryId] = useState('');
   const [feeLoading, setFeeLoading] = useState(false);
   const [walletBalance, setWalletBalance] = useState<number | null>(null);
   const [description, setDescription] = useState('');
@@ -62,6 +64,7 @@ export default function EnvoyerPage() {
   useEffect(() => {
     apiFetch<{ hasPin: boolean }>('/auth/pin/status').then((res) => setHasPin(res.hasPin));
     apiFetch<{ cachedBalance: number }>('/wallet').then((w) => setWalletBalance(w.cachedBalance));
+    apiFetch<{ id: string; label: string; icon: string | null }[]>('/expenses/categories').then(setCategories);
   }, []);
 
   useEffect(() => {
@@ -161,6 +164,12 @@ export default function EnvoyerPage() {
       // un envoi vers un opérateur externe reste PROCESSING tant que HUB2 n'a
       // pas confirmé, ce n'est pas un succès immédiat comme un transfert MobilePay.
       if (response.status === 'SUCCESS') {
+        if (expenseCategoryId && response.id) {
+          apiFetch(`/expenses/transactions/${response.id}/category`, {
+            method: 'PATCH',
+            body: JSON.stringify({ categoryId: expenseCategoryId }),
+          }).catch(() => {}); // best-effort — n'affecte jamais le succès du transfert lui-même
+        }
         setResult({
           status: 'success',
           message: `Transfert réussi ! ${Number(amount).toLocaleString('fr-FR')} FCFA envoyés à ${destinationInfo?.label}. 🎉`,
@@ -466,7 +475,23 @@ export default function EnvoyerPage() {
                 </div>
               )}
             </div>
-            <p style={{ fontSize: 12, color: 'var(--mp-muted)', textAlign: 'center' }}>
+            {categories.length > 0 && (
+              <label>
+                Type de charge (optionnel)
+                <select
+                  className="mp-input"
+                  style={{ width: '100%', marginTop: 6 }}
+                  value={expenseCategoryId}
+                  onChange={(e) => setExpenseCategoryId(e.target.value)}
+                >
+                  <option value="">Aucune catégorie</option>
+                  {categories.map((c) => (
+                    <option key={c.id} value={c.id}>{c.icon} {c.label}</option>
+                  ))}
+                </select>
+              </label>
+            )}
+            <p style={{ fontSize: 12, color: 'var(--fz-text-secondary)', textAlign: 'center' }}>
               Cette opération est irréversible une fois validée avec votre code secret.
             </p>
 
