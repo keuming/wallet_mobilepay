@@ -73,23 +73,28 @@ export default function TarificationPage() {
 
   return (
     <AdminShell title="Tarification">
-      <div className="adm-section" style={{ maxWidth: 560 }}>
-        <p style={{ color: '#5a7a94', fontSize: 13.5, marginBottom: 20 }}>
-          Ces frais s'appliquent à tous les services particulier (transfert, paiement, crédit/data, cartes cadeaux, factures).
-          Les frais HUB2 eux-mêmes ne sont pas paramétrés ici — ils sont lus automatiquement à chaque transaction
-          Mobile Money et s'ajoutent à ces frais internes.
-        </p>
+      <p style={{ color: 'var(--adm-muted)', fontSize: 13.5, marginBottom: 20, maxWidth: 560 }}>
+        Ces frais s'appliquent à tous les services particulier (transfert, paiement, crédit/data, cartes cadeaux,
+        factures). Les frais HUB2 eux-mêmes ne sont pas paramétrés ici — ils sont lus automatiquement à chaque
+        transaction Mobile Money et s'ajoutent à ces frais internes.
+      </p>
 
-        {fetching ? (
-          <p>Chargement...</p>
-        ) : (
-          <div className="adm-form" style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+      {fetching ? (
+        <p style={{ color: 'var(--adm-muted)' }}>Chargement...</p>
+      ) : (
+        <div className="adm-panel" style={{ maxWidth: 480 }}>
+          <div style={{ padding: 20, display: 'flex', flexDirection: 'column', gap: 16 }}>
             <label>
-              Libellé
-              <input className="adm-input" style={{ width: '100%', marginTop: 6 }} value={label} onChange={(e) => setLabel(e.target.value)} />
+              <span className="adm-modal-label">Libellé</span>
+              <input
+                className="adm-input"
+                style={{ width: '100%', marginTop: 6 }}
+                value={label}
+                onChange={(e) => setLabel(e.target.value)}
+              />
             </label>
             <label>
-              Frais en pourcentage (%)
+              <span className="adm-modal-label">Frais en pourcentage (%)</span>
               <input
                 className="adm-input"
                 style={{ width: '100%', marginTop: 6 }}
@@ -100,7 +105,7 @@ export default function TarificationPage() {
               />
             </label>
             <label>
-              Frais fixe par transaction (FCFA)
+              <span className="adm-modal-label">Frais fixe par transaction (FCFA)</span>
               <input
                 className="adm-input"
                 style={{ width: '100%', marginTop: 6 }}
@@ -110,29 +115,46 @@ export default function TarificationPage() {
               />
             </label>
 
-            <div style={{ background: '#f4f7f6', border: '1px solid #e2e8e5', borderRadius: 10, padding: '12px 14px', fontSize: 13 }}>
-              Exemple : pour une transaction de <strong>{fcfa(previewAmount * 100)} FCFA</strong>, les frais internes MobilePay
-              seraient de <strong>{fcfa(previewOurFee * 100)} FCFA</strong> (hors frais HUB2, ajoutés séparément le cas échéant).
+            <div
+              style={{
+                background: 'rgba(10, 143, 88, 0.08)',
+                border: '1px solid rgba(10, 143, 88, 0.25)',
+                borderRadius: 8,
+                padding: '12px 14px',
+                fontSize: 13,
+                color: 'var(--adm-text)',
+                lineHeight: 1.5,
+              }}
+            >
+              Exemple : pour une transaction de <strong>{fcfa(previewAmount * 100)} FCFA</strong>, les frais internes
+              MobilePay seraient de <strong>{fcfa(previewOurFee * 100)} FCFA</strong> (hors frais HUB2, ajoutés
+              séparément le cas échéant).
             </div>
 
             {message && (
-              <div style={{ color: message.type === 'success' ? '#0a8f58' : '#c0442c', fontSize: 13.5, fontWeight: 600 }}>
+              <div
+                style={{
+                  fontSize: 13,
+                  fontWeight: 600,
+                  color: message.type === 'success' ? 'var(--adm-accent)' : 'var(--adm-red)',
+                }}
+              >
                 {message.text}
               </div>
             )}
 
-            <button className="adm-btn-primary" disabled={saving} onClick={save}>
+            <button className="adm-btn" disabled={saving} onClick={save} style={{ padding: '10px 16px', fontSize: 13.5 }}>
               {saving ? 'Enregistrement...' : 'Enregistrer'}
             </button>
 
             {config && (
-              <p style={{ fontSize: 11.5, color: '#8a94a6', margin: 0 }}>
+              <p style={{ fontSize: 11.5, color: 'var(--adm-muted)', margin: 0 }}>
                 Dernière modification : {new Date(config.updatedAt).toLocaleString('fr-FR')}
               </p>
             )}
           </div>
-        )}
-      </div>
+        </div>
+      )}
     </AdminShell>
   );
 }
