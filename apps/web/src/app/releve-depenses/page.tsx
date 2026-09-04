@@ -28,6 +28,7 @@ interface Statement {
 
 const TYPE_LABELS: Record<string, string> = {
   TRANSFER: 'Transfert',
+  WITHDRAWAL: 'Envoi externe',
   PAYMENT: 'Paiement',
   AIRTIME: 'Crédit/Data',
   GIFT_CARD: 'Carte cadeau',

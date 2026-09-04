@@ -64,7 +64,9 @@ export default function EnvoyerPage() {
   useEffect(() => {
     apiFetch<{ hasPin: boolean }>('/auth/pin/status').then((res) => setHasPin(res.hasPin));
     apiFetch<{ cachedBalance: number }>('/wallet').then((w) => setWalletBalance(w.cachedBalance));
-    apiFetch<{ id: string; label: string; icon: string | null }[]>('/expenses/categories').then(setCategories);
+    apiFetch<{ id: string; label: string; icon: string | null }[]>('/expenses/categories')
+      .then(setCategories)
+      .catch(() => setCategories([]));
   }, []);
 
   useEffect(() => {
@@ -177,6 +179,12 @@ export default function EnvoyerPage() {
         setTimeout(() => router.push('/dashboard'), 2000);
       } else if (response.status === 'PROCESSING' || response.status === 'PENDING' || response.status === 'INITIATED') {
         if (response.id) {
+          if (expenseCategoryId) {
+            apiFetch(`/expenses/transactions/${response.id}/category`, {
+              method: 'PATCH',
+              body: JSON.stringify({ categoryId: expenseCategoryId }),
+            }).catch(() => {});
+          }
           pollTransactionStatus(response.id);
         }
         setResult({

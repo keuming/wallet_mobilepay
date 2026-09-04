@@ -335,6 +335,12 @@ function PayerContent() {
           message: `Paiement réussi ! ${(effectiveAmount / 100).toLocaleString('fr-FR')} FCFA payés à ${target.merchantName}. 🎉`,
         });
       } else if (response.status === 'PROCESSING' || response.status === 'PENDING') {
+        if (response.id && expenseCategoryId) {
+          apiFetch(`/expenses/transactions/${response.id}/category`, {
+            method: 'PATCH',
+            body: JSON.stringify({ categoryId: expenseCategoryId }),
+          }).catch(() => {});
+        }
         if (response.id && fundingSource === 'MOBILE_MONEY') {
           setPendingTransactionId(response.id);
           pollTransactionStatus(response.id);

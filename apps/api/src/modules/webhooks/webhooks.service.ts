@@ -106,6 +106,7 @@ export class WebhooksService {
         transaction.id,
         verification.status === 'SUCCESS',
         verification.failureReason,
+        verification.hub2FeeAmount ?? 0n,
       );
     }
     if (transaction.type === 'PAYMENT' && transaction.providerName === 'HUB2') {

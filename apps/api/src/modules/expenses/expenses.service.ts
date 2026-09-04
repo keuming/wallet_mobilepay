@@ -3,7 +3,7 @@ import { PrismaService } from '../../config/prisma.service';
 
 /** Types de transaction considérés comme des "dépenses" (§ relevé) —
  * exclut les dépôts (entrées d'argent), inclut tout ce qui sort du wallet. */
-const EXPENSE_TYPES = ['TRANSFER', 'PAYMENT', 'AIRTIME', 'GIFT_CARD', 'UTILITY_PAYMENT'];
+const EXPENSE_TYPES = ['TRANSFER', 'WITHDRAWAL', 'PAYMENT', 'AIRTIME', 'GIFT_CARD', 'UTILITY_PAYMENT'];
 
 @Injectable()
 export class ExpensesService {

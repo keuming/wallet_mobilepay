@@ -75,17 +75,22 @@ export class PaymentEngineService {
 
     await this.verifyTransactionPin(userId, params.pin);
     const sender = await this.prisma.user.findUniqueOrThrow({ where: { id: userId } });
+    const ourFee = await this.pricingService.computeOurFee(params.amount);
 
     const label = OPERATOR_LABELS[params.operator];
 
     const transaction = await this.runSerializable(async (tx) => {
       const wallet = await tx.wallet.findUniqueOrThrow({ where: { userId } });
+      if (wallet.cachedBalance < params.amount + ourFee) {
+        throw new BadRequestException('Solde insuffisant (frais inclus).');
+      }
 
       const created = await tx.transaction.create({
         data: {
           type: 'WITHDRAWAL',
           status: 'PROCESSING',
           amount: params.amount,
+          feeAmount: ourFee,
           sourceWalletId: wallet.id,
           initiatedByUserId: userId,
           description: `Envoi vers ${label} — ${params.accountNumber}`,
@@ -103,6 +108,16 @@ export class PaymentEngineService {
         amount: params.amount,
         description: `Envoi vers ${label} — ${params.accountNumber}`,
       });
+
+      if (ourFee > 0n) {
+        await this.ledger.postDoubleEntry(tx, {
+          transactionId: created.id,
+          fromWalletId: wallet.id,
+          toWalletId: null,
+          amount: ourFee,
+          description: 'Frais de transaction MobilePay',
+        });
+      }
 
       return created;
     });
@@ -142,7 +157,7 @@ export class PaymentEngineService {
    * Finalise un envoi externe depuis le webhook HUB2. Remboursement automatique
    * en cas d'échec — jamais de débit sans versement effectif au destinataire.
    */
-  async completeWithdrawal(transactionId: string, success: boolean, failureReason?: string) {
+  async completeWithdrawal(transactionId: string, success: boolean, failureReason?: string, hub2FeeAmount: bigint = 0n) {
     return this.runSerializable(async (tx) => {
       const transaction = await tx.transaction.findUnique({ where: { id: transactionId } });
       if (!transaction) throw new NotFoundException('Transaction introuvable.');
@@ -153,14 +168,29 @@ export class PaymentEngineService {
       await this.updateLatestPaymentAttemptStatus(tx, transactionId, success ? 'SUCCESS' : 'FAILED');
 
       if (success) {
-        return tx.transaction.update({ where: { id: transactionId }, data: { status: 'SUCCESS' } });
+        // § Le montant plein + notre frais étaient déjà débités à l'envoi ;
+        // seul le delta HUB2 (connu uniquement à la confirmation) doit
+        // encore être prélevé, s'il y en a un.
+        if (hub2FeeAmount > 0n) {
+          await this.ledger.postDoubleEntry(tx, {
+            transactionId: transaction.id,
+            fromWalletId: transaction.sourceWalletId!,
+            toWalletId: null,
+            amount: hub2FeeAmount,
+            description: 'Frais opérateur (HUB2)',
+          });
+        }
+        return tx.transaction.update({
+          where: { id: transactionId },
+          data: { status: 'SUCCESS', feeAmount: transaction.feeAmount + hub2FeeAmount },
+        });
       }
 
       await this.ledger.postDoubleEntry(tx, {
         transactionId: transaction.id,
         fromWalletId: null,
         toWalletId: transaction.sourceWalletId!,
-        amount: transaction.amount,
+        amount: transaction.amount + transaction.feeAmount,
         description: 'Remboursement — échec envoi externe',
       });
 
