@@ -41,6 +41,9 @@ export interface WebhookVerificationResult {
   providerRef: string;
   status: 'SUCCESS' | 'FAILED' | 'PENDING';
   failureReason?: string;
+  /** Somme des frais HUB2 (tableau `fees` de la réponse), en centimes —
+   * dynamique, jamais paramétré côté MobilePay (§ tarification). */
+  hub2FeeAmount?: bigint;
 }
 
 export interface PaymentProviderAdapter {

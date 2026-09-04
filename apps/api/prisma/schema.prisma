@@ -283,6 +283,23 @@ model UtilityPaymentRecord {
   @@map("utility_payment_records")
 }
 
+// Tarification particulier (§ paramétrable en back-office — permet des
+// périodes promotionnelles sans redéploiement). Un seul enregistrement actif
+// à la fois ; les frais HUB2 eux-mêmes ne sont jamais paramétrés ici — ils
+// sont lus dynamiquement depuis la réponse HUB2 à chaque transaction
+// (tableau `fees`), puis ajoutés à ces frais internes.
+model PricingConfig {
+  id               String   @id @default(uuid())
+  key              String   @unique // 'PARTICULIER_DEFAULT' pour l'instant
+  label            String
+  percentageBps    Int      // 100 = 1,00 %
+  flatFeeCents     BigInt   // 10000 = 100 FCFA
+  updatedAt        DateTime @updatedAt
+  updatedByAdminId String?
+
+  @@map("pricing_configs")
+}
+
 // Commande de carte cadeau (§ Reloadly Gift Cards — Amazon, Apple, Netflix,
 // etc.) — trace la commande et conserve le code/PIN livrés par Reloadly pour
 // que l'utilisateur puisse les retrouver plus tard dans son historique.

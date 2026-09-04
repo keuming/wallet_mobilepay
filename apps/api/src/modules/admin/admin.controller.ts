@@ -6,10 +6,26 @@ import { Type } from 'class-transformer';
 import { MerchantStatus, TransactionStatus } from '@prisma/client';
 import { Response } from 'express';
 import { AdminService } from './admin.service';
+import { PricingService } from '../pricing/pricing.service';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { CurrentUser, AuthenticatedUser } from '../../common/decorators/current-user.decorator';
+
+export class UpdatePricingDto {
+  @IsOptional()
+  @IsInt()
+  @IsPositive()
+  percentageBps?: number;
+
+  @IsOptional()
+  @IsInt()
+  flatFeeCents?: number;
+
+  @IsOptional()
+  @IsString()
+  label?: string;
+}
 
 export class CreateCardFundingDto {
   @IsOptional()
@@ -211,7 +227,10 @@ export class TransactionFilterQuery {
 @Roles('ADMIN')
 @Controller('admin')
 export class AdminController {
-  constructor(private adminService: AdminService) {}
+  constructor(
+    private adminService: AdminService,
+    private pricingService: PricingService,
+  ) {}
 
   @Get('dashboard')
   getDashboard() {
@@ -427,5 +446,24 @@ export class AdminController {
   @Get('providers')
   getProviders() {
     return this.adminService.getProvidersStatus();
+  }
+
+  // --- Tarification (§ paramétrable, sans redéploiement — périodes promo) ---
+  @Get('pricing')
+  getPricing() {
+    return this.pricingService.getConfig();
+  }
+
+  @Patch('pricing')
+  updatePricing(@Body() dto: UpdatePricingDto, @CurrentUser() user: AuthenticatedUser) {
+    return this.pricingService.updateConfig(
+      'PARTICULIER_DEFAULT',
+      {
+        percentageBps: dto.percentageBps,
+        flatFeeCents: dto.flatFeeCents !== undefined ? BigInt(dto.flatFeeCents) : undefined,
+        label: dto.label,
+      },
+      user.userId,
+    );
   }
 }

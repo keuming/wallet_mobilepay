@@ -254,27 +254,35 @@ export default function RechargerPage() {
       <div className="mp-form">
         {/* Étape 0 : Pays du destinataire */}
         {step === 0 && (
-          <label>
-            Pays du destinataire
-            <select
-              className="mp-input"
-              style={{ width: '100%', marginTop: 6 }}
-              value={country}
-              onChange={(e) => {
-                setCountry(e.target.value);
-                setOperator(null); // la liste d'opérateurs change avec le pays
-              }}
-            >
-              {WORLD_COUNTRIES.map((c) => (
-                <option key={c.code} value={c.code}>{c.name}</option>
-              ))}
-            </select>
-          </label>
+          <>
+            <p style={{ color: 'var(--fz-text-secondary)', fontSize: 13, margin: '0 0 12px' }}>
+              Choisis le pays du destinataire — la liste des opérateurs et les montants proposés s'ajustent automatiquement.
+            </p>
+            <label>
+              Pays du destinataire
+              <select
+                className="mp-input"
+                style={{ width: '100%', marginTop: 6 }}
+                value={country}
+                onChange={(e) => {
+                  setCountry(e.target.value);
+                  setOperator(null); // la liste d'opérateurs change avec le pays
+                }}
+              >
+                {WORLD_COUNTRIES.map((c) => (
+                  <option key={c.code} value={c.code}>{c.name}</option>
+                ))}
+              </select>
+            </label>
+          </>
         )}
 
         {/* Étape 1 : Catégorie */}
         {step === 1 && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <p style={{ color: 'var(--fz-text-secondary)', fontSize: 13, margin: '0 0 4px' }}>
+              Veuillez choisir le type d'achat : crédit d'appel classique, ou un forfait data.
+            </p>
             {(Object.keys(CATEGORY_LABELS) as Category[]).map((c) => (
               <button
                 key={c}
@@ -292,9 +300,12 @@ export default function RechargerPage() {
         {/* Étape 2 : Opérateur télécom — logos quand la marque est reconnue */}
         {step === 2 && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            {operatorsLoading && <p style={{ color: 'var(--mp-muted)', fontSize: 13.5 }}>Chargement des opérateurs...</p>}
+            <p style={{ color: 'var(--fz-text-secondary)', fontSize: 13, margin: '0 0 4px' }}>
+              Veuillez choisir l'opérateur télécom <strong>à créditer</strong> — celui du destinataire, qui peut être différent de celui que tu utiliseras pour payer.
+            </p>
+            {operatorsLoading && <p style={{ color: 'var(--fz-text-secondary)', fontSize: 13.5 }}>Chargement des opérateurs...</p>}
             {!operatorsLoading && allOperators.length === 0 && (
-              <p style={{ color: 'var(--mp-muted)', fontSize: 13.5 }}>Aucun opérateur disponible pour ce pays.</p>
+              <p style={{ color: 'var(--fz-text-secondary)', fontSize: 13.5 }}>Aucun opérateur disponible pour ce pays.</p>
             )}
             {allOperators
               .filter((o) => kind !== 'DATA' || o.data)
@@ -322,29 +333,37 @@ export default function RechargerPage() {
 
         {/* Étape 3 : Numéro bénéficiaire */}
         {step === 3 && (
-          <label>
-            Numéro du bénéficiaire ({operator?.name})
-            <input
-              className="mp-input"
-              style={{ width: '100%', marginTop: 6 }}
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-              placeholder="+2250700000000"
-              autoFocus
-            />
-          </label>
+          <>
+            <p style={{ color: 'var(--fz-text-secondary)', fontSize: 13, margin: '0 0 12px' }}>
+              Saisis le numéro de téléphone qui recevra le crédit chez {operator?.name}.
+            </p>
+            <label>
+              Numéro du bénéficiaire ({operator?.name})
+              <input
+                className="mp-input"
+                style={{ width: '100%', marginTop: 6 }}
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                placeholder="+2250700000000"
+                autoFocus
+              />
+            </label>
+          </>
         )}
 
         {/* Étape 4 : Mode de paiement */}
         {step === 4 && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            <p style={{ color: 'var(--fz-text-secondary)', fontSize: 13, margin: '0 0 4px' }}>
+              Veuillez choisir le moyen de paiement digital pour financer cet achat — ton solde MobilePay, ou un Mobile Money externe (peut être un opérateur différent de celui crédité).
+            </p>
             <button
               onClick={() => setPaymentMethod('WALLET')}
               className={`mp-list-card ${paymentMethod === 'WALLET' ? 'selected' : ''}`}
             >
               💰 Solde MobilePay
             </button>
-            <div style={{ fontSize: 12.5, color: 'var(--mp-muted)', fontWeight: 600, marginTop: 4 }}>
+            <div style={{ fontSize: 12.5, color: 'var(--fz-text-secondary)', fontWeight: 600, marginTop: 4 }}>
               MOBILE MONEY
             </div>
             {MOMO_OPTIONS.map((o) => (
@@ -376,6 +395,9 @@ export default function RechargerPage() {
         {/* Étape 5 : Montant */}
         {step === 5 && (
           <div className="fz-amount-hero">
+            <p style={{ color: 'var(--fz-text-secondary)', fontSize: 13, margin: '0 0 4px', textAlign: 'center' }}>
+              Indique le montant à créditer à {operator?.name}.
+            </p>
             {operator?.logoUrls?.[2] || operator?.logoUrls?.[0] ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img
@@ -437,15 +459,18 @@ export default function RechargerPage() {
         {/* Étape 6 : Résumé */}
         {step === 6 && category && (
           <>
+            <p style={{ color: 'var(--fz-text-secondary)', fontSize: 13, margin: '0 0 12px' }}>
+              Vérifie que tout est correct, puis confirme le paiement avec ton code secret pour valider la transaction.
+            </p>
             <div
               style={{
-                background: 'var(--mp-surface)',
-                border: '1.5px solid var(--mp-green)',
+                background: 'var(--fz-surface)',
+                border: '1.5px solid var(--fz-accent)',
                 borderRadius: 16,
                 padding: '16px 18px',
               }}
             >
-              <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--mp-green-dark)', marginBottom: 10, textTransform: 'uppercase', letterSpacing: 0.4 }}>
+              <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--fz-accent)', marginBottom: 10, textTransform: 'uppercase', letterSpacing: 0.4 }}>
                 🔍 Vérifiez avant de continuer
               </div>
               <div className="mp-detail-row">
@@ -463,7 +488,9 @@ export default function RechargerPage() {
               <div className="mp-detail-row">
                 <span className="k">Paiement</span>
                 <span className="v">
-                  {paymentMethod === 'WALLET' ? 'Solde MobilePay' : MOMO_OPTIONS.find((o) => o.id === momoOperator)?.label}
+                  {paymentMethod === 'WALLET'
+                    ? 'Solde MobilePay'
+                    : `${MOMO_OPTIONS.find((o) => o.id === momoOperator)?.label} — ${momoAccount}`}
                 </span>
               </div>
               <div className="mp-detail-row">

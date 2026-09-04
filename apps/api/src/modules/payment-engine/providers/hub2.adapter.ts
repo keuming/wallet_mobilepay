@@ -353,12 +353,20 @@ export class Hub2Adapter implements PaymentProviderAdapter {
       ? FRIENDLY_FAILURE_MESSAGES[failureCode ?? ''] ?? `${failureCode ?? ''}: ${payload.failure.message}`.trim()
       : undefined;
 
+    // § Frais HUB2 réels (tableau `fees` de l'objet Payment/Transfer,
+    // confirmé par la doc officielle) — jamais paramétrés côté MobilePay,
+    // juste lus et additionnés ici pour la tarification (§ pricing).
+    const hub2FeeAmount = Array.isArray(payload.fees)
+      ? payload.fees.reduce((sum: bigint, f: any) => sum + BigInt(Math.round(Number(f.amount ?? 0) * 100)), 0n)
+      : undefined;
+
     return {
       isValid: true,
       eventType: envelope.type ?? 'payment.status_update',
       providerRef: payload.id,
       status: statusMap[payload.status] ?? 'PENDING',
       failureReason: failureMessage,
+      hub2FeeAmount,
     };
   }
 
