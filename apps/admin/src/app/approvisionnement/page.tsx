@@ -238,16 +238,32 @@ export default function ApprovisionnementPage() {
           <input className="adm-input" style={{ width: '100%' }} placeholder="Note (optionnel)" value={note} onChange={(e) => setNote(e.target.value)} />
 
           <label className="adm-modal-label">
-            Justificatif (image ou PDF)
+            Justificatif (image ou PDF) — obligatoire
             <input
               type="file"
               accept="image/*,application/pdf"
               onChange={(e) => setFile(e.target.files?.[0] ?? null)}
               style={{ display: 'block', marginTop: 6, fontSize: 13 }}
             />
+            {file && (
+              <span style={{ fontSize: 12, color: 'var(--adm-accent)', display: 'block', marginTop: 4 }}>
+                ✓ {file.name}
+              </span>
+            )}
           </label>
 
           {error && <div className="adm-error">{error}</div>}
+
+          {!submitting && (!selected || !amount || !file) && (
+            <div style={{ fontSize: 12.5, color: 'var(--adm-muted)' }}>
+              Pour activer l'enregistrement, il manque encore :{' '}
+              {[
+                !selected && 'la sélection d\'un compte dans les résultats de recherche',
+                !amount && 'le montant',
+                !file && 'le justificatif',
+              ].filter(Boolean).join(', ')}.
+            </div>
+          )}
 
           <button
             className="adm-btn"
