@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, BadGatewayException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import * as crypto from 'crypto';
 
@@ -82,7 +82,7 @@ export class ReloadlyGiftCardsAdapter {
       headers: { Authorization: `Bearer ${token}`, Accept: 'application/com.reloadly.giftcards-v1+json' },
     });
     if (!res.ok) {
-      throw new Error(`Reloadly gift cards products error (${res.status}) sur ${url}: ${await res.text()}`);
+      throw new BadGatewayException(`Reloadly gift cards products error (${res.status}) sur ${url}: ${await res.text()}`);
     }
     const json = await res.json();
     const content = Array.isArray(json?.content) ? json.content : Array.isArray(json) ? json : [];
@@ -98,7 +98,7 @@ export class ReloadlyGiftCardsAdapter {
     });
     if (res.status === 404) return null;
     if (!res.ok) {
-      throw new Error(`Reloadly gift cards product error (${res.status}): ${await res.text()}`);
+      throw new BadGatewayException(`Reloadly gift cards product error (${res.status}): ${await res.text()}`);
     }
     return mapProduct(await res.json());
   }
@@ -189,7 +189,7 @@ export class ReloadlyGiftCardsAdapter {
     });
 
     if (!res.ok) {
-      throw new Error(`Reloadly OAuth error (${res.status}): ${await res.text()}`);
+      throw new BadGatewayException(`Reloadly OAuth error (${res.status}): ${await res.text()}`);
     }
 
     const json = await res.json();
