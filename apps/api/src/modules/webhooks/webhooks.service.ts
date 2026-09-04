@@ -124,6 +124,11 @@ export class WebhooksService {
       );
     }
 
+    this.logger.log(
+      `Webhook HUB2 : transaction ${transaction.id} (${transaction.type}) finalisée — statut=${verification.status}` +
+        (verification.failureReason ? ` raison=${verification.failureReason}` : ''),
+    );
+
     await this.prisma.webhookEvent.update({
       where: { id: event.id },
       data: { status: 'PROCESSED', processedAt: new Date() },

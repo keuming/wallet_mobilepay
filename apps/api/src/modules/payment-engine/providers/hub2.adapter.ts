@@ -336,8 +336,21 @@ export class Hub2Adapter implements PaymentProviderAdapter {
       failed: 'FAILED',
     };
 
+    // § Messages HUB2 bruts traduits en explications actionnables — un
+    // code technique comme "authentication_failed" n'aide pas l'utilisateur
+    // à savoir quoi faire différemment la prochaine fois.
+    const FRIENDLY_FAILURE_MESSAGES: Record<string, string> = {
+      authentication_failed:
+        "La validation du paiement a échoué — vérifie que tu as bien confirmé avec le bon code PIN Mobile Money, puis réessaie.",
+      insufficient_funds: "Solde Mobile Money insuffisant pour cette opération.",
+      expired: "Le délai de confirmation a expiré avant que le paiement soit validé — réessaie.",
+      cancelled: "Le paiement a été annulé.",
+      timeout: "L'opérateur n'a pas répondu à temps — réessaie dans quelques instants.",
+    };
+
+    const failureCode = payload.failure?.code;
     const failureMessage = payload.failure?.message
-      ? `${payload.failure.code ?? ''}: ${payload.failure.message}`.trim()
+      ? FRIENDLY_FAILURE_MESSAGES[failureCode ?? ''] ?? `${failureCode ?? ''}: ${payload.failure.message}`.trim()
       : undefined;
 
     return {
