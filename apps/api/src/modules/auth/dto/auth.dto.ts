@@ -39,6 +39,13 @@ export class LoginDto {
   password: string;
 }
 
+/** Étape 2 de la connexion — code de sécurité reçu par SMS (§ 2FA). */
+export class VerifyLoginOtpDto extends LoginDto {
+  @IsString()
+  @MinLength(4, { message: 'Code de connexion invalide.' })
+  code: string;
+}
+
 /**
  * Inscription simplifiée (§ carte d'accueil après installation) — un seul
  * code PIN sert à la fois de mot de passe de connexion et de code
