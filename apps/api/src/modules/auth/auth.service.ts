@@ -230,7 +230,15 @@ export class AuthService {
       await this.prisma.phoneVerification.create({
         data: { phone: user.phone, codeHash, purpose: 'LOGIN_2FA', expiresAt: new Date(Date.now() + 10 * 60_000) },
       });
-      await this.sms.send(user.phone, `MobilePay CI : ton code de connexion est ${code}. Ne le partage avec personne.`);
+      // § Le résultat était ignoré — l'utilisateur recevait "requiresOtp:
+      // true" (donc l'écran de saisie du code) même quand le SMS avait
+      // réellement échoué à partir, le laissant bloqué sans code à saisir.
+      const smsResult = await this.sms.send(user.phone, `MobilePay CI : ton code de connexion est ${code}. Ne le partage avec personne.`);
+      if (!smsResult.success) {
+        throw new BadRequestException(
+          "Impossible d'envoyer le code de connexion pour le moment. Réessaie dans quelques instants.",
+        );
+      }
     }
 
     // § Numéro masqué — évite d'exposer le numéro complet avant confirmation.

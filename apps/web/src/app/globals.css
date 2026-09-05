@@ -107,12 +107,7 @@
 
 html {
   scroll-behavior: smooth;
-  /* § Élimine le rebond ("flottement") iOS quand on tire au-delà des bords
-     de la page — comportement PWA natif attendu, pas celui d'une page web
-     classique dans un navigateur. */
-  overscroll-behavior: none;
   overflow-x: hidden;
-  height: 100%;
 }
 
 body {
@@ -123,9 +118,14 @@ body {
   color: var(--fz-text-primary);
   -webkit-font-smoothing: antialiased;
   transition: background 0.2s ease, color 0.2s ease;
-  overscroll-behavior: none;
+  /* § Élimine le rebond ("flottement") iOS quand on tire au-delà des bords
+     de la page — comportement PWA natif attendu. Appliqué UNIQUEMENT ici
+     (pas aussi sur html) : le mettre aux deux niveaux simultanément est un
+     bug documenté de certaines versions de WebView Android qui bloque le
+     défilement entièrement au lieu de juste supprimer le rebond — c'est ce
+     qui empêchait de scroller sur la version APK (ex: cartes cadeaux CI). */
+  overscroll-behavior-y: contain;
   overflow-x: hidden;
-  min-height: 100%;
 }
 
 a {

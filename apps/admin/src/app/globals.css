@@ -776,8 +776,10 @@ body {
 }
 
 /* § Élimine le rebond ("flottement") iOS quand on tire au-delà des bords —
-   comportement PWA natif attendu. */
-html, body {
-  overscroll-behavior: none;
+   uniquement sur body (jamais html en même temps : bug documenté de
+   certaines versions de WebView Android qui bloque le defilement
+   entierement plutot que juste le rebond). */
+body {
+  overscroll-behavior-y: contain;
   overflow-x: hidden;
 }

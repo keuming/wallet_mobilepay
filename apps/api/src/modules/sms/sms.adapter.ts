@@ -35,20 +35,30 @@ export class SmsAdapter {
     // Le format receiver attendu (§ doc) est "225" + numéro, sans "+".
     const receiver = toPhone.replace(/^\+/, '');
 
-    const res = await fetch(`${this.baseUrl}/api/communicationManagement/v1/communicationMessage`, {
-      method: 'POST',
-      headers: {
-        'x-app-token': this.appToken,
-        Accept: 'application/json',
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        receiver,
-        sender: this.senderId,
-        content: message,
-        messageType: 'SMS',
-      }),
-    });
+    // § Corrige une faille critique constatée : le fetch() lui-même n'était
+    // jamais protégé — une panne réseau ou fournisseur (DNS, timeout, TLS)
+    // faisait planter tout l'appelant (ex: la connexion entière) avec une
+    // erreur 500 générique, au lieu d'un échec propre et compréhensible.
+    let res: Response;
+    try {
+      res = await fetch(`${this.baseUrl}/api/communicationManagement/v1/communicationMessage`, {
+        method: 'POST',
+        headers: {
+          'x-app-token': this.appToken,
+          Accept: 'application/json',
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          receiver,
+          sender: this.senderId,
+          content: message,
+          messageType: 'SMS',
+        }),
+      });
+    } catch (err: any) {
+      this.logger.error(`SMS — échec réseau vers la plateforme SMS : ${err?.message ?? err}`);
+      return { success: false, errorReason: "Impossible de joindre la plateforme SMS pour le moment." };
+    }
 
     const rawText = await res.text();
     let parsed: any;

@@ -370,7 +370,6 @@ body {
 
 html {
   scroll-behavior: smooth;
-  overscroll-behavior: none;
   overflow-x: hidden;
 }
 
@@ -382,6 +381,8 @@ body {
   color: var(--fz-text-primary);
   -webkit-font-smoothing: antialiased;
   transition: background 0.2s ease, color 0.2s ease;
+  overscroll-behavior-y: contain;
+  overflow-x: hidden;
 }
 
 a {
