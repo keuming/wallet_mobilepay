@@ -7,11 +7,11 @@ import { useTheme, ThemeId } from '../contexts/ThemeContext';
 
 const WHATSAPP_AGENT_NUMBER = '2250504921096';
 
-const THEME_OPTIONS: { id: ThemeId; label: string; swatch: string }[] = [
-  { id: 'light', label: 'Clair', swatch: '#00d27a' },
-  { id: 'dark', label: 'Sombre', swatch: '#66fe4c' },
-  { id: 'maroon', label: 'Marron', swatch: '#d97b4f' },
-  { id: 'turquoise', label: 'Turquoise', swatch: '#2dd4bf' },
+const THEME_OPTIONS: { id: ThemeId; label: string; bg: string; accent: string }[] = [
+  { id: 'light', label: 'Clair', bg: '#f7fbf8', accent: '#00d27a' },
+  { id: 'dark', label: 'Sombre', bg: '#030d01', accent: '#66fe4c' },
+  { id: 'maroon', label: 'Marron', bg: '#1c1210', accent: '#d97b4f' },
+  { id: 'turquoise', label: 'Turquoise', bg: '#01120f', accent: '#2dd4bf' },
 ];
 
 interface SideMenuProps {
@@ -106,7 +106,13 @@ export default function SideMenu({ open, onClose }: SideMenuProps) {
                     background: 'var(--fz-surface)', cursor: 'pointer',
                   }}
                 >
-                  <span style={{ width: 18, height: 18, borderRadius: '50%', background: opt.swatch, display: 'block' }} />
+                  <span
+                    style={{
+                      width: 18, height: 18, borderRadius: '50%', display: 'block',
+                      background: `linear-gradient(135deg, ${opt.bg} 50%, ${opt.accent} 50%)`,
+                      border: '1px solid rgba(0,0,0,0.08)',
+                    }}
+                  />
                   <span style={{ fontSize: 10, fontWeight: 600, color: 'var(--fz-text-primary)' }}>{opt.label}</span>
                 </button>
               ))}
