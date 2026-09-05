@@ -59,6 +59,7 @@ export default function DashboardPage() {
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [shareStatus, setShareStatus] = useState<Record<string, 'shared' | 'copied' | 'failed'>>({});
   const [menuOpen, setMenuOpen] = useState(false);
+  const [balanceHidden, setBalanceHidden] = useState(false);
 
   useEffect(() => {
     if (loading) return;
@@ -76,6 +77,19 @@ export default function DashboardPage() {
       })
       .finally(() => setFetching(false));
   }, [user, loading, router]);
+
+  useEffect(() => {
+    const stored = typeof window !== 'undefined' ? localStorage.getItem('mp_balance_hidden') : null;
+    if (stored === '1') setBalanceHidden(true);
+  }, []);
+
+  const toggleBalanceHidden = () => {
+    setBalanceHidden((h) => {
+      const next = !h;
+      if (typeof window !== 'undefined') localStorage.setItem('mp_balance_hidden', next ? '1' : '0');
+      return next;
+    });
+  };
 
   const handleShare = async (entry: LedgerEntry) => {
     const result = await shareReceipt({
@@ -110,10 +124,6 @@ export default function DashboardPage() {
       <div className="fz-header-row">
         <div className="fz-profile" onClick={() => setMenuOpen(true)}>
           <span className="fz-avatar">{user.firstName.charAt(0).toUpperCase()}</span>
-          <span className="fz-greeting">
-            <span className="hello">Bonjour</span>
-            <span className="name">{user.firstName}</span>
-          </span>
         </div>
         <button
           onClick={() => logout().then(() => router.push('/login'))}
@@ -129,9 +139,19 @@ export default function DashboardPage() {
       <div className="fz-balance-card">
         <div className="fz-balance-top">
           <div>
-            <span className="fz-balance-label">💳 Solde disponible</span>
+            <span className="fz-balance-holder">{user.firstName} {user.lastName}</span>
+            <span className="fz-balance-label">
+              💳 Solde disponible
+              <button
+                className="fz-balance-toggle"
+                onClick={toggleBalanceHidden}
+                title={balanceHidden ? 'Afficher le solde' : 'Cacher le solde'}
+              >
+                {balanceHidden ? '🙈' : '👁️'}
+              </button>
+            </span>
             <span className="fz-balance-amount">
-              {wallet ? formatFcfa(wallet.cachedBalance) : '—'}
+              {balanceHidden ? '••••••' : wallet ? formatFcfa(wallet.cachedBalance) : '—'}
               <span className="fz-currency">FCFA</span>
             </span>
           </div>

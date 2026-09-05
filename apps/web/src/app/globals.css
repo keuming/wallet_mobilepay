@@ -8,7 +8,7 @@
 [data-theme='light'] {
   --fz-bg: #f7fbf8;
   --fz-surface: #ffffff;
-  --fz-surface-gradient: linear-gradient(290deg, #eaf7ef 38.03%, #dff3e6 97.4%);
+  --fz-surface-gradient: linear-gradient(290deg, color-mix(in srgb, var(--fz-accent) 28%, white) 38.03%, color-mix(in srgb, var(--fz-accent) 38%, white) 97.4%);
   --fz-text-primary: #0b1f12;
   --fz-text-secondary: #5a7a72;
   --fz-text-on-accent: #ffffff;
@@ -360,23 +360,45 @@ h1, h2, h3 {
   justify-content: space-between;
   align-items: flex-start;
 }
+.fz-balance-holder {
+  display: block;
+  font-size: 13px;
+  font-weight: 700;
+  color: #ffffff;
+  margin-bottom: 4px;
+  letter-spacing: 0.2px;
+}
 .fz-balance-label {
   font-size: 14px;
   color: var(--fz-text-secondary);
-  display: block;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.fz-balance-toggle {
+  background: none;
+  border: none;
+  padding: 0;
+  font-size: 13px;
+  line-height: 1;
+  cursor: pointer;
+  opacity: 0.85;
+}
+.fz-balance-toggle:active {
+  transform: scale(0.9);
 }
 .fz-balance-amount {
   font-family: var(--font-sora), sans-serif;
   font-size: 26px;
-  font-weight: 600;
-  color: var(--fz-text-primary);
+  font-weight: 800;
+  color: #ffffff;
   display: block;
   margin-top: 2px;
 }
 .fz-balance-amount .fz-currency {
   font-size: 15px;
-  font-weight: 500;
-  color: var(--fz-text-secondary);
+  font-weight: 800;
+  color: #ffffff;
   margin-left: 4px;
 }
 .fz-add-money-btn {
@@ -403,17 +425,20 @@ h1, h2, h3 {
 }
 .fz-pill-btn {
   flex: 1;
-  padding: 8px 6px;
+  padding: 8px 4px;
   background: color-mix(in srgb, var(--fz-text-primary) 6%, transparent);
   border: 1px solid var(--fz-border);
   border-radius: 30px;
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 5px;
+  gap: 4px;
   color: var(--fz-text-primary);
-  font-size: 14.5px;
+  font-size: 13px;
   font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
   cursor: pointer;
   transition: transform 0.15s ease, background 0.15s ease;
 }
