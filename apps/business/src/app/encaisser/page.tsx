@@ -8,7 +8,7 @@ import { apiFetch, ApiError } from '../../lib/apiClient';
 import PaymentMethodBadge, { PaymentMethodId } from '../../components/PaymentMethodBadge';
 import BusinessSideMenu from '../../components/BusinessSideMenu';
 import QrResultCard from '../../components/QrResultCard';
-import StatusModal from '../../components/StatusModal';
+import StatusModal, { ResultStatus } from '../../components/StatusModal';
 
 type Tab = 'static' | 'dynamic' | 'link' | 'request' | 'cash' | 'card';
 
@@ -114,14 +114,13 @@ function EncaisserContent() {
 function CashPanel({ merchantId }: { merchantId: string }) {
   const [amount, setAmount] = useState('');
   const [description, setDescription] = useState('');
-  const [success, setSuccess] = useState(false);
+  const [result, setResult] = useState<{ status: ResultStatus; message: string } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
   const record = async () => {
     setSubmitting(true);
     setError(null);
-    setSuccess(false);
     try {
       await apiFetch(`/merchants/${merchantId}/cash`, {
         method: 'POST',
@@ -130,7 +129,7 @@ function CashPanel({ merchantId }: { merchantId: string }) {
           description: description || undefined,
         }),
       });
-      setSuccess(true);
+      setResult({ status: 'success', message: `Encaissement de ${Number(amount).toLocaleString('fr-FR')} FCFA en espèces enregistré !` });
       setAmount('');
       setDescription('');
     } catch (err) {
@@ -149,7 +148,7 @@ function CashPanel({ merchantId }: { merchantId: string }) {
       <input className="mp-input" placeholder="Montant reçu (FCFA)" type="number" value={amount} onChange={(e) => setAmount(e.target.value)} />
       <input className="mp-input" placeholder="Note — optionnel" value={description} onChange={(e) => setDescription(e.target.value)} />
       {error && <div className="mp-error">{error}</div>}
-      {success && <div style={{ color: 'var(--mp-green-dark)', fontSize: 13, fontWeight: 600 }}>Encaissement espèce enregistré ✓</div>}
+      {result && <StatusModal status={result.status} message={result.message} onClose={() => setResult(null)} />}
       <button
         className="mp-btn-primary"
         style={{ background: 'var(--fz-accent)' }}

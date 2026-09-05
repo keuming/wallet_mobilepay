@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '../../contexts/AuthContext';
 import { apiFetch, ApiError } from '../../lib/apiClient';
 import BusinessSideMenu from '../../components/BusinessSideMenu';
+import StatusModal from '../../components/StatusModal';
 import { WORLD_COUNTRIES } from '../../lib/worldCountries';
 
 interface GiftCardProduct {
@@ -174,22 +175,25 @@ export default function CartesCadeauxBusinessPage() {
         )}
 
         {result && (
+          <StatusModal
+            status={result.status}
+            message={result.message}
+            onClose={() => setResult(null)}
+          />
+        )}
+        {result?.cardCode && (
           <div
             style={{
-              background: result.status === 'success' ? 'rgba(71,182,134,.1)' : 'rgba(214,69,69,.1)',
-              border: `1px solid ${result.status === 'success' ? 'var(--mp-green)' : '#d64545'}`,
+              background: 'color-mix(in srgb, var(--fz-accent) 10%, transparent)',
+              border: '1px solid var(--fz-accent)',
               borderRadius: 10,
               padding: '10px 16px',
               fontSize: 13.5,
+              fontFamily: 'monospace',
             }}
           >
-            <p style={{ margin: 0, fontWeight: 600 }}>{result.message}</p>
-            {result.cardCode && (
-              <div style={{ marginTop: 8, fontFamily: 'monospace' }}>
-                <div>Code : <strong>{result.cardCode}</strong></div>
-                {result.cardPin && <div>PIN : <strong>{result.cardPin}</strong></div>}
-              </div>
-            )}
+            <div>Code : <strong>{result.cardCode}</strong></div>
+            {result.cardPin && <div>PIN : <strong>{result.cardPin}</strong></div>}
           </div>
         )}
       </div>

@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '../../contexts/AuthContext';
 import { apiFetch, ApiError } from '../../lib/apiClient';
 import BusinessSideMenu from '../../components/BusinessSideMenu';
+import StatusModal from '../../components/StatusModal';
 import { WORLD_COUNTRIES } from '../../lib/worldCountries';
 
 type BillType = 'ELECTRICITY_BILL_PAYMENT' | 'WATER_BILL_PAYMENT' | 'TV_BILL_PAYMENT' | 'INTERNET_BILL_PAYMENT';
@@ -182,15 +183,7 @@ export default function FacturesBusinessPage() {
         )}
 
         {result && (
-          <div
-            style={{
-              background: result.status === 'success' ? 'color-mix(in srgb, var(--fz-accent) 10%, transparent)' : 'rgba(214,69,69,.1)',
-              border: `1px solid ${result.status === 'success' ? 'var(--fz-accent)' : '#d64545'}`,
-              borderRadius: 10, padding: '10px 16px', fontSize: 13.5,
-            }}
-          >
-            {result.message}
-          </div>
+          <StatusModal status={result.status} message={result.message} onClose={() => setResult(null)} />
         )}
       </div>
     </div>

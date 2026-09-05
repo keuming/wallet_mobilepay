@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { useAuth } from '../../contexts/AuthContext';
 import { apiFetch, ApiError } from '../../lib/apiClient';
 import BusinessSideMenu from '../../components/BusinessSideMenu';
+import StatusModal from '../../components/StatusModal';
 import { WORLD_COUNTRIES } from '../../lib/worldCountries';
 
 interface Operator {
@@ -260,15 +261,11 @@ export default function VenteCreditPage() {
 
         {error && <div style={{ color: 'var(--mp-red)', fontSize: 13 }}>{error}</div>}
         {result && (
-          <div
-            style={{
-              fontSize: 13,
-              fontWeight: 600,
-              color: result.status === 'success' ? 'var(--mp-green-dark)' : result.status === 'pending' ? '#b8790a' : 'var(--mp-red)',
-            }}
-          >
-            {result.message}
-          </div>
+          <StatusModal
+            status={result.status === 'success' ? 'success' : result.status === 'pending' ? 'pending' : 'failed'}
+            message={result.message}
+            onClose={() => setResult(null)}
+          />
         )}
 
         <button
