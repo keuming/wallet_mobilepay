@@ -537,3 +537,10 @@ body {
   padding: 10px 14px;
 }
 
+
+/* § Élimine le rebond ("flottement") iOS quand on tire au-delà des bords —
+   comportement PWA natif attendu. */
+html, body {
+  overscroll-behavior: none;
+  overflow-x: hidden;
+}

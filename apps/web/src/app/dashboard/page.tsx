@@ -169,7 +169,7 @@ export default function DashboardPage() {
         <div className="fz-pill-row">
           <Link href="/envoyer" className="fz-pill-btn">↗️ Transfert</Link>
           <Link href="/payer" className="fz-pill-btn">🏪 Payer</Link>
-          <Link href="/recharger" className="fz-pill-btn">📶 Crédit & Data</Link>
+          <Link href="/recharger" className="fz-pill-btn">📶 Crédit/Data</Link>
         </div>
       </div>
 

@@ -635,3 +635,10 @@ body {
   0% { opacity: 1; transform: translate(-50%, -50%) rotate(0deg); }
   100% { opacity: 0; transform: translate(calc(-50% + var(--tx)), calc(-50% + var(--ty))) rotate(220deg); }
 }
+
+/* § Élimine le rebond ("flottement") iOS quand on tire au-delà des bords —
+   comportement PWA natif attendu. */
+html, body {
+  overscroll-behavior: none;
+  overflow-x: hidden;
+}

@@ -107,6 +107,12 @@
 
 html {
   scroll-behavior: smooth;
+  /* § Élimine le rebond ("flottement") iOS quand on tire au-delà des bords
+     de la page — comportement PWA natif attendu, pas celui d'une page web
+     classique dans un navigateur. */
+  overscroll-behavior: none;
+  overflow-x: hidden;
+  height: 100%;
 }
 
 body {
@@ -117,6 +123,9 @@ body {
   color: var(--fz-text-primary);
   -webkit-font-smoothing: antialiased;
   transition: background 0.2s ease, color 0.2s ease;
+  overscroll-behavior: none;
+  overflow-x: hidden;
+  min-height: 100%;
 }
 
 a {
@@ -448,16 +457,17 @@ h1, h2, h3 {
 }
 .fz-pill-btn {
   flex: 1;
-  padding: 8px 4px;
+  min-width: 0;
+  padding: 8px 2px;
   background: color-mix(in srgb, var(--fz-text-primary) 6%, transparent);
   border: 1px solid var(--fz-border);
   border-radius: 30px;
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 4px;
+  gap: 3px;
   color: var(--fz-text-primary);
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 600;
   white-space: nowrap;
   overflow: hidden;

@@ -5,8 +5,8 @@
   --adm-border: #e2e8e5;
   --adm-text: #16211c;
   --adm-muted: #5a7a72;
-  --adm-accent: #0a8f58;
-  --adm-accent-light: #12b374;
+  --adm-accent: #00d27a;
+  --adm-accent-light: #33db93;
   --adm-green: #0a8f58;
   --adm-red: #ef4444;
   --adm-amber: #f59e0b;
@@ -773,4 +773,11 @@ body {
   font-weight: 600;
   color: var(--adm-muted);
   display: block;
+}
+
+/* § Élimine le rebond ("flottement") iOS quand on tire au-delà des bords —
+   comportement PWA natif attendu. */
+html, body {
+  overscroll-behavior: none;
+  overflow-x: hidden;
 }
