@@ -46,6 +46,7 @@ import { IdempotencyMiddleware } from './common/middleware/idempotency.middlewar
     PricingModule,
     ExpensesModule,
     SecurityModule,
+    CollecteModule,
   ],
   providers: [
     // § Corrige une faille critique constatée à l'audit sécurité : le
