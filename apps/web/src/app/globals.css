@@ -362,8 +362,8 @@ h1, h2, h3 {
   color: var(--fz-text-primary);
 }
 .fz-notif-btn {
-  width: 40px;
-  height: 40px;
+  width: clamp(44px, 12vw, 52px);
+  height: clamp(44px, 12vw, 52px);
   border-radius: 50%;
   background: color-mix(in srgb, var(--fz-text-primary) 8%, transparent);
   border: none;
@@ -372,6 +372,10 @@ h1, h2, h3 {
   justify-content: center;
   cursor: pointer;
   flex-shrink: 0;
+  font-size: clamp(22px, 5.5vw, 26px);
+  font-weight: 900;
+  color: #000000;
+  line-height: 1;
 }
 
 .fz-balance-card {
