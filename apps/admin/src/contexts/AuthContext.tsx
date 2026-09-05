@@ -14,7 +14,8 @@ interface AdminProfile {
 interface AuthContextValue {
   admin: AdminProfile | null;
   loading: boolean;
-  login: (phone: string, password: string) => Promise<void>;
+  login: (phone: string, password: string) => Promise<{ requiresOtp: boolean; maskedPhone: string }>;
+  verifyLoginOtp: (phone: string, password: string, code: string) => Promise<void>;
   logout: () => Promise<void>;
 }
 
@@ -45,23 +46,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // § Étape 1 : mot de passe vérifié côté serveur, qui envoie alors un code
+  // de connexion par SMS (§ sécurité — revérifie le téléphone à CHAQUE
+  // reconnexion, pas seulement le mot de passe) — aucun jeton encore émis ici.
   const login = async (phone: string, password: string) => {
-    const result = await apiFetch<{ accessToken: string; refreshToken: string }>('/auth/login', {
+    return apiFetch<{ requiresOtp: boolean; maskedPhone: string }>('/auth/login', {
       method: 'POST',
       auth: false,
       body: JSON.stringify({ phone, password }),
     });
+  };
+
+  // § Étape 2 : confirme le code reçu par SMS, émet les jetons, puis
+  // vérifie que ce compte a bien le rôle ADMIN avant d'accorder l'accès.
+  const verifyLoginOtp = async (phone: string, password: string, code: string) => {
+    const result = await apiFetch<{ accessToken: string; refreshToken: string }>('/auth/login/verify-otp', {
+      method: 'POST',
+      auth: false,
+      body: JSON.stringify({ phone, password, code }),
+    });
     storeTokens(result.accessToken, result.refreshToken);
-    await refreshProfile();
-    if (!admin) {
-      // refreshProfile est asynchrone et setAdmin ne sera pas encore reflété ici ;
-      // on revérifie directement via un second appel pour donner un message clair.
-      const profile = await apiFetch<AdminProfile>('/users/me').catch(() => null);
-      if (!profile || profile.role !== 'ADMIN') {
-        clearTokens();
-        throw new ApiError("Ce compte n'a pas les droits administrateur.", 403);
-      }
+    const profile = await apiFetch<AdminProfile>('/users/me').catch(() => null);
+    if (!profile || profile.role !== 'ADMIN') {
+      clearTokens();
+      setAdmin(null);
+      throw new ApiError("Ce compte n'a pas les droits administrateur.", 403);
     }
+    setAdmin(profile);
   };
 
   const logout = async () => {
@@ -71,7 +82,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ admin, loading, login, logout }}>{children}</AuthContext.Provider>
+    <AuthContext.Provider value={{ admin, loading, login, verifyLoginOtp, logout }}>{children}</AuthContext.Provider>
   );
 }
 

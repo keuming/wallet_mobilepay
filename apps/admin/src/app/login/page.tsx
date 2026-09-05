@@ -6,10 +6,13 @@ import { useAuth } from '../../contexts/AuthContext';
 import { ApiError } from '../../lib/apiClient';
 
 export default function LoginPage() {
-  const { login } = useAuth();
+  const { login, verifyLoginOtp } = useAuth();
   const router = useRouter();
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
+  const [step, setStep] = useState<'credentials' | 'otp'>('credentials');
+  const [maskedPhone, setMaskedPhone] = useState('');
+  const [code, setCode] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
@@ -19,13 +22,28 @@ export default function LoginPage() {
     setError(null);
     setSubmitting(true);
     try {
-      await login(phone, password);
+      const res = await login(phone, password);
+      setMaskedPhone(res.maskedPhone);
+      setStep('otp');
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Connexion impossible.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleVerifyOtp = async (e: FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    setSubmitting(true);
+    try {
+      await verifyLoginOtp(phone, password, code);
       // Transition animée avant de rejoindre le dashboard, plutôt qu'une
       // redirection brutale.
       setSuccess(true);
       setTimeout(() => router.push('/dashboard'), 1300);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Connexion impossible.');
+      setError(err instanceof ApiError ? err.message : 'Code invalide.');
       setSubmitting(false);
     }
   };
@@ -70,31 +88,65 @@ export default function LoginPage() {
               Mobile<span>Pay</span>
             </div>
 
-            <form onSubmit={handleSubmit} className="adm-login-form">
-              <label className="adm-login-label">
-                Numéro de téléphone
-                <input
-                  className="adm-input-modern"
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                  placeholder="+225 07 00 00 00 00"
-                  autoFocus
-                />
-              </label>
-              <label className="adm-login-label">
-                Mot de passe
-                <input
-                  className="adm-input-modern"
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="••••••••"
-                />
-              </label>
-              {error && <div className="adm-login-error">{error}</div>}
-              <button className="adm-login-btn" disabled={submitting} type="submit">
-                {submitting ? <span className="adm-login-spinner" /> : 'Se connecter'}
-              </button>
+            <form onSubmit={step === 'credentials' ? handleSubmit : handleVerifyOtp} className="adm-login-form">
+              {step === 'credentials' ? (
+                <>
+                  <label className="adm-login-label">
+                    Numéro de téléphone
+                    <input
+                      className="adm-input-modern"
+                      value={phone}
+                      onChange={(e) => setPhone(e.target.value)}
+                      placeholder="+225 07 00 00 00 00"
+                      autoFocus
+                    />
+                  </label>
+                  <label className="adm-login-label">
+                    Mot de passe
+                    <input
+                      className="adm-input-modern"
+                      type="password"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      placeholder="••••••••"
+                    />
+                  </label>
+                  {error && <div className="adm-login-error">{error}</div>}
+                  <button className="adm-login-btn" disabled={submitting} type="submit">
+                    {submitting ? <span className="adm-login-spinner" /> : 'Se connecter'}
+                  </button>
+                </>
+              ) : (
+                <>
+                  <p style={{ fontSize: 13, color: 'var(--adm-muted)', margin: '0 0 14px' }}>
+                    Pour confirmer que c'est bien toi, saisis le code envoyé par SMS au {maskedPhone}.
+                  </p>
+                  <label className="adm-login-label">
+                    Code de connexion
+                    <input
+                      className="adm-input-modern"
+                      style={{ letterSpacing: 4, textAlign: 'center', fontSize: 20 }}
+                      value={code}
+                      onChange={(e) => setCode(e.target.value.replace(/\D/g, ''))}
+                      placeholder="••••••"
+                      inputMode="numeric"
+                      autoFocus
+                    />
+                  </label>
+                  {error && <div className="adm-login-error">{error}</div>}
+                  <button className="adm-login-btn" disabled={submitting || code.length < 4} type="submit">
+                    {submitting ? <span className="adm-login-spinner" /> : 'Confirmer et se connecter'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { setStep('credentials'); setCode(''); setError(null); }}
+                    className="adm-btn ghost"
+                    style={{ width: '100%', marginTop: 10 }}
+                  >
+                    ← Retour
+                  </button>
+                </>
+              )}
             </form>
 
             <p className="adm-login-footer">AXONE S.A</p>
