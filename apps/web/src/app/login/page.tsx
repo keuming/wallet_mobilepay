@@ -4,12 +4,12 @@ import { useState, FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '../../contexts/AuthContext';
-import { ApiError } from '../../lib/apiClient';
+import { ApiError, storeTokens } from '../../lib/apiClient';
 import PasswordInput from '../../components/PasswordInput';
 import PhoneCountryInput from '../../components/PhoneCountryInput';
 
 export default function LoginPage() {
-  const { login, verifyLoginOtp } = useAuth();
+  const { login, verifyLoginOtp, refreshProfile } = useAuth();
   const router = useRouter();
   const [country, setCountry] = useState('CI');
   const [localNumber, setLocalNumber] = useState('');
@@ -26,7 +26,16 @@ export default function LoginPage() {
     setSubmitting(true);
     try {
       const res = await login(localNumber, password, country);
-      setMaskedPhone(res.maskedPhone);
+      // § Bascule temporaire (panne du fournisseur SMS) — le backend peut
+      // renvoyer directement les jetons sans exiger l'étape OTP tant que le
+      // service SMS n'est pas rétabli (piloté par SKIP_LOGIN_OTP côté API).
+      if (!res.requiresOtp && res.accessToken && res.refreshToken) {
+        storeTokens(res.accessToken, res.refreshToken);
+        await refreshProfile();
+        router.push('/dashboard');
+        return;
+      }
+      setMaskedPhone(res.maskedPhone ?? '');
       setStep('otp');
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Connexion impossible.');

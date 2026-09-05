@@ -220,6 +220,17 @@ export class AuthService {
     // bien le téléphone associé au compte, pas seulement le mot de passe.
     // Empêche un voleur du smartphone (ou un mot de passe compromis) d'accéder
     // au compte sans avoir aussi le SIM/téléphone en main pour recevoir le code.
+    //
+    // § SUSPENDU TEMPORAIREMENT (panne du fournisseur SMS, compte non
+    // crédité) — piloté par la variable d'environnement SKIP_LOGIN_OTP.
+    // Dès que le service SMS est rétabli, retirer (ou passer à "false")
+    // cette variable sur Render pour réactiver la vérification — AUCUN
+    // redéploiement de code n'est nécessaire pour ce va-et-vient.
+    if (this.config.get('SKIP_LOGIN_OTP') === 'true') {
+      const tokens = await this.issueTokens(user.id, user.role, user.phone);
+      return { ...tokens, requiresOtp: false };
+    }
+
     const recentOtp = await this.prisma.phoneVerification.findFirst({
       where: { phone: user.phone, purpose: 'LOGIN_2FA', createdAt: { gte: new Date(Date.now() - 60_000) } },
       orderBy: { createdAt: 'desc' },
