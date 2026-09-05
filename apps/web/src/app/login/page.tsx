@@ -51,7 +51,7 @@ export default function LoginPage() {
 
   return (
     <div className="mp-container mp-center-page">
-      <div className="mp-header" style={{ paddingBottom: 40, borderRadius: '0 0 32px 32px' }}>
+      <div className="mp-header" style={{ paddingBottom: 14, borderRadius: '0 0 32px 32px' }}>
         <div className="mp-brand-mark">
           <span className="dot" />
           MobilePay CI
@@ -61,7 +61,7 @@ export default function LoginPage() {
       </div>
 
       {step === 'credentials' && (
-        <form className="mp-form" onSubmit={handleSubmit}>
+        <form className="mp-form" style={{ paddingTop: 10 }} onSubmit={handleSubmit}>
           <PhoneCountryInput
             country={country}
             onCountryChange={setCountry}
