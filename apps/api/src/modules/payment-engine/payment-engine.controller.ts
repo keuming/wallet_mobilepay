@@ -24,6 +24,13 @@ export class PurchaseAirtimeDto {
   @IsEnum(['WALLET', 'MOBILE_MONEY', 'CARD'])
   paymentMethod: 'WALLET' | 'MOBILE_MONEY' | 'CARD';
 
+  // § Corrige une faille critique constatée à l'audit sécurité : ce champ
+  // n'existait pas du tout — l'achat de crédit/data via le solde wallet
+  // pouvait aboutir sans jamais vérifier le code secret de transaction.
+  @IsString()
+  @MinLength(4, { message: 'Code secret requis.' })
+  pin: string;
+
   @IsOptional()
   @IsString()
   operatorId?: string;
@@ -146,6 +153,7 @@ export class AirtimeController {
         cardId: dto.cardId,
         momoProvider: dto.momoProvider,
         countryCode: dto.countryCode,
+        pin: dto.pin,
       },
       idempotencyKey,
     );

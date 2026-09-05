@@ -1,8 +1,9 @@
 import { Body, Controller, Get, Post, Patch, UseGuards } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import { ApiTags } from '@nestjs/swagger';
 import { IsString } from 'class-validator';
 import { AuthService } from './auth.service';
-import { RegisterDto, LoginDto, RefreshDto, RegisterWithPinDto } from './dto/auth.dto';
+import { RegisterDto, LoginDto, RefreshDto, RegisterWithPinDto, VerifyLoginOtpDto } from './dto/auth.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { CurrentUser, AuthenticatedUser } from '../../common/decorators/current-user.decorator';
 
@@ -50,9 +51,21 @@ export class AuthController {
     return this.authService.registerWithPin(dto);
   }
 
+  // § Limite de débit renforcée (§ audit sécurité) — la protection globale
+  // (120 req/min/IP) est bien trop permissive pour empêcher une force brute
+  // sur le mot de passe ; 8 tentatives/minute suffisent largement à un usage
+  // légitime tout en rendant une attaque automatisée impraticable.
+  @Throttle({ default: { limit: 8, ttl: 60_000 } })
   @Post('login')
   login(@Body() dto: LoginDto) {
     return this.authService.login(dto);
+  }
+
+  /** Étape 2 de la connexion — code reçu par SMS (§ sécurité 2FA). */
+  @Throttle({ default: { limit: 8, ttl: 60_000 } })
+  @Post('login/verify-otp')
+  verifyLoginOtp(@Body() dto: VerifyLoginOtpDto) {
+    return this.authService.verifyLoginOtp(dto);
   }
 
   @Post('refresh')

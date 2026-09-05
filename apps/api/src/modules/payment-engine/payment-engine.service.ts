@@ -16,6 +16,8 @@ import { ReloadlyAdapter } from './providers/reloadly.adapter';
 import { ReloadlyGiftCardsAdapter } from './providers/reloadly-giftcards.adapter';
 import { ReloadlyUtilitiesAdapter, BillerType } from './providers/reloadly-utilities.adapter';
 import { PricingService } from '../pricing/pricing.service';
+import { LockoutService } from '../security/lockout.service';
+import { KycLimitsService } from '../security/kyc-limits.service';
 import { SmsAdapter } from '../sms/sms.adapter';
 import { normalizePhoneCI } from '../../common/utils/phone.util';
 
@@ -38,6 +40,8 @@ export class PaymentEngineService {
     private reloadlyGiftCards: ReloadlyGiftCardsAdapter,
     private reloadlyUtilities: ReloadlyUtilitiesAdapter,
     private pricingService: PricingService,
+    private lockout: LockoutService,
+    private kycLimits: KycLimitsService,
     private sms: SmsAdapter,
   ) {}
 
@@ -49,6 +53,7 @@ export class PaymentEngineService {
    * pour éviter toute dépendance circulaire entre modules.
    */
   private async verifyTransactionPin(userId: string, pin: string) {
+    await this.lockout.assertNotLocked(userId);
     const user = await this.prisma.user.findUniqueOrThrow({ where: { id: userId } });
     if (!user.transactionPinHash) {
       throw new BadRequestException(
@@ -56,7 +61,11 @@ export class PaymentEngineService {
       );
     }
     const valid = await bcrypt.compare(pin, user.transactionPinHash);
-    if (!valid) throw new UnauthorizedException('Code secret incorrect.');
+    if (!valid) {
+      await this.lockout.recordFailure(userId);
+      throw new UnauthorizedException('Code secret incorrect.');
+    }
+    await this.lockout.recordSuccess(userId);
   }
 
   /**
@@ -74,6 +83,7 @@ export class PaymentEngineService {
     if (existing) return existing;
 
     await this.verifyTransactionPin(userId, params.pin);
+    await this.kycLimits.assertWithinMonthlyLimit(userId, params.amount);
     const sender = await this.prisma.user.findUniqueOrThrow({ where: { id: userId } });
     const ourFee = await this.pricingService.computeOurFee(params.amount);
 
@@ -220,6 +230,7 @@ export class PaymentEngineService {
     if (existing) return existing;
 
     await this.verifyTransactionPin(params.payerUserId, params.pin);
+    await this.kycLimits.assertWithinMonthlyLimit(params.payerUserId, params.amount);
 
     const merchant = await this.prisma.merchant.findUniqueOrThrow({
       where: { id: params.merchantId },
@@ -321,6 +332,7 @@ export class PaymentEngineService {
     if (existing) return existing;
 
     await this.verifyTransactionPin(params.payerUserId, params.pin);
+    await this.kycLimits.assertWithinMonthlyLimit(params.payerUserId, params.amount);
 
     const card = await this.prisma.virtualCard.findFirst({
       where: { ownerUserId: params.payerUserId, status: 'ACTIVE' },
@@ -401,6 +413,7 @@ export class PaymentEngineService {
     if (existing) return existing;
 
     await this.verifyTransactionPin(params.payerUserId, params.pin);
+    await this.kycLimits.assertWithinMonthlyLimit(params.payerUserId, params.amount);
 
     const merchant = await this.prisma.merchant.findUniqueOrThrow({ where: { id: params.merchantId } });
     if (merchant.status !== 'ACTIVE') {
@@ -859,11 +872,18 @@ export class PaymentEngineService {
       cardId?: string;
       momoProvider?: string;
       countryCode?: string;
+      pin: string;
     },
     idempotencyKey: string,
   ) {
     const existing = await this.prisma.transaction.findUnique({ where: { idempotencyKey } });
     if (existing) return existing;
+
+    // § Vérifié une seule fois ici, avant dispatch — corrige une faille
+    // critique constatée à l'audit sécurité : le code secret n'était jamais
+    // vérifié du tout sur ce parcours (le champ n'existait même pas).
+    await this.verifyTransactionPin(userId, params.pin);
+    await this.kycLimits.assertWithinMonthlyLimit(userId, params.amount);
 
     switch (params.paymentMethod) {
       case 'CARD':
@@ -899,12 +919,13 @@ export class PaymentEngineService {
     if (existing) return existing;
 
     await this.verifyTransactionPin(userId, params.pin);
+    const amount = BigInt(Math.round(params.unitPrice * 100));
+    await this.kycLimits.assertWithinMonthlyLimit(userId, amount);
     const user = await this.prisma.user.findUniqueOrThrow({ where: { id: userId } });
     const product = await this.reloadlyGiftCards.getProduct(params.productId);
     if (!product) throw new NotFoundException('Carte cadeau introuvable.');
     const countryCode = params.countryCode ?? product.countryIso ?? 'CI';
 
-    const amount = BigInt(Math.round(params.unitPrice * 100));
     const ourFee = await this.pricingService.computeOurFee(amount);
 
     const transaction = await this.runSerializable(async (tx) => {
@@ -1021,6 +1042,7 @@ export class PaymentEngineService {
 
     await this.verifyTransactionPin(userId, params.pin);
     const amount = BigInt(Math.round(params.amount * 100));
+    await this.kycLimits.assertWithinMonthlyLimit(userId, amount);
     const ourFee = await this.pricingService.computeOurFee(amount);
 
     const transaction = await this.runSerializable(async (tx) => {

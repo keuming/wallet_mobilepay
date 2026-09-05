@@ -3,6 +3,7 @@ import * as bcrypt from 'bcrypt';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../config/prisma.service';
 import { LedgerService } from '../ledger/ledger.service';
+import { LockoutService } from '../security/lockout.service';
 
 const MAX_RETRIES = 3;
 
@@ -11,6 +12,7 @@ export class CollecteService {
   constructor(
     private prisma: PrismaService,
     private ledger: LedgerService,
+    private lockout: LockoutService,
   ) {}
 
   private async runSerializable<T>(fn: (tx: Prisma.TransactionClient) => Promise<T>): Promise<T> {
@@ -27,12 +29,17 @@ export class CollecteService {
   }
 
   private async verifyPin(userId: string, pin: string) {
+    await this.lockout.assertNotLocked(userId);
     const user = await this.prisma.user.findUniqueOrThrow({ where: { id: userId } });
     if (!user.transactionPinHash) {
       throw new BadRequestException("Créez d'abord un code secret (menu → Modifier mon code secret).");
     }
     const valid = await bcrypt.compare(pin, user.transactionPinHash);
-    if (!valid) throw new UnauthorizedException('Code secret incorrect.');
+    if (!valid) {
+      await this.lockout.recordFailure(userId);
+      throw new UnauthorizedException('Code secret incorrect.');
+    }
+    await this.lockout.recordSuccess(userId);
   }
 
   // ---------- Types de collecte ----------

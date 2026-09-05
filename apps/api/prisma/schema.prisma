@@ -177,6 +177,11 @@ model User {
   mfaEnabled Boolean @default(false)
   mfaSecret  String? // chiffré au repos (voir EncryptionService)
   transactionPinHash String? // code secret à 4-6 chiffres, hashé (bcrypt) — distinct du mot de passe de connexion
+  // § Verrouillage anti-force-brute (code secret ET mot de passe de connexion
+  // partagent ce compteur/verrou — un seul mécanisme, deux points d'entrée) —
+  // corrige l'absence totale de protection constatée à l'audit sécurité.
+  securityFailedAttempts Int       @default(0)
+  securityLockedUntil    DateTime?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

@@ -1,6 +1,7 @@
 import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
+import { APP_GUARD } from '@nestjs/core';
 import { ConfigModule } from '@nestjs/config';
-import { ThrottlerModule } from '@nestjs/throttler';
+import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 
 import { PrismaModule } from './config/prisma.module';
 import { AuthModule } from './modules/auth/auth.module';
@@ -19,6 +20,8 @@ import { AdminModule } from './modules/admin/admin.module';
 import { CardsModule } from './modules/cards/cards.module';
 import { PricingModule } from './modules/pricing/pricing.module';
 import { ExpensesModule } from './modules/expenses/expenses.module';
+import { SecurityModule } from './modules/security/security.module';
+import { CollecteModule } from './modules/collecte/collecte.module';
 import { IdempotencyMiddleware } from './common/middleware/idempotency.middleware';
 
 @Module({
@@ -42,6 +45,14 @@ import { IdempotencyMiddleware } from './common/middleware/idempotency.middlewar
     CardsModule,
     PricingModule,
     ExpensesModule,
+    SecurityModule,
+  ],
+  providers: [
+    // § Corrige une faille critique constatée à l'audit sécurité : le
+    // ThrottlerModule était configuré (120 req/min/IP) mais son garde
+    // n'était enregistré nulle part — la limite n'était donc JAMAIS
+    // appliquée, sur aucune route de l'API.
+    { provide: APP_GUARD, useClass: ThrottlerGuard },
   ],
 })
 export class AppModule implements NestModule {

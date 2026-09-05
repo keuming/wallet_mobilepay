@@ -7,12 +7,14 @@ import { AuthController } from './auth.controller';
 import { JwtStrategy } from './jwt.strategy';
 import { WalletsModule } from '../wallets/wallets.module';
 import { SmsModule } from '../sms/sms.module';
+import { SecurityModule } from '../security/security.module';
 
 @Module({
   imports: [
     PassportModule,
     WalletsModule,
     SmsModule,
+    SecurityModule,
     JwtModule.registerAsync({
       imports: [ConfigModule],
       inject: [ConfigService],

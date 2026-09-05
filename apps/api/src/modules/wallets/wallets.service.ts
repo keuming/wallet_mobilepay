@@ -12,6 +12,8 @@ import { LedgerService } from '../ledger/ledger.service';
 import { normalizePhoneCandidates } from '../../common/utils/phone.util';
 import { TransferDto } from './dto/wallets.dto';
 import { PricingService } from '../pricing/pricing.service';
+import { LockoutService } from '../security/lockout.service';
+import { KycLimitsService } from '../security/kyc-limits.service';
 
 const MAX_SERIALIZATION_RETRIES = 3;
 
@@ -21,6 +23,8 @@ export class WalletsService {
     private prisma: PrismaService,
     private ledger: LedgerService,
     private pricingService: PricingService,
+    private lockout: LockoutService,
+    private kycLimits: KycLimitsService,
   ) {}
 
   async getWalletByUserId(userId: string) {
@@ -157,14 +161,18 @@ export class WalletsService {
       this.prisma.user.findFirst({ where: { phone: { in: normalizePhoneCandidates(dto.toPhone) } } }),
     ]);
 
+    await this.lockout.assertNotLocked(senderId);
     if (!sender.transactionPinHash) {
       throw new BadRequestException(
         'Vous devez créer un code secret avant d\'envoyer de l\'argent (menu → Modifier mon code secret).',
       );
     }
     if (!(await bcrypt.compare(dto.pin, sender.transactionPinHash))) {
+      await this.lockout.recordFailure(senderId);
       throw new UnauthorizedException('Code secret incorrect.');
     }
+    await this.lockout.recordSuccess(senderId);
+    await this.kycLimits.assertWithinMonthlyLimit(senderId, BigInt(dto.amount));
 
     if (!recipientUser) {
       throw new NotFoundException('Aucun compte MobilePay associé à ce numéro.');

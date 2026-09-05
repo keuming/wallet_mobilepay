@@ -12,7 +12,8 @@ import { PrismaService } from '../../config/prisma.service';
 import { WalletsService } from '../wallets/wallets.service';
 import { SmsAdapter } from '../sms/sms.adapter';
 import { normalizePhoneCI, normalizePhoneCandidates } from '../../common/utils/phone.util';
-import { RegisterDto, LoginDto, RegisterWithPinDto } from './dto/auth.dto';
+import { LockoutService } from '../security/lockout.service';
+import { RegisterDto, LoginDto, RegisterWithPinDto, VerifyLoginOtpDto } from './dto/auth.dto';
 
 const BCRYPT_ROUNDS = 12;
 
@@ -24,6 +25,7 @@ export class AuthService {
     private config: ConfigService,
     private wallets: WalletsService,
     private sms: SmsAdapter,
+    private lockout: LockoutService,
   ) {}
 
   /**
@@ -197,9 +199,12 @@ export class AuthService {
       ? [normalizePhoneCI(dto.phone, dto.country as any), ...normalizePhoneCandidates(dto.phone)]
       : normalizePhoneCandidates(dto.phone);
     const user = await this.prisma.user.findFirst({ where: { phone: { in: candidates } } });
+    if (user) await this.lockout.assertNotLocked(user.id);
     if (!user || !(await bcrypt.compare(dto.password, user.passwordHash))) {
+      if (user) await this.lockout.recordFailure(user.id);
       throw new UnauthorizedException('Identifiants invalides.');
     }
+    await this.lockout.recordSuccess(user.id);
     if (user.isBlocked) {
       throw new UnauthorizedException('Ce compte a été suspendu. Contactez le support.');
     }
@@ -210,6 +215,53 @@ export class AuthService {
     if (dto.country && dto.country !== user.country) {
       await this.prisma.user.update({ where: { id: user.id }, data: { country: dto.country } });
     }
+
+    // § Sécurité critique — confirme que la personne qui se connecte détient
+    // bien le téléphone associé au compte, pas seulement le mot de passe.
+    // Empêche un voleur du smartphone (ou un mot de passe compromis) d'accéder
+    // au compte sans avoir aussi le SIM/téléphone en main pour recevoir le code.
+    const recentOtp = await this.prisma.phoneVerification.findFirst({
+      where: { phone: user.phone, purpose: 'LOGIN_2FA', createdAt: { gte: new Date(Date.now() - 60_000) } },
+      orderBy: { createdAt: 'desc' },
+    });
+    if (!recentOtp) {
+      const code = Math.floor(100000 + Math.random() * 900000).toString();
+      const codeHash = await bcrypt.hash(code, 10);
+      await this.prisma.phoneVerification.create({
+        data: { phone: user.phone, codeHash, purpose: 'LOGIN_2FA', expiresAt: new Date(Date.now() + 10 * 60_000) },
+      });
+      await this.sms.send(user.phone, `MobilePay CI : ton code de connexion est ${code}. Ne le partage avec personne.`);
+    }
+
+    // § Numéro masqué — évite d'exposer le numéro complet avant confirmation.
+    const maskedPhone = user.phone.replace(/(\+\d{3,5})\d+(\d{2})$/, '$1••••••$2');
+    return { requiresOtp: true, maskedPhone };
+  }
+
+  /** Confirme le code de connexion reçu par SMS, puis émet les jetons. */
+  async verifyLoginOtp(dto: VerifyLoginOtpDto) {
+    const candidates = dto.country
+      ? [normalizePhoneCI(dto.phone, dto.country as any), ...normalizePhoneCandidates(dto.phone)]
+      : normalizePhoneCandidates(dto.phone);
+    const user = await this.prisma.user.findFirst({ where: { phone: { in: candidates } } });
+    if (user) await this.lockout.assertNotLocked(user.id);
+    if (!user || !(await bcrypt.compare(dto.password, user.passwordHash))) {
+      if (user) await this.lockout.recordFailure(user.id);
+      throw new UnauthorizedException('Identifiants invalides.');
+    }
+    await this.lockout.recordSuccess(user.id);
+    if (user.isBlocked) {
+      throw new UnauthorizedException('Ce compte a été suspendu. Contactez le support.');
+    }
+
+    const verification = await this.prisma.phoneVerification.findFirst({
+      where: { phone: user.phone, purpose: 'LOGIN_2FA', expiresAt: { gte: new Date() } },
+      orderBy: { createdAt: 'desc' },
+    });
+    if (!verification || !(await bcrypt.compare(dto.code, verification.codeHash))) {
+      throw new UnauthorizedException('Code de connexion invalide ou expiré.');
+    }
+    await this.prisma.phoneVerification.delete({ where: { id: verification.id } });
 
     return this.issueTokens(user.id, user.role, user.phone);
   }
