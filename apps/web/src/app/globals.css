@@ -148,11 +148,18 @@ h1, h2, h3 {
 
 /* § Centrage vertical (§ page de connexion — ne doit jamais nécessiter de
    défilement sur un écran normal) — modificateur additif, n'affecte que
-   les pages qui l'utilisent explicitement, pas .mp-container globalement. */
+   les pages qui l'utilisent explicitement, pas .mp-container globalement.
+   "justify-content: center" seul est un piège CSS classique : si le
+   contenu dépasse la hauteur de l'écran (petit écran, zoom), le centrage
+   peut rendre le haut du contenu inaccessible, y compris au défilement par
+   clic central — corrigé avec des marges automatiques "safe centering" qui
+   n'empêchent jamais le défilement normal quand il est réellement requis. */
 .mp-center-page {
   display: flex;
   flex-direction: column;
-  justify-content: center;
+  justify-content: center; /* repli pour navigateurs sans support de "safe" */
+  justify-content: safe center;
+  overflow-y: auto;
 }
 
 /* ---------- Header / Hero — s'estompe dans le fond de page (§ Finza) ---------- */
