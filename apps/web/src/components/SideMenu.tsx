@@ -125,6 +125,10 @@ export default function SideMenu({ open, onClose }: SideMenuProps) {
             <span className="icon">⏻</span>
             Déconnexion
           </button>
+
+          <p style={{ textAlign: 'center', fontSize: 11, color: 'var(--fz-text-secondary)', margin: '20px 0 8px', opacity: 0.7 }}>
+            © {new Date().getFullYear()} ORZAYAH CI
+          </p>
         </div>
       </div>
     </>

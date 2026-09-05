@@ -6,7 +6,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useTheme, ThemeId } from '../contexts/ThemeContext';
 
 const THEME_OPTIONS: { id: ThemeId; label: string; swatch: string }[] = [
-  { id: 'light', label: 'Clair', swatch: '#0f9d58' },
+  { id: 'light', label: 'Clair', swatch: '#00d27a' },
   { id: 'dark', label: 'Sombre', swatch: '#66fe4c' },
   { id: 'maroon', label: 'Marron', swatch: '#d97b4f' },
   { id: 'turquoise', label: 'Turquoise', swatch: '#2dd4bf' },
@@ -119,6 +119,10 @@ export default function BusinessSideMenu({ open, onClose }: BusinessSideMenuProp
             <span className="icon">⏻</span>
             Déconnexion
           </button>
+
+          <p style={{ textAlign: 'center', fontSize: 11, color: 'var(--fz-text-secondary)', margin: '20px 0 8px', opacity: 0.7 }}>
+            © {new Date().getFullYear()} ORZAYAH CI
+          </p>
         </div>
       </div>
     </>

@@ -59,6 +59,9 @@ export default function AdminShell({ title, children }: { title: string; childre
             </Link>
           ))}
         </nav>
+        <p style={{ textAlign: 'center', fontSize: 10.5, color: 'var(--adm-muted)', margin: '16px 0 8px', opacity: 0.7 }}>
+          © {new Date().getFullYear()} ORZAYAH CI
+        </p>
       </aside>
       <main className="adm-main">
         <div className="adm-topbar">
