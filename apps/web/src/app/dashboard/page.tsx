@@ -128,7 +128,9 @@ export default function DashboardPage() {
         <button onClick={() => setMenuOpen(true)} className="fz-notif-btn" title="Menu">
           ☰
         </button>
-        <img src="/brand/mobilepay-logo-badge-dark.svg" alt="MobilePay" className="fz-header-logo" />
+        <div className="fz-header-logo-wrap">
+          <img src="/brand/mobilepay-logo-badge-dark.svg" alt="MobilePay" className="fz-header-logo" />
+        </div>
         <Link href="/profil" className="fz-profile" title="Mon profil">
           {user.profilePhotoBase64 ? (
             <img src={user.profilePhotoBase64} alt="Profil" className="fz-avatar-photo" />
