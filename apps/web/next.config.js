@@ -5,8 +5,16 @@ const withPWA = require('@ducanh2912/next-pwa').default({
   aggressiveFrontEndNavCaching: true,
   reloadOnOnline: true,
   disable: process.env.NODE_ENV === 'development',
+  // § Corrige une cause probable du bug "impossible de scroller" persistant
+  // sur la version APK malgré les correctifs déployés : sans ceci, un
+  // nouveau service worker peut rester "en attente" plusieurs redémarrages
+  // avant de vraiment prendre effet — l'app sert alors un CSS/JS obsolète
+  // qui contient encore les anciens bugs déjà corrigés côté code.
+  skipWaiting: true,
   workboxOptions: {
     disableDevLogs: true,
+    skipWaiting: true,
+    clientsClaim: true,
   },
 });
 
