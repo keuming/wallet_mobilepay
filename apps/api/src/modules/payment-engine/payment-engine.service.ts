@@ -436,6 +436,7 @@ export class PaymentEngineService {
       provider: params.provider,
       country: merchant.country,
     });
+    await this.sendPayInGuidanceSms(params.customerPhone, params.provider, result.nextActionType, result.redirectUrl);
 
     await this.prisma.transaction.update({
       where: { id: transaction.id },
@@ -508,6 +509,7 @@ export class PaymentEngineService {
       provider: params.provider,
       country: merchant.country,
     });
+    await this.sendPayInGuidanceSms(params.customerPhone, params.provider, result.nextActionType, result.redirectUrl);
 
     await this.prisma.transaction.update({
       where: { id: transaction.id },
@@ -560,6 +562,55 @@ export class PaymentEngineService {
    * SANS compte MobilePay paie via Mobile Money externe. Créé une seule fois,
    * réutilisé ensuite (jamais de mot de passe fonctionnel, jamais connecté).
    */
+  /**
+   * Envoie le lien de validation par SMS, signé MobilePay, au numéro qui
+   * sert de compte pour cette transaction — obligatoire pour Wave, quel que
+   * soit le type de PAY-IN (dépôt, demande de paiement particulier,
+   * encaissement marchand), car sans ce lien ouvert manuellement par le
+   * client, aucune confirmation n'arrive jamais côté HUB2.
+   */
+  private async sendValidationLinkIfNeeded(phone: string, nextActionType?: string, nextActionUrl?: string) {
+    if (nextActionType === 'redirect' && nextActionUrl) {
+      await this.sms.send(phone, `MobilePay CI : pour valider ton paiement, ouvre ce lien — ${nextActionUrl}`);
+    }
+  }
+
+  /**
+   * SMS d'orientation envoyé juste après l'initiation d'un PAY-IN Mobile
+   * Money (§ sécurité/UX demandée) — le client n'est pas toujours en train
+   * de regarder l'app au moment où l'opérateur exige une action, donc on
+   * lui envoie directement l'information utile par SMS, propre à chaque
+   * circuit HUB2 : Wave redirige vers un lien à ouvrir, Orange (et les
+   * opérateurs "otp") demandent de composer le code de confirmation.
+   */
+  private async sendPayInGuidanceSms(
+    phone: string,
+    provider: string | undefined,
+    nextActionType: string | undefined,
+    nextActionUrl: string | undefined,
+  ) {
+    if (!phone) return;
+    try {
+      if (nextActionType === 'redirection' && nextActionUrl) {
+        await this.sms.send(
+          phone,
+          `MobilePay CI : pour valider ton paiement ${provider ?? 'Mobile Money'}, ouvre ce lien maintenant : ${nextActionUrl}`,
+        );
+      } else if (nextActionType === 'otp') {
+        await this.sms.send(
+          phone,
+          `MobilePay CI : compose le code de confirmation ${provider ?? 'Mobile Money'} habituel sur ton téléphone, puis saisis-le dans l'application pour valider ton paiement.`,
+        );
+      }
+      // "ussd" : l'opérateur affiche déjà une invite directement sur le
+      // téléphone du client — pas de SMS supplémentaire nécessaire ici.
+    } catch {
+      // Un échec d'envoi de ce SMS d'orientation ne doit jamais faire
+      // échouer le paiement lui-même — le client garde de toute façon
+      // l'information affichée dans l'app/la page de paiement.
+    }
+  }
+
   private async getOrCreateGuestUser() {
     const GUEST_PHONE = '+225000000GUEST';
     let guest = await this.prisma.user.findUnique({ where: { phone: GUEST_PHONE } });
@@ -677,6 +728,7 @@ export class PaymentEngineService {
       provider: params.provider,
       country: recipientUser.country,
     });
+    await this.sendPayInGuidanceSms(params.customerPhone, params.provider, result.nextActionType, result.redirectUrl);
 
     await this.prisma.transaction.update({
       where: { id: transaction.id },
@@ -1232,6 +1284,7 @@ export class PaymentEngineService {
       provider: params.momoProvider,
       country: countryCode,
     });
+    await this.sendPayInGuidanceSms(user.phone, params.momoProvider, collection.nextActionType, collection.redirectUrl);
 
     await this.prisma.transaction.update({
       where: { id: transaction.id },
@@ -1369,6 +1422,7 @@ export class PaymentEngineService {
       provider: params.operator.toLowerCase(),
       country: user.country,
     });
+    await this.sendPayInGuidanceSms(normalizePhoneCI(params.accountNumber, user.country as any), params.operator.toLowerCase(), result.nextActionType, result.redirectUrl);
 
     await this.prisma.transaction.update({
       where: { id: transaction.id },
