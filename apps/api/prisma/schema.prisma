@@ -158,6 +158,11 @@ model User {
   passwordHash String
   firstName    String
   country      String   @default("CI") // code ISO 3166-1 alpha-2 — pays de résidence, pilote HUB2/Reloadly et le pays par défaut des transferts
+  // Photo de profil (§ affichée à la place de l'initiale sur l'accueil) —
+  // encodée en base64, même simplification MVP assumée que pour les pièces
+  // KYC (voir KycDossier.attachments) ; en production, à migrer vers un
+  // service de stockage dédié (S3/Cloudinary).
+  profilePhotoBase64 String?
   lastName     String
   role         UserRole @default(PARTICULIER)
 

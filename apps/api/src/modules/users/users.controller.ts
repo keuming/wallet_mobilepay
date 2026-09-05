@@ -21,6 +21,12 @@ export class UpdateProfileDto {
   email?: string;
 }
 
+export class UpdatePhotoDto {
+  @IsOptional()
+  @IsString()
+  photoBase64?: string | null;
+}
+
 @ApiTags('users')
 @ApiBearerAuth()
 @UseGuards(JwtAuthGuard)
@@ -36,5 +42,10 @@ export class UsersController {
   @Patch()
   updateMe(@CurrentUser() user: AuthenticatedUser, @Body() dto: UpdateProfileDto) {
     return this.usersService.updateProfile(user.userId, dto);
+  }
+
+  @Patch('photo')
+  updatePhoto(@CurrentUser() user: AuthenticatedUser, @Body() dto: UpdatePhotoDto) {
+    return this.usersService.updatePhoto(user.userId, dto.photoBase64 ?? null);
   }
 }

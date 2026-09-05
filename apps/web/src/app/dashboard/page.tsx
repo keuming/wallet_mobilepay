@@ -51,7 +51,7 @@ const TYPE_LABELS: Record<string, string> = {
 };
 
 export default function DashboardPage() {
-  const { user, loading, logout } = useAuth();
+  const { user, loading } = useAuth();
   const router = useRouter();
   const [wallet, setWallet] = useState<Wallet | null>(null);
   const [entries, setEntries] = useState<LedgerEntry[]>([]);
@@ -122,16 +122,17 @@ export default function DashboardPage() {
       <div className="fz-glow" />
 
       <div className="fz-header-row">
-        <div className="fz-profile" onClick={() => setMenuOpen(true)}>
-          <span className="fz-avatar">{user.firstName.charAt(0).toUpperCase()}</span>
-        </div>
-        <button
-          onClick={() => logout().then(() => router.push('/login'))}
-          className="fz-notif-btn"
-          title="Déconnexion"
-        >
-          ⏻
+        <button onClick={() => setMenuOpen(true)} className="fz-notif-btn" title="Menu">
+          ☰
         </button>
+        <img src="/brand/mobilepay-logo-dark-bg.svg" alt="MobilePay" className="fz-header-logo" />
+        <Link href="/profil" className="fz-profile" title="Mon profil">
+          {user.profilePhotoBase64 ? (
+            <img src={user.profilePhotoBase64} alt="Profil" className="fz-avatar-photo" />
+          ) : (
+            <span className="fz-avatar">{user.firstName.charAt(0).toUpperCase()}</span>
+          )}
+        </Link>
       </div>
 
       <SideMenu open={menuOpen} onClose={() => setMenuOpen(false)} />

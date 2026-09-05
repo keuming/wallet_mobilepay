@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../../config/prisma.service';
 
 @Injectable()
@@ -17,6 +17,7 @@ export class UsersService {
         role: true,
         kycLevel: true,
         country: true,
+        profilePhotoBase64: true,
         createdAt: true,
       },
     });
@@ -47,9 +48,29 @@ export class UsersService {
         role: true,
         kycLevel: true,
         country: true,
+        profilePhotoBase64: true,
         createdAt: true,
       },
     });
     return updated;
+  }
+
+  /**
+   * Met à jour la photo de profil (§ affichée à la place de l'initiale sur
+   * l'accueil et dans le menu). Garde-fou de taille : au-delà de ~2 Mo de
+   * base64 (≈ 1,5 Mo d'image réelle), on refuse plutôt que de laisser la
+   * base de données grossir sans contrôle — largement suffisant pour une
+   * photo de profil, qui devrait de toute façon être compressée côté client.
+   */
+  async updatePhoto(userId: string, photoBase64: string | null) {
+    if (photoBase64 && photoBase64.length > 2_000_000) {
+      throw new BadRequestException('Image trop volumineuse (2 Mo maximum).');
+    }
+    await this.prisma.user.findUniqueOrThrow({ where: { id: userId } });
+    return this.prisma.user.update({
+      where: { id: userId },
+      data: { profilePhotoBase64: photoBase64 },
+      select: { id: true, profilePhotoBase64: true },
+    });
   }
 }

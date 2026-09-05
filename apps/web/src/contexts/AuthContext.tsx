@@ -11,12 +11,14 @@ interface UserProfile {
   role: string;
   kycLevel: string;
   country: string;
+  profilePhotoBase64?: string | null;
 }
 
 interface AuthContextValue {
   user: UserProfile | null;
   loading: boolean;
-  login: (phone: string, password: string, country?: string) => Promise<void>;
+  login: (phone: string, password: string, country?: string) => Promise<{ requiresOtp: boolean; maskedPhone: string }>;
+  verifyLoginOtp: (phone: string, password: string, code: string, country?: string) => Promise<void>;
   registerWithPin: (data: { phone: string; firstName: string; lastName: string; email?: string; pin: string; country?: string }) => Promise<void>;
   logout: () => Promise<void>;
   refreshProfile: () => Promise<void>;
@@ -43,10 +45,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const login = async (phone: string, password: string, country?: string) => {
-    const result = await apiFetch<{ accessToken: string; refreshToken: string }>('/auth/login', {
+    return apiFetch<{ requiresOtp: boolean; maskedPhone: string }>('/auth/login', {
       method: 'POST',
       auth: false,
       body: JSON.stringify({ phone, password, country }),
+    });
+  };
+
+  const verifyLoginOtp = async (phone: string, password: string, code: string, country?: string) => {
+    const result = await apiFetch<{ accessToken: string; refreshToken: string }>('/auth/login/verify-otp', {
+      method: 'POST',
+      auth: false,
+      body: JSON.stringify({ phone, password, code, country }),
     });
     storeTokens(result.accessToken, result.refreshToken);
     await refreshProfile();
@@ -69,7 +79,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, registerWithPin, logout, refreshProfile }}>
+    <AuthContext.Provider value={{ user, loading, login, verifyLoginOtp, registerWithPin, logout, refreshProfile }}>
       {children}
     </AuthContext.Provider>
   );

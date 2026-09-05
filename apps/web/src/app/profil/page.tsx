@@ -15,6 +15,7 @@ interface FullProfile {
   lastName: string;
   kycLevel: string;
   createdAt: string;
+  profilePhotoBase64?: string | null;
 }
 
 const KYC_LABELS: Record<string, string> = {
@@ -35,6 +36,8 @@ export default function ProfilPage() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const [photoError, setPhotoError] = useState<string | null>(null);
 
   useEffect(() => {
     if (loading) return;
@@ -70,6 +73,58 @@ export default function ProfilPage() {
     }
   };
 
+  /**
+   * Redimensionne l'image côté client (300x300 max, JPEG compressé) avant
+   * envoi — une photo de profil n'a jamais besoin d'être plus grande, et ça
+   * évite d'approcher la limite serveur de 2 Mo pour un simple portrait.
+   */
+  const resizeImage = (file: File): Promise<string> =>
+    new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const img = new Image();
+        img.onload = () => {
+          const size = 300;
+          const canvas = document.createElement('canvas');
+          canvas.width = size;
+          canvas.height = size;
+          const ctx = canvas.getContext('2d');
+          if (!ctx) return reject(new Error('Canvas indisponible.'));
+          // Recadrage carré centré, quelle que soit la forme d'origine.
+          const minSide = Math.min(img.width, img.height);
+          const sx = (img.width - minSide) / 2;
+          const sy = (img.height - minSide) / 2;
+          ctx.drawImage(img, sx, sy, minSide, minSide, 0, 0, size, size);
+          resolve(canvas.toDataURL('image/jpeg', 0.82));
+        };
+        img.onerror = () => reject(new Error("Impossible de lire l'image."));
+        img.src = reader.result as string;
+      };
+      reader.onerror = () => reject(new Error('Échec de la lecture du fichier.'));
+      reader.readAsDataURL(file);
+    });
+
+  const handlePhotoSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = ''; // permet de resélectionner le même fichier ensuite
+    if (!file) return;
+    setPhotoError(null);
+    setUploadingPhoto(true);
+    try {
+      const resized = await resizeImage(file);
+      const updated = await apiFetch<{ id: string; profilePhotoBase64: string }>('/users/me/photo', {
+        method: 'PATCH',
+        body: JSON.stringify({ photoBase64: resized }),
+      });
+      setProfile((p) => (p ? { ...p, profilePhotoBase64: updated.profilePhotoBase64 } : p));
+      await refreshProfile();
+    } catch (err) {
+      setPhotoError(err instanceof ApiError ? err.message : "Échec de l'envoi de la photo.");
+    } finally {
+      setUploadingPhoto(false);
+    }
+  };
+
   if (loading || !user || !profile) return null;
 
   const initials = `${profile.firstName.charAt(0)}${profile.lastName.charAt(0)}`.toUpperCase();
@@ -84,7 +139,18 @@ export default function ProfilPage() {
       </div>
 
       <div className="mp-section" style={{ textAlign: 'center', paddingBottom: 0 }}>
-        <div className="mp-profile-avatar">{initials}</div>
+        <div style={{ position: 'relative', display: 'inline-block' }}>
+          {profile.profilePhotoBase64 ? (
+            <img src={profile.profilePhotoBase64} alt="Photo de profil" className="mp-profile-avatar-photo" />
+          ) : (
+            <div className="mp-profile-avatar">{initials}</div>
+          )}
+          <label className="mp-profile-photo-edit" title="Changer la photo">
+            {uploadingPhoto ? '...' : '📷'}
+            <input type="file" accept="image/*" onChange={handlePhotoSelect} disabled={uploadingPhoto} style={{ display: 'none' }} />
+          </label>
+        </div>
+        {photoError && <div className="mp-error" style={{ marginTop: 8 }}>{photoError}</div>}
         <div className="mp-kyc-badge">✓ {KYC_LABELS[profile.kycLevel] ?? profile.kycLevel}</div>
       </div>
 
