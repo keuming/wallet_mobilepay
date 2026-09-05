@@ -146,6 +146,15 @@ h1, h2, h3 {
   overflow-x: hidden;
 }
 
+/* § Centrage vertical (§ page de connexion — ne doit jamais nécessiter de
+   défilement sur un écran normal) — modificateur additif, n'affecte que
+   les pages qui l'utilisent explicitement, pas .mp-container globalement. */
+.mp-center-page {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
 /* ---------- Header / Hero — s'estompe dans le fond de page (§ Finza) ---------- */
 
 .mp-header {
