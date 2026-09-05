@@ -60,6 +60,7 @@ export default function DashboardPage() {
   const [shareStatus, setShareStatus] = useState<Record<string, 'shared' | 'copied' | 'failed'>>({});
   const [menuOpen, setMenuOpen] = useState(false);
   const [balanceHidden, setBalanceHidden] = useState(false);
+  const [collecteTotal, setCollecteTotal] = useState(0);
 
   useEffect(() => {
     if (loading) return;
@@ -70,10 +71,12 @@ export default function DashboardPage() {
     Promise.all([
       apiFetch<Wallet>('/wallet'),
       apiFetch<{ entries: LedgerEntry[] }>('/wallet/transactions?pageSize=10'),
+      apiFetch<{ balance: string }[]>('/collecte/types').catch(() => []),
     ])
-      .then(([w, history]) => {
+      .then(([w, history, collecteTypes]) => {
         setWallet(w);
         setEntries(history.entries);
+        setCollecteTotal(collecteTypes.reduce((sum, t) => sum + Number(t.balance), 0));
       })
       .finally(() => setFetching(false));
   }, [user, loading, router]);
@@ -183,6 +186,13 @@ export default function DashboardPage() {
             <span className="fz-mini-amount">{formatFcfa(totalReceived)} F</span>
           </div>
         </div>
+        <Link href="/collecte" className="fz-mini-card collecte">
+          <span className="fz-mini-icon">🗃️</span>
+          <div>
+            <span className="fz-mini-label">Collecte</span>
+            <span className="fz-mini-amount">{formatFcfa(collecteTotal)} F</span>
+          </div>
+        </Link>
       </div>
 
       <div className="fz-promo-banner">
@@ -198,6 +208,7 @@ export default function DashboardPage() {
         <div className="fz-pill-row">
           <Link href="/cartes-cadeaux" className="fz-pill-btn">🎁 Cartes cadeaux</Link>
           <Link href="/factures" className="fz-pill-btn">🧾 Factures</Link>
+          <Link href="/epargne" className="fz-pill-btn gold">🥇 Épargne Gold</Link>
         </div>
       </div>
 

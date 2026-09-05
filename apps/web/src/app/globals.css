@@ -460,20 +460,34 @@ h1, h2, h3 {
 .fz-pill-btn:active {
   transform: scale(0.96);
 }
+.fz-pill-btn.gold {
+  background: linear-gradient(120deg, #f7d774 0%, #d4a017 55%, #b8860b 100%);
+  border: 1px solid #b8860b;
+  color: #3d2b00;
+  font-weight: 700;
+  box-shadow: 0 3px 10px -3px rgba(184, 134, 11, 0.5);
+}
+.fz-pill-btn.gold:hover {
+  background: linear-gradient(120deg, #f9e08a 0%, #dcae2a 55%, #c2940f 100%);
+}
 
 .fz-mini-row {
   display: flex;
-  gap: 10px;
+  gap: 6px;
   padding: 0 20px;
   margin-top: 12px;
 }
 .fz-mini-card {
   flex: 1;
-  padding: 12px;
+  min-width: 0;
+  padding: 10px 6px;
   border-radius: 14px;
   display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: 10px;
+  justify-content: center;
+  gap: 3px;
+  text-align: center;
 }
 .fz-mini-card.sent {
   background: var(--fz-accent);
@@ -482,31 +496,43 @@ h1, h2, h3 {
   background: var(--fz-surface);
   border: 1px solid var(--fz-border);
 }
+.fz-mini-card.collecte {
+  background: var(--fz-surface);
+  border: 1px solid var(--fz-border);
+  cursor: pointer;
+  text-decoration: none;
+}
 .fz-mini-card .fz-mini-icon {
-  font-size: 18px;
+  font-size: 16px;
 }
 .fz-mini-card .fz-mini-label {
-  font-size: 11.5px;
+  font-size: 9.5px;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.02em;
   display: block;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
 }
 .fz-mini-card.sent .fz-mini-label {
   color: color-mix(in srgb, var(--fz-text-on-accent) 70%, transparent);
 }
-.fz-mini-card.received .fz-mini-label {
+.fz-mini-card.received .fz-mini-label,
+.fz-mini-card.collecte .fz-mini-label {
   color: var(--fz-text-secondary);
 }
 .fz-mini-card .fz-mini-amount {
-  font-size: 15.5px;
+  font-size: 13px;
   font-weight: 700;
   display: block;
 }
 .fz-mini-card.sent .fz-mini-amount {
   color: var(--fz-text-on-accent);
 }
-.fz-mini-card.received .fz-mini-amount {
+.fz-mini-card.received .fz-mini-amount,
+.fz-mini-card.collecte .fz-mini-amount {
   color: var(--fz-text-primary);
 }
 

@@ -76,6 +76,10 @@ enum TransactionType {
   UTILITY_PAYMENT
   CARD_LOAD // chargement d'une carte virtuelle depuis le wallet
   CARD_UNLOAD // reversement du solde carte vers le wallet
+  COLLECTE_LOAD // approvisionnement d'une collecte depuis le wallet
+  COLLECTE_UNLOAD // retrait d'une collecte vers le wallet
+  GOLD_LOAD // approvisionnement de l'Épargne Gold depuis le wallet
+  GOLD_UNLOAD // retrait de l'Épargne Gold vers le wallet
   SETTLEMENT // règlement marchand -> banque
   REFUND
   FEE
@@ -303,6 +307,39 @@ model ExpenseCategory {
   @@map("expense_categories")
 }
 
+// Type de collecte (§ créé librement par l'utilisateur — ex: "Voyage",
+// "Tontine famille", "Projet"). Chaque type conserve son propre solde,
+// alimenté ou retiré depuis le wallet principal — jamais directement
+// dépensable ailleurs, il faut d'abord le retirer vers le wallet.
+model CollectionType {
+  id        String   @id @default(uuid())
+  userId    String
+  label     String
+  icon      String? // emoji, ex: "✈️"
+  balance   BigInt   @default(0)
+  createdAt DateTime @default(now())
+
+  @@unique([userId, label])
+  @@index([userId])
+  @@map("collection_types")
+}
+
+// Type d'épargne personnalisé (§ "Épargne Gold" — même logique que Collecte,
+// pots multiples nommés par l'utilisateur, alimentés/retirés depuis le
+// wallet principal, jamais directement dépensables ailleurs).
+model SavingsType {
+  id        String   @id @default(uuid())
+  userId    String
+  label     String
+  icon      String? // emoji, ex: "🥇"
+  balance   BigInt   @default(0)
+  createdAt DateTime @default(now())
+
+  @@unique([userId, label])
+  @@index([userId])
+  @@map("savings_types")
+}
+
 // Tarification particulier (§ paramétrable en back-office — permet des
 // périodes promotionnelles sans redéploiement). Un seul enregistrement actif
 // à la fois ; les frais HUB2 eux-mêmes ne sont jamais paramétrés ici — ils
@@ -518,6 +555,7 @@ model Wallet {
   currency       String @default("XOF")
   cachedBalance  BigInt @default(0) // solde disponible, en centimes — MAJ transactionnelle uniquement
   pendingBalance BigInt @default(0) // fonds en attente de règlement (marchand)
+  goldSavingsBalance BigInt @default(0) // Épargne Gold (§ collecte dédiée, un seul pot par particulier)
   isFrozen       Boolean @default(false)
 
   version Int @default(0) // optimistic locking pour les écritures concurrentes
@@ -570,6 +608,8 @@ model Transaction {
   initiatedByUserId String
   description       String?
   expenseCategoryId String?
+  collectionTypeId  String?
+  savingsTypeId     String?
 
   idempotencyKey String? @unique // évite les doublons sur retry client
 

@@ -8,7 +8,7 @@ import { useTheme, ThemeId } from '../contexts/ThemeContext';
 const WHATSAPP_AGENT_NUMBER = '2250504921096';
 
 const THEME_OPTIONS: { id: ThemeId; label: string; swatch: string }[] = [
-  { id: 'light', label: 'Clair', swatch: '#0f9d58' },
+  { id: 'light', label: 'Clair', swatch: '#00d27a' },
   { id: 'dark', label: 'Sombre', swatch: '#66fe4c' },
   { id: 'maroon', label: 'Marron', swatch: '#d97b4f' },
   { id: 'turquoise', label: 'Turquoise', swatch: '#2dd4bf' },
@@ -72,6 +72,14 @@ export default function SideMenu({ open, onClose }: SideMenuProps) {
           <Link href="/categories-depenses" className="mp-menu-item" onClick={onClose}>
             <span className="icon">🏷️</span>
             Types de charges
+          </Link>
+          <Link href="/types-collecte" className="mp-menu-item" onClick={onClose}>
+            <span className="icon">🗃️</span>
+            Types de collecte
+          </Link>
+          <Link href="/types-epargne" className="mp-menu-item" onClick={onClose}>
+            <span className="icon">🥇</span>
+            Types d'épargne
           </Link>
           <Link href="/releve-depenses" className="mp-menu-item" onClick={onClose}>
             <span className="icon">📊</span>
