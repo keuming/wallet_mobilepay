@@ -12,7 +12,7 @@
   --fz-text-primary: #0b1f12;
   --fz-text-secondary: #5a7a72;
   --fz-text-on-accent: #ffffff;
-  --fz-accent: #0f9d58;
+  --fz-accent: #00d27a;
   --fz-accent-glow: #66fe4c;
   --fz-border: #e2e8e5;
   --fz-success: #00b854;
@@ -31,7 +31,7 @@
   --fz-accent: #66fe4c;
   --fz-accent-glow: #1cc300;
   --fz-border: rgba(255, 255, 255, 0.08);
-  --fz-success: #00d261;
+  --fz-success: #00d27a;
   --fz-error: #ef5c5c;
   --fz-warning: #ff9900;
   --fz-info: #007aff;
@@ -47,7 +47,7 @@
   --fz-accent: #d97b4f;
   --fz-accent-glow: #c9a15c;
   --fz-border: rgba(255, 255, 255, 0.08);
-  --fz-success: #00d261;
+  --fz-success: #00d27a;
   --fz-error: #ef5c5c;
   --fz-warning: #ff9900;
   --fz-info: #007aff;
@@ -63,7 +63,7 @@
   --fz-accent: #2dd4bf;
   --fz-accent-glow: #14b8a6;
   --fz-border: rgba(255, 255, 255, 0.08);
-  --fz-success: #00d261;
+  --fz-success: #00d27a;
   --fz-error: #ef5c5c;
   --fz-warning: #ff9900;
   --fz-info: #007aff;
@@ -71,7 +71,7 @@
 
 :root {
   /* Couleur signature MobilePay CI — vert émeraude (charte officielle) */
-  --mp-green: #47b686;
+  --mp-green: #00d27a;
   --mp-green-light: #63c299;
   --mp-green-dark: #2e835e;
   --mp-teal: #0d9488;

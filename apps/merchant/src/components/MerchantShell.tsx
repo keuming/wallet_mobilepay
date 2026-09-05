@@ -32,7 +32,7 @@ export default function MerchantShell({ title, children }: { title: string; chil
       <aside className={`mc-sidebar ${menuOpen ? 'open' : ''}`}>
         <div className="mc-sidebar-brand">
           <span style={{ color: 'white' }}>
-            Mobile<span style={{ color: '#4ade80' }}>Pay</span>
+            Mobile<span style={{ color: '#00d27a' }}>Pay</span>
           </span>
           <button className="mc-sidebar-close" onClick={() => setMenuOpen(false)} aria-label="Fermer le menu">
             ✕

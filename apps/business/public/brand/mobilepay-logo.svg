@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 340 80" fill="none">
+  <!-- Icône : carré arrondi + flèche stylisée (rappelle mouvement d'argent) -->
+  <rect x="4" y="8" width="64" height="64" rx="16" fill="#00D27A"/>
+  <path d="M22 44 L34 32 L44 42 L52 30" stroke="#FFFFFF" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+  <circle cx="52" cy="30" r="4" fill="#FFFFFF"/>
+
+  <!-- Texte -->
+  <text x="86" y="52" font-family="'Sora', Arial, sans-serif" font-weight="800" font-size="38" fill="#16211C">Mobile<tspan fill="#00D27A">Pay</tspan></text>
+</svg>
