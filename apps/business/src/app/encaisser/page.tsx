@@ -8,6 +8,7 @@ import { apiFetch, ApiError } from '../../lib/apiClient';
 import PaymentMethodBadge, { PaymentMethodId } from '../../components/PaymentMethodBadge';
 import BusinessSideMenu from '../../components/BusinessSideMenu';
 import QrResultCard from '../../components/QrResultCard';
+import StatusModal from '../../components/StatusModal';
 
 type Tab = 'static' | 'dynamic' | 'link' | 'request' | 'cash' | 'card';
 
@@ -524,15 +525,17 @@ function PaymentRequestPanel({ merchantId }: { merchantId: string }) {
       <input className="mp-input" placeholder="Description — optionnel" value={description} onChange={(e) => setDescription(e.target.value)} />
       {error && <div className="mp-error">{error}</div>}
       {result && (
-        <div
-          style={{
-            fontSize: 13,
-            fontWeight: 600,
-            color: result.status === 'success' ? 'var(--mp-green-dark)' : '#b8790a',
-          }}
-        >
-          {result.message}
-        </div>
+        <StatusModal
+          status={
+            result.status === 'success' || result.status === 'SUCCESS'
+              ? 'success'
+              : result.status === 'failed' || result.status === 'FAILED'
+                ? 'failed'
+                : 'pending'
+          }
+          message={result.message}
+          onClose={() => setResult(null)}
+        />
       )}
       {result?.link && (
         <PaymentLinkResult link={result.link} merchantId={merchantId} transactionId={result.transactionId} />

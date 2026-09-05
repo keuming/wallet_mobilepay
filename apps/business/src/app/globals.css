@@ -1835,6 +1835,82 @@ h1, h2, h3 {
   to { transform: translateY(0); opacity: 1; }
 }
 
+.mp-result-card.is-success {
+  animation: mp-slide-up 0.2s ease, mp-success-glow 1.4s ease-out;
+}
+
+@keyframes mp-success-glow {
+  0% { box-shadow: 0 0 0 0 rgba(0, 210, 122, 0); }
+  30% { box-shadow: 0 0 0 14px rgba(0, 210, 122, 0.08); }
+  100% { box-shadow: 0 0 0 0 rgba(0, 210, 122, 0); }
+}
+
+.mp-success-burst {
+  position: relative;
+  width: 84px;
+  height: 84px;
+  margin: 4px auto 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.mp-success-check {
+  width: 68px;
+  height: 68px;
+  position: relative;
+  z-index: 2;
+}
+
+.mp-success-check-circle {
+  fill: none;
+  stroke: var(--fz-accent);
+  stroke-width: 3;
+  stroke-linecap: round;
+  stroke-dasharray: 189;
+  stroke-dashoffset: 189;
+  animation: mp-draw-circle 0.5s ease-out forwards;
+}
+
+.mp-success-check-mark {
+  fill: none;
+  stroke: var(--fz-accent);
+  stroke-width: 4.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-dasharray: 40;
+  stroke-dashoffset: 40;
+  animation: mp-draw-check 0.35s ease-out 0.45s forwards;
+}
+
+@keyframes mp-draw-circle {
+  to { stroke-dashoffset: 0; }
+}
+@keyframes mp-draw-check {
+  to { stroke-dashoffset: 0; }
+}
+
+.mp-confetti-piece {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  z-index: 1;
+  opacity: 0;
+  animation: mp-confetti-fly 0.9s ease-out forwards;
+  animation-delay: var(--delay);
+}
+
+@keyframes mp-confetti-fly {
+  0% {
+    opacity: 1;
+    transform: translate(-50%, -50%) rotate(0deg);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(calc(-50% + var(--tx)), calc(-50% + var(--ty))) rotate(220deg);
+  }
+}
+
 .mp-result-icon {
   width: 68px;
   height: 68px;
