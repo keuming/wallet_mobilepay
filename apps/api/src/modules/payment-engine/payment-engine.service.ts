@@ -2,6 +2,7 @@ import {
   BadRequestException,
   ConflictException,
   Injectable,
+  Logger,
   NotFoundException,
   UnauthorizedException,
 } from '@nestjs/common';
@@ -32,6 +33,8 @@ const OPERATOR_LABELS: Record<string, string> = {
 
 @Injectable()
 export class PaymentEngineService {
+  private readonly logger = new Logger(PaymentEngineService.name);
+
   constructor(
     private prisma: PrismaService,
     private ledger: LedgerService,
@@ -603,28 +606,31 @@ export class PaymentEngineService {
     nextActionUrl: string | undefined,
   ) {
     if (!phone) return;
+    let message: string | null = null;
     try {
       if (nextActionType === 'redirection' && nextActionUrl) {
-        await this.sms.send(
-          phone,
-          `MobilePay CI : pour valider ton paiement ${provider ?? 'Mobile Money'}, ouvre ce lien maintenant : ${nextActionUrl}`,
-        );
+        message = `MobilePay CI : pour valider ton paiement ${provider ?? 'Mobile Money'}, ouvre ce lien maintenant : ${nextActionUrl}`;
       } else if (nextActionType === 'otp') {
-        await this.sms.send(
-          phone,
-          `MobilePay CI : compose le code de confirmation ${provider ?? 'Mobile Money'} habituel sur ton téléphone, puis saisis-le dans l'application pour valider ton paiement.`,
-        );
+        message = `MobilePay CI : compose le code de confirmation ${provider ?? 'Mobile Money'} habituel sur ton téléphone, puis saisis-le dans l'application pour valider ton paiement.`;
       } else if (nextActionType === 'ussd' || !nextActionType) {
         // § Notification explicite demandée pour MTN/Moov — même si
         // l'opérateur affiche normalement une invite USSD directement sur
         // le téléphone, un SMS de secours confirme au client qu'une
         // demande de paiement est en cours et ce qu'il doit faire.
-        await this.sms.send(
-          phone,
-          `MobilePay CI : une demande de paiement ${provider ?? 'Mobile Money'} vient d'être envoyée. Valide-la directement depuis le message ou le menu de ton opérateur sur ton téléphone pour finaliser.`,
-        );
+        message = `MobilePay CI : une demande de paiement ${provider ?? 'Mobile Money'} vient d'être envoyée. Valide-la directement depuis le message ou le menu de ton opérateur sur ton téléphone pour finaliser.`;
       }
-    } catch {
+      if (!message) return;
+
+      // § Journalisation ajoutée (§ audit) — ce SMS n'était jamais tracé,
+      // rendant impossible de vérifier après coup s'il était réellement
+      // parti (crucial pour Wave, dont le lien expire vite : un SMS qui
+      // échoue ou arrive en retard rend le paiement inutilisable).
+      const result = await this.sms.send(phone, message);
+      this.logger.log(
+        `SMS d'orientation PAY-IN (${provider}, ${nextActionType ?? 'ussd'}) vers ${phone} : ${result.success ? 'ENVOYÉ' : `ÉCHEC — ${result.errorReason}`}`,
+      );
+    } catch (err: any) {
+      this.logger.error(`SMS d'orientation PAY-IN — exception inattendue : ${err?.message ?? err}`);
       // Un échec d'envoi de ce SMS d'orientation ne doit jamais faire
       // échouer le paiement lui-même — le client garde de toute façon
       // l'information affichée dans l'app/la page de paiement.
