@@ -400,7 +400,6 @@ h1, h2, h3 {
   margin: 0 auto;
   min-height: 100vh;
   position: relative;
-  overflow-x: hidden;
 }
 
 /* ---------- Header / Hero — s'estompe dans le fond de page (§ Finza) ---------- */

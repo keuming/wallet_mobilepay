@@ -127,6 +127,7 @@ body {
      qui empêchait de scroller sur la version APK (ex: cartes cadeaux CI). */
   overscroll-behavior-y: contain;
   overflow-x: hidden;
+  overflow-y: auto;
 }
 
 a {
@@ -144,8 +145,6 @@ h1, h2, h3 {
   margin: 0 auto;
   min-height: 100vh;
   position: relative;
-  overflow-x: hidden;
-  overflow-y: visible;
 }
 
 /* § Centrage vertical (§ page de connexion — ne doit jamais nécessiter de

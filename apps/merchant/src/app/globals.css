@@ -288,7 +288,7 @@ body {
   --mp-radius-sm: 14px;
 }
 
-.mp-container { max-width: 430px; margin: 0 auto; min-height: 100vh; position: relative; overflow-x: hidden; background: linear-gradient(180deg, var(--mp-bg-from) 0%, var(--mp-bg-to) 60%); font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; color: var(--mp-text); }
+.mp-container { max-width: 430px; margin: 0 auto; min-height: 100vh; position: relative; background: linear-gradient(180deg, var(--mp-bg-from) 0%, var(--mp-bg-to) 60%); font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; color: var(--mp-text); }
 .mp-container a { text-decoration: none; color: inherit; }
 .mp-container h1, .mp-container h2, .mp-container h3 { font-family: 'Sora', 'Plus Jakarta Sans', sans-serif; letter-spacing: -0.01em; }
 
