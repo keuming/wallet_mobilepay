@@ -285,10 +285,7 @@ export default function CheckoutPage({
     <div className="mp-container">
       <div className="mp-header">
         <div className="mp-header-row" style={{ justifyContent: 'center' }}>
-          <span className="mp-brand-mark">
-            <span className="dot" />
-            MobilePay CI
-          </span>
+          <img src="/brand/mobilepay-logo-badge-dark.svg" alt="MobilePay CI" style={{ height: 42, width: 'auto', borderRadius: 10 }} />
         </div>
       </div>
 
