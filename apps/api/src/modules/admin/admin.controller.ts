@@ -1,7 +1,7 @@
 import { Body, Controller, Get, Param, Patch, Post, Query, Res, UseGuards, UseInterceptors, UploadedFile, BadRequestException } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
-import { IsBoolean, IsEnum, IsIn, IsInt, IsObject, IsOptional, IsPhoneNumber, IsPositive, IsString, Matches, MinLength } from 'class-validator';
+import { IsBoolean, IsEnum, IsIn, IsInt, IsObject, IsOptional, IsPhoneNumber, IsPositive, IsString, Length, Matches, MinLength } from 'class-validator';
 import { Type } from 'class-transformer';
 import { MerchantStatus, TransactionStatus } from '@prisma/client';
 import { Response } from 'express';
@@ -125,7 +125,7 @@ export class UpdateUserDto {
 
 export class ResetPasswordDto {
   @IsString()
-  @MinLength(8)
+  @Length(4, 6, { message: 'Le mot de passe doit contenir entre 4 et 6 caractères.' })
   newPassword: string;
 }
 

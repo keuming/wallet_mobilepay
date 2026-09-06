@@ -184,7 +184,7 @@ export default function AgentsPage() {
                 <button
                   className="adm-btn"
                   style={{ flex: 1 }}
-                  disabled={creating || !newPhone || !newFirstName || !newLastName || newPassword.length < 8}
+                  disabled={creating || !newPhone || !newFirstName || !newLastName || newPassword.length < 4 || newPassword.length > 6}
                   onClick={submitCreate}
                 >
                   {creating ? 'Création...' : 'Créer'}
