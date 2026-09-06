@@ -657,7 +657,14 @@ export class PaymentEngineService {
     }
     return {
       id: transaction.id,
+      reference: transaction.reference,
       status: transaction.status,
+      amount: Number(transaction.amount),
+      feeAmount: Number(transaction.feeAmount),
+      description: transaction.description,
+      providerName: transaction.providerName,
+      createdAt: transaction.createdAt,
+      updatedAt: transaction.updatedAt,
       nextActionType: transaction.nextActionType,
       nextActionMessage: transaction.nextActionMessage,
       nextActionUrl: transaction.nextActionUrl,

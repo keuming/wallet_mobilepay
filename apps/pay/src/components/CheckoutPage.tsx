@@ -21,7 +21,13 @@ interface ResolvedTarget {
 
 interface PaymentResponse {
   id: string;
+  reference?: string;
   status: string;
+  amount?: number;
+  feeAmount?: number;
+  description?: string | null;
+  providerName?: string | null;
+  createdAt?: string;
   nextActionType?: string | null;
   nextActionMessage?: string | null;
   nextActionUrl?: string | null;
@@ -86,6 +92,7 @@ export default function CheckoutPage({
   const [otpCode, setOtpCode] = useState('');
   const [transactionId, setTransactionId] = useState<string | null>(null);
   const [result, setResult] = useState<{ status: 'pending' | 'otp' | 'success' | 'failed'; message: string } | null>(null);
+  const [receipt, setReceipt] = useState<PaymentResponse | null>(null);
   const [showConfetti, setShowConfetti] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -112,10 +119,74 @@ export default function CheckoutPage({
   const fixedAmount = target?.fixedAmount ?? target?.amount ?? null;
   const dialCode = MOMO_PROVIDERS.find((p) => p.id === provider)?.dialCode ?? '225';
 
+  const downloadReceipt = async () => {
+    if (!receipt) return;
+    const { jsPDF } = await import('jspdf');
+    const doc = new jsPDF({ unit: 'mm', format: 'a5' });
+    const green = '#00D27A';
+    const dark = '#16211C';
+    const gray = '#5a7a72';
+
+    doc.setFillColor(green);
+    doc.rect(0, 0, 148, 22, 'F');
+    doc.setTextColor('#FFFFFF');
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(18);
+    doc.text('MobilePay CI', 10, 14);
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'normal');
+    doc.text('Reçu de paiement', 10, 19);
+
+    let y = 34;
+    doc.setTextColor(dark);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(13);
+    doc.text('Paiement confirmé', 10, y);
+    y += 10;
+
+    const row = (label: string, value: string) => {
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(10);
+      doc.setTextColor(gray);
+      doc.text(label, 10, y);
+      doc.setTextColor(dark);
+      doc.setFont('helvetica', 'bold');
+      doc.text(value, 60, y);
+      y += 7;
+    };
+
+    row('Bénéficiaire', businessName ?? '—');
+    if (target?.description) row('Description', target.description);
+    row('Montant', `${fcfa(receipt.amount ?? fixedAmount ?? 0)} FCFA`);
+    if (receipt.feeAmount) row('Frais', `${fcfa(receipt.feeAmount)} FCFA`);
+    row(
+      'Total débité',
+      `${fcfa((receipt.amount ?? fixedAmount ?? 0) + (receipt.feeAmount ?? 0))} FCFA`,
+    );
+    row('Référence', receipt.reference ?? receipt.id.slice(0, 12));
+    row('Statut', 'Réussi');
+    row('Date', receipt.createdAt ? new Date(receipt.createdAt).toLocaleString('fr-FR') : new Date().toLocaleString('fr-FR'));
+    if (receipt.providerName) row('Fournisseur', receipt.providerName);
+
+    y += 4;
+    doc.setDrawColor(220, 220, 220);
+    doc.line(10, y, 138, y);
+    y += 8;
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(8.5);
+    doc.setTextColor(gray);
+    doc.text("Ce reçu confirme un paiement effectué via MobilePay CI.", 10, y);
+    y += 5;
+    doc.text('© ORZAYAH CI — pay.mobilepay-ci.com', 10, y);
+
+    doc.save(`recu-mobilepay-${(receipt.reference ?? receipt.id).slice(0, 10)}.pdf`);
+  };
+
   const applyResponse = (res: PaymentResponse) => {
     setTransactionId(res.id);
     if (res.status === 'SUCCESS') {
       if (pollRef.current) clearInterval(pollRef.current);
+      setReceipt(res);
       setResult({ status: 'success', message: 'Paiement confirmé ✓' });
     } else if (res.status === 'FAILED') {
       if (pollRef.current) clearInterval(pollRef.current);
@@ -222,10 +293,13 @@ export default function CheckoutPage({
       </div>
 
       <div className="mp-balance-card" style={{ textAlign: 'center' }}>
-        <div className="mp-balance-label">Paiement à</div>
-        <div style={{ fontFamily: 'Sora, sans-serif', fontSize: 20, fontWeight: 700, marginTop: 6 }}>
+        <div className="mp-balance-label">Vous êtes sur le point de payer</div>
+        <div style={{ fontFamily: 'Sora, sans-serif', fontSize: 24, fontWeight: 800, marginTop: 8 }}>
           {businessName ?? (target ? '—' : 'Chargement...')}
         </div>
+        {target?.description && (
+          <div style={{ fontSize: 12.5, opacity: 0.85, marginTop: 4 }}>{target.description}</div>
+        )}
         {fixedAmount ? (
           <div className="mp-balance-amount" style={{ marginTop: 10 }}>
             {fcfa(fixedAmount)}
@@ -357,6 +431,36 @@ export default function CheckoutPage({
               <p style={{ fontSize: 14.5, fontWeight: 600, color: 'var(--fz-text-primary)' }}>
                 {result.status === 'success' ? <>{result.message} 🎉</> : result.message}
               </p>
+              {result.status === 'success' && receipt && (
+                <>
+                  <div
+                    style={{
+                      background: 'var(--fz-surface)', border: '1px solid var(--fz-border)', borderRadius: 14,
+                      padding: '14px 16px', marginTop: 4, marginBottom: 14, textAlign: 'left', fontSize: 13,
+                    }}
+                  >
+                    <div style={{ fontWeight: 700, marginBottom: 8, color: 'var(--fz-text-primary)' }}>📋 Détails du paiement</div>
+                    {[
+                      ['Bénéficiaire', businessName ?? '—'],
+                      ...(target?.description ? [['Description', target.description]] : []),
+                      ['Montant', `${fcfa(receipt.amount ?? fixedAmount ?? 0)} FCFA`],
+                      ...(receipt.feeAmount ? [['Frais', `${fcfa(receipt.feeAmount)} FCFA`]] : []),
+                      ['Total débité', `${fcfa((receipt.amount ?? fixedAmount ?? 0) + (receipt.feeAmount ?? 0))} FCFA`],
+                      ['Référence', receipt.reference ?? receipt.id.slice(0, 12)],
+                      ['Date', receipt.createdAt ? new Date(receipt.createdAt).toLocaleString('fr-FR') : new Date().toLocaleString('fr-FR')],
+                      ...(receipt.providerName ? [['Fournisseur', receipt.providerName]] : []),
+                    ].map(([k, v]) => (
+                      <div key={k} style={{ display: 'flex', justifyContent: 'space-between', padding: '5px 0', borderBottom: '1px solid var(--fz-border)' }}>
+                        <span style={{ color: 'var(--fz-text-secondary)' }}>{k}</span>
+                        <span style={{ fontWeight: 600, textAlign: 'right' }}>{v}</span>
+                      </div>
+                    ))}
+                  </div>
+                  <button className="mp-btn-primary" onClick={downloadReceipt}>
+                    📄 Télécharger le reçu (PDF)
+                  </button>
+                </>
+              )}
               {result.status === 'failed' && (
                 <button
                   className="mp-btn-primary"
