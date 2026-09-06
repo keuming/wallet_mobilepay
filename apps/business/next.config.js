@@ -10,6 +10,12 @@ const withPWA = require('@ducanh2912/next-pwa').default({
     disableDevLogs: true,
     skipWaiting: true,
     clientsClaim: true,
+    runtimeCaching: [
+      {
+        urlPattern: ({ url }) => url.href.includes('onrender.com/api'),
+        handler: 'NetworkOnly',
+      },
+    ],
   },
 });
 

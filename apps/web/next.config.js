@@ -15,6 +15,20 @@ const withPWA = require('@ducanh2912/next-pwa').default({
     disableDevLogs: true,
     skipWaiting: true,
     clientsClaim: true,
+    // § Corrige un bug critique découvert en debug : le service worker
+    // pouvait intercepter les appels vers l'API (domaine externe,
+    // mobilepay-v2-api.onrender.com) et, suite à son propre plantage de
+    // cache déjà observé ("Failed to execute 'put' on 'Cache'"), renvoyer
+    // une réponse erronée au lieu de laisser passer la vraie requête
+    // réseau — alors que l'API elle-même répondait correctement en
+    // direct. NetworkOnly garantit qu'aucun appel API ne passe jamais
+    // par une logique de cache, quoi qu'il arrive.
+    runtimeCaching: [
+      {
+        urlPattern: ({ url }) => url.href.includes('onrender.com/api'),
+        handler: 'NetworkOnly',
+      },
+    ],
   },
 });
 
