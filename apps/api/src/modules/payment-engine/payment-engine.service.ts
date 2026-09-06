@@ -452,7 +452,6 @@ export class PaymentEngineService {
       provider: params.provider,
       country: merchant.country,
     });
-    await this.sendPayInGuidanceSms(params.customerPhone, params.provider, result.nextActionType, result.redirectUrl);
 
     await this.prisma.transaction.update({
       where: { id: transaction.id },
@@ -525,7 +524,6 @@ export class PaymentEngineService {
       provider: params.provider,
       country: merchant.country,
     });
-    await this.sendPayInGuidanceSms(params.customerPhone, params.provider, result.nextActionType, result.redirectUrl);
 
     await this.prisma.transaction.update({
       where: { id: transaction.id },
@@ -599,7 +597,7 @@ export class PaymentEngineService {
    * circuit HUB2 : Wave redirige vers un lien à ouvrir, Orange (et les
    * opérateurs "otp") demandent de composer le code de confirmation.
    */
-  private async sendPayInGuidanceSms(
+  async sendPayInGuidanceSms(
     phone: string,
     provider: string | undefined,
     nextActionType: string | undefined,
@@ -761,7 +759,6 @@ export class PaymentEngineService {
       provider: params.provider,
       country: recipientUser.country,
     });
-    await this.sendPayInGuidanceSms(params.customerPhone, params.provider, result.nextActionType, result.redirectUrl);
 
     await this.prisma.transaction.update({
       where: { id: transaction.id },
@@ -1326,7 +1323,6 @@ export class PaymentEngineService {
       provider: params.momoProvider,
       country: countryCode,
     });
-    await this.sendPayInGuidanceSms(user.phone, params.momoProvider, collection.nextActionType, collection.redirectUrl);
 
     await this.prisma.transaction.update({
       where: { id: transaction.id },
@@ -1464,7 +1460,6 @@ export class PaymentEngineService {
       provider: params.operator.toLowerCase(),
       country: user.country,
     });
-    await this.sendPayInGuidanceSms(normalizePhoneCI(params.accountNumber, user.country as any), params.operator.toLowerCase(), result.nextActionType, result.redirectUrl);
 
     await this.prisma.transaction.update({
       where: { id: transaction.id },

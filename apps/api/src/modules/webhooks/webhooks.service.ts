@@ -84,6 +84,27 @@ export class WebhooksService {
             nextActionUrl: nextAction.data?.url,
           },
         });
+
+        // § Corrige le vrai bug diagnostiqué en production : le SMS
+        // d'orientation était envoyé bien trop tôt (juste après l'appel
+        // HTTP initial à HUB2), qui ne contient JAMAIS ces informations —
+        // l'API est asynchrone, le vrai lien/type d'action n'arrive QUE
+        // maintenant, via cet événement webhook. Résultat observé : Wave
+        // recevait systématiquement le message générique USSD au lieu du
+        // vrai lien de validation. On envoie donc le SMS ICI, avec les
+        // bonnes données, pas à l'initiation.
+        const lastAttempt = await this.prisma.paymentAttempt.findFirst({
+          where: { transactionId: transaction.id },
+          orderBy: { createdAt: 'desc' },
+        });
+        const customerPhone =
+          (lastAttempt?.rawResponse as any)?.customerReference ??
+          (lastAttempt?.rawResponse as any)?.payments?.[0]?.number ??
+          null;
+        const provider = (lastAttempt?.rawResponse as any)?.payments?.[0]?.provider ?? transaction.operatorId;
+        if (customerPhone) {
+          await this.paymentEngine.sendPayInGuidanceSms(customerPhone, provider, nextAction.type, nextAction.data?.url);
+        }
       }
       this.logger.log(`Webhook HUB2 : événement intermédiaire (${verification.eventType}) — transaction non finalisée.`);
       await this.prisma.webhookEvent.update({
