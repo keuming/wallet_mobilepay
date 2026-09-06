@@ -108,6 +108,7 @@
 html {
   scroll-behavior: smooth;
   overflow-x: hidden;
+  overflow-y: auto;
 }
 
 body {
@@ -144,6 +145,7 @@ h1, h2, h3 {
   min-height: 100vh;
   position: relative;
   overflow-x: hidden;
+  overflow-y: visible;
 }
 
 /* § Centrage vertical (§ page de connexion — ne doit jamais nécessiter de
