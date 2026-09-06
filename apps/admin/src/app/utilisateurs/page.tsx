@@ -37,6 +37,10 @@ export default function UsersPage() {
   const [editFirstName, setEditFirstName] = useState('');
   const [editLastName, setEditLastName] = useState('');
   const [editError, setEditError] = useState<string | null>(null);
+  const [newPin, setNewPin] = useState('');
+  const [pinSaving, setPinSaving] = useState(false);
+  const [pinMessage, setPinMessage] = useState<string | null>(null);
+  const [pinError, setPinError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
   const load = (p = page, s = search) => {
@@ -112,6 +116,28 @@ export default function UsersPage() {
     setEditFirstName(u.firstName);
     setEditLastName(u.lastName);
     setEditError(null);
+    setNewPin('');
+    setPinMessage(null);
+    setPinError(null);
+  };
+
+  const submitPin = async () => {
+    if (!editingUser || !/^\d{4,6}$/.test(newPin)) return;
+    setPinSaving(true);
+    setPinError(null);
+    setPinMessage(null);
+    try {
+      await apiFetch(`/admin/users/${editingUser.id}/pin`, {
+        method: 'PATCH',
+        body: JSON.stringify({ newPin }),
+      });
+      setPinMessage('Code secret défini avec succès.');
+      setNewPin('');
+    } catch (err) {
+      setPinError(err instanceof ApiError ? err.message : 'Échec de la définition du code secret.');
+    } finally {
+      setPinSaving(false);
+    }
   };
 
   const submitEdit = async () => {
@@ -307,6 +333,34 @@ export default function UsersPage() {
                 </button>
                 <button className="adm-btn" style={{ flex: 1 }} disabled={saving} onClick={submitEdit}>
                   {saving ? 'Enregistrement...' : 'Enregistrer'}
+                </button>
+              </div>
+
+              <div style={{ borderTop: '1px solid var(--adm-border)', marginTop: 16, paddingTop: 16 }}>
+                <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 8 }}>
+                  🔒 Code secret (définir ou réinitialiser)
+                </div>
+                <label className="adm-modal-label">
+                  Nouveau code (4 à 6 chiffres)
+                  <input
+                    className="adm-input"
+                    style={{ width: '100%', marginTop: 4, letterSpacing: 4 }}
+                    inputMode="numeric"
+                    maxLength={6}
+                    value={newPin}
+                    onChange={(e) => setNewPin(e.target.value.replace(/\D/g, ''))}
+                    placeholder="••••"
+                  />
+                </label>
+                {pinError && <div className="adm-error">{pinError}</div>}
+                {pinMessage && <div style={{ color: 'var(--adm-accent)', fontSize: 12.5, marginTop: 4 }}>✓ {pinMessage}</div>}
+                <button
+                  className="adm-btn"
+                  style={{ width: '100%', marginTop: 8 }}
+                  disabled={pinSaving || !/^\d{4,6}$/.test(newPin)}
+                  onClick={submitPin}
+                >
+                  {pinSaving ? 'Enregistrement...' : 'Définir le code secret'}
                 </button>
               </div>
             </div>

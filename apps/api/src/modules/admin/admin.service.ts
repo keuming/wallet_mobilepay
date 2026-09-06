@@ -376,6 +376,25 @@ export class AdminService {
     return { message: 'Mot de passe réinitialisé avec succès.' };
   }
 
+  /**
+   * Définit ou réinitialise le code secret de transaction d'un utilisateur
+   * (§ back-office — couvre à la fois particulier et marchand, puisqu'un
+   * marchand est en réalité un User comme un autre, lié via MerchantUser).
+   * Fonctionne que le compte ait déjà un code (réinitialisation) ou non
+   * (initialisation) — même opération technique dans les deux cas.
+   */
+  async setUserPin(id: string, newPin: string) {
+    if (!/^\d{4,6}$/.test(newPin)) {
+      throw new BadRequestException('Le code secret doit contenir entre 4 et 6 chiffres.');
+    }
+    const transactionPinHash = await bcrypt.hash(newPin, 12);
+    await this.prisma.user.update({
+      where: { id },
+      data: { transactionPinHash, securityFailedAttempts: 0, securityLockedUntil: null },
+    });
+    return { message: 'Code secret défini avec succès.' };
+  }
+
   /** Change le numéro de téléphone d'un utilisateur — vérifie qu'aucun autre compte ne l'utilise déjà. */
   async updateUserPhone(id: string, newPhoneRaw: string) {
     const newPhone = normalizePhoneCI(newPhoneRaw);

@@ -17,6 +17,12 @@ interface MerchantDetail {
   transfersEnabled: boolean;
   wallet: { cachedBalance: number; pendingBalance: number } | null;
   agent: { user: { firstName: string; lastName: string; phone: string } } | null;
+  users: Array<{
+    id: string;
+    userId: string;
+    role: string;
+    user: { firstName: string; lastName: string; phone: string };
+  }>;
   kycDossiers: Array<{
     id: string;
     status: string;
@@ -36,6 +42,11 @@ export default function MerchantDetailPage() {
   const [merchant, setMerchant] = useState<MerchantDetail | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [pinTargetUserId, setPinTargetUserId] = useState<string | null>(null);
+  const [newPin, setNewPin] = useState('');
+  const [pinSaving, setPinSaving] = useState(false);
+  const [pinMessage, setPinMessage] = useState<string | null>(null);
+  const [pinError, setPinError] = useState<string | null>(null);
 
   const load = () => apiFetch<MerchantDetail>(`/admin/merchants/${merchantId}`).then(setMerchant);
 
@@ -94,6 +105,26 @@ export default function MerchantDetailPage() {
       setError(err instanceof ApiError ? err.message : 'Action impossible.');
     } finally {
       setBusy(false);
+    }
+  };
+
+  const submitPin = async () => {
+    if (!pinTargetUserId || !/^\d{4,6}$/.test(newPin)) return;
+    setPinSaving(true);
+    setPinError(null);
+    setPinMessage(null);
+    try {
+      await apiFetch(`/admin/users/${pinTargetUserId}/pin`, {
+        method: 'PATCH',
+        body: JSON.stringify({ newPin }),
+      });
+      setPinMessage('Code secret défini avec succès.');
+      setNewPin('');
+      setPinTargetUserId(null);
+    } catch (err) {
+      setPinError(err instanceof ApiError ? err.message : 'Échec de la définition du code secret.');
+    } finally {
+      setPinSaving(false);
     }
   };
 
@@ -210,6 +241,55 @@ export default function MerchantDetailPage() {
             </div>
           ))
         )}
+      </div>
+      <div className="adm-panel" style={{ padding: 16, marginTop: 20 }}>
+        <div style={{ fontWeight: 700, marginBottom: 12 }}>👥 Utilisateurs (propriétaire / collaborateurs)</div>
+        {merchant.users.length === 0 ? (
+          <p style={{ color: '#8a97b3', fontSize: 13 }}>Aucun utilisateur lié.</p>
+        ) : (
+          merchant.users.map((mu) => (
+            <div key={mu.id} style={{ borderBottom: '1px solid var(--adm-border)', padding: '10px 0' }}>
+              <div className="adm-kv">
+                <span>{mu.user.firstName} {mu.user.lastName} — {mu.user.phone} ({mu.role})</span>
+                {pinTargetUserId !== mu.userId && (
+                  <button
+                    className="adm-btn ghost"
+                    style={{ padding: '4px 10px', fontSize: 12 }}
+                    onClick={() => { setPinTargetUserId(mu.userId); setNewPin(''); setPinError(null); setPinMessage(null); }}
+                  >
+                    🔒 Définir le code secret
+                  </button>
+                )}
+              </div>
+              {pinTargetUserId === mu.userId && (
+                <div style={{ display: 'flex', gap: 8, marginTop: 8, alignItems: 'flex-start' }}>
+                  <input
+                    className="adm-input"
+                    style={{ flex: 1, letterSpacing: 4 }}
+                    inputMode="numeric"
+                    maxLength={6}
+                    value={newPin}
+                    onChange={(e) => setNewPin(e.target.value.replace(/\D/g, ''))}
+                    placeholder="Nouveau code (4-6 chiffres)"
+                    autoFocus
+                  />
+                  <button
+                    className="adm-btn"
+                    disabled={pinSaving || !/^\d{4,6}$/.test(newPin)}
+                    onClick={submitPin}
+                  >
+                    {pinSaving ? '...' : 'Valider'}
+                  </button>
+                  <button className="adm-btn ghost" onClick={() => setPinTargetUserId(null)}>
+                    Annuler
+                  </button>
+                </div>
+              )}
+            </div>
+          ))
+        )}
+        {pinError && <div className="adm-error" style={{ marginTop: 8 }}>{pinError}</div>}
+        {pinMessage && <div style={{ color: 'var(--adm-accent)', fontSize: 12.5, marginTop: 8 }}>✓ {pinMessage}</div>}
       </div>
     </AdminShell>
   );

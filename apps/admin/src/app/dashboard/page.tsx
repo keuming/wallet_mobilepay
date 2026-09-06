@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '../../contexts/AuthContext';
 import { apiFetch } from '../../lib/apiClient';
 import AdminShell from '../../components/AdminShell';
+import TransactionDetailModal, { STATUS_CLASS } from '../../components/TransactionDetailModal';
 
 interface DashboardStats {
   usersCount: number;
@@ -27,17 +28,6 @@ interface TxRow {
   createdAt: string;
 }
 
-const STATUS_CLASS: Record<string, string> = {
-  SUCCESS: 'green',
-  FAILED: 'red',
-  CANCELLED: 'red',
-  EXPIRED: 'gray',
-  PENDING: 'amber',
-  PROCESSING: 'amber',
-  INITIATED: 'amber',
-  REFUNDED: 'gray',
-};
-
 function formatFcfa(cents: number): string {
   return `${(cents / 100).toLocaleString('fr-FR')} FCFA`;
 }
@@ -47,6 +37,7 @@ export default function DashboardPage() {
   const router = useRouter();
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [recentTx, setRecentTx] = useState<TxRow[]>([]);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
 
   useEffect(() => {
     if (loading) return;
@@ -115,18 +106,19 @@ export default function DashboardPage() {
               <th>Montant</th>
               <th>Statut</th>
               <th>Date</th>
+              <th></th>
             </tr>
           </thead>
           <tbody>
             {recentTx.length === 0 ? (
               <tr>
-                <td colSpan={5} style={{ color: 'var(--adm-muted)', textAlign: 'center', padding: 24 }}>
+                <td colSpan={6} style={{ color: 'var(--adm-muted)', textAlign: 'center', padding: 24 }}>
                   Aucune transaction pour le moment.
                 </td>
               </tr>
             ) : (
               recentTx.map((tx) => (
-                <tr key={tx.id}>
+                <tr key={tx.id} onClick={() => setSelectedId(tx.id)} style={{ cursor: 'pointer' }}>
                   <td style={{ fontFamily: 'monospace', fontSize: 12 }}>{tx.reference}</td>
                   <td>{tx.type}</td>
                   <td>{formatFcfa(tx.amount)}</td>
@@ -136,12 +128,14 @@ export default function DashboardPage() {
                   <td style={{ color: 'var(--adm-muted)', fontSize: 12.5 }}>
                     {new Date(tx.createdAt).toLocaleString('fr-FR')}
                   </td>
+                  <td style={{ color: 'var(--adm-accent)', fontSize: 16, textAlign: 'center' }}>›</td>
                 </tr>
               ))
             )}
           </tbody>
         </table>
       </div>
+      {selectedId && <TransactionDetailModal id={selectedId} onClose={() => setSelectedId(null)} />}
     </AdminShell>
   );
 }

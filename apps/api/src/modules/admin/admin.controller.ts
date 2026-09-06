@@ -129,6 +129,12 @@ export class ResetPasswordDto {
   newPassword: string;
 }
 
+export class SetPinDto {
+  @IsString()
+  @Matches(/^\d{4,6}$/, { message: 'Le code secret doit contenir entre 4 et 6 chiffres.' })
+  newPin: string;
+}
+
 export class UpdatePhoneDto {
   @IsPhoneNumber(undefined, { message: 'Numéro de téléphone invalide.' })
   newPhone: string;
@@ -353,6 +359,12 @@ export class AdminController {
   @Patch('users/:id/password')
   resetUserPassword(@Param('id') id: string, @Body() dto: ResetPasswordDto) {
     return this.adminService.resetUserPassword(id, dto.newPassword);
+  }
+
+  /** Définit/réinitialise le code secret de transaction — particulier ou marchand (les deux sont des User). */
+  @Patch('users/:id/pin')
+  setUserPin(@Param('id') id: string, @Body() dto: SetPinDto) {
+    return this.adminService.setUserPin(id, dto.newPin);
   }
 
   /** Change le numéro de téléphone d'un utilisateur. */
