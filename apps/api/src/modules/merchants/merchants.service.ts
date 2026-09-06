@@ -7,6 +7,7 @@ import { ReloadlyAdapter } from '../payment-engine/providers/reloadly.adapter';
 import { ReloadlyGiftCardsAdapter } from '../payment-engine/providers/reloadly-giftcards.adapter';
 import { ReloadlyUtilitiesAdapter, BillerType } from '../payment-engine/providers/reloadly-utilities.adapter';
 import { PricingService } from '../pricing/pricing.service';
+import { KycLimitsService } from '../security/kyc-limits.service';
 import { normalizePhoneCI, normalizePhoneCandidates } from '../../common/utils/phone.util';
 import { CreateMerchantDto } from './dto/merchants.dto';
 
@@ -21,6 +22,7 @@ export class MerchantsService {
     private reloadlyGiftCards: ReloadlyGiftCardsAdapter,
     private reloadlyUtilities: ReloadlyUtilitiesAdapter,
     private pricingService: PricingService,
+    private kycLimits: KycLimitsService,
   ) {}
 
   /**
@@ -465,6 +467,7 @@ export class MerchantsService {
 
     const amount = BigInt(Math.round(dto.unitPrice * 100));
     const ourFee = await this.pricingService.computeOurFee(amount);
+    await this.kycLimits.assertMerchantWithinMonthlyLimit(merchantId, amount);
     const merchantWallet = await this.getWallet(merchantId);
     if (merchantWallet.cachedBalance < amount + ourFee) {
       throw new BadRequestException('Solde insuffisant pour cet achat (frais inclus).');
@@ -585,6 +588,7 @@ export class MerchantsService {
 
     const amount = BigInt(Math.round(dto.amount * 100));
     const ourFee = await this.pricingService.computeOurFee(amount);
+    await this.kycLimits.assertMerchantWithinMonthlyLimit(merchantId, amount);
     const merchantWallet = await this.getWallet(merchantId);
     if (merchantWallet.cachedBalance < amount + ourFee) {
       throw new BadRequestException('Solde insuffisant pour ce paiement (frais inclus).');

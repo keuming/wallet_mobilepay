@@ -63,8 +63,18 @@ export class UsersService {
    * photo de profil, qui devrait de toute façon être compressée côté client.
    */
   async updatePhoto(userId: string, photoBase64: string | null) {
-    if (photoBase64 && photoBase64.length > 2_000_000) {
-      throw new BadRequestException('Image trop volumineuse (2 Mo maximum).');
+    if (photoBase64) {
+      if (photoBase64.length > 2_000_000) {
+        throw new BadRequestException('Image trop volumineuse (2 Mo maximum).');
+      }
+      // § Corrige une faille modérée constatée à l'audit sécurité : seule la
+      // taille était vérifiée, jamais que le contenu soit réellement une
+      // image — une chaîne base64 arbitraire de moins de 2 Mo passait sans
+      // contrôle. On exige maintenant un vrai en-tête data:image/... avec un
+      // type MIME limité aux formats d'image usuels.
+      if (!/^data:image\/(png|jpe?g|webp|gif);base64,/i.test(photoBase64)) {
+        throw new BadRequestException('Le fichier doit être une image valide (PNG, JPEG, WEBP ou GIF).');
+      }
     }
     await this.prisma.user.findUniqueOrThrow({ where: { id: userId } });
     return this.prisma.user.update({

@@ -20,6 +20,14 @@ const MONTHLY_LIMITS_FCFA: Record<string, number> = {
   LEVEL_3: 10_000_000,
 };
 
+// § Un marchand ACTIF a déjà passé une vérification KYC dossier (voir
+// KycDossier) pour atteindre ce statut — contrairement à un particulier
+// LEVEL_0, ce n'est jamais un compte totalement non vérifié. D'où un
+// plafond fixe généreux (aligné sur LEVEL_3) plutôt qu'un système à
+// paliers : construire une vraie hiérarchie de vérification marchand est
+// un chantier à part, hors du périmètre de ce correctif de sécurité.
+const MERCHANT_MONTHLY_LIMIT_FCFA = 10_000_000;
+
 // Types de transaction comptés comme "sortants" pour le calcul du plafond
 // mensuel — tout ce qui quitte réellement le wallet vers l'extérieur ou
 // vers un tiers (une collecte/épargne interne n'est pas comptée : l'argent
@@ -62,6 +70,37 @@ export class KycLimitsService {
         `Plafond mensuel atteint pour votre niveau de vérification (${limitFcfa.toLocaleString('fr-FR')} FCFA). ` +
           `Il vous reste ${remainingFcfa.toLocaleString('fr-FR')} FCFA disponibles ce mois-ci. ` +
           `Augmentez votre niveau de vérification pour un plafond plus élevé (menu → Augmenter mes plafonds).`,
+      );
+    }
+  }
+
+  /** Équivalent marchand — plafond fixe (compte déjà vérifié), calculé sur
+   * les dépenses sortantes du wallet marchand plutôt que par utilisateur
+   * (plusieurs collaborateurs peuvent agir pour le même marchand). */
+  async assertMerchantWithinMonthlyLimit(merchantId: string, amount: bigint) {
+    const wallet = await this.prisma.wallet.findUnique({ where: { merchantId } });
+    if (!wallet) return; // pas de wallet = rien à limiter (garde-fou)
+
+    const limitCents = BigInt(MERCHANT_MONTHLY_LIMIT_FCFA) * 100n;
+    const startOfMonth = new Date();
+    startOfMonth.setDate(startOfMonth.getDate() - 30);
+
+    const sent = await this.prisma.transaction.aggregate({
+      where: {
+        sourceWalletId: wallet.id,
+        type: { in: OUTGOING_TYPES as any },
+        status: 'SUCCESS',
+        createdAt: { gte: startOfMonth },
+      },
+      _sum: { amount: true },
+    });
+
+    const alreadySent = sent._sum.amount ?? 0n;
+    if (alreadySent + amount > limitCents) {
+      const remainingFcfa = Math.max(0, Number(limitCents - alreadySent) / 100);
+      throw new BadRequestException(
+        `Plafond mensuel marchand atteint (${MERCHANT_MONTHLY_LIMIT_FCFA.toLocaleString('fr-FR')} FCFA). ` +
+          `Il reste ${remainingFcfa.toLocaleString('fr-FR')} FCFA disponibles ce mois-ci.`,
       );
     }
   }
