@@ -21,7 +21,7 @@ function formatFcfa(amountInCents: number): string {
 }
 
 export default function BusinessHomePage() {
-  const { user, loading, activeMerchant, logout } = useAuth();
+  const { user, loading, activeMerchant } = useAuth();
   const router = useRouter();
   const [data, setData] = useState<DashboardData | null>(null);
   const [cash, setCash] = useState<CashBalance | null>(null);
@@ -57,16 +57,15 @@ export default function BusinessHomePage() {
       <div className="fz-glow" />
 
       <div className="fz-header-row">
+        <button onClick={() => setMenuOpen(true)} className="fz-notif-btn" title="Menu">
+          ☰
+        </button>
+        <div className="fz-header-logo-wrap">
+          <img src="/brand/mobilepay-logo-badge-dark.svg" alt="MobilePay" className="fz-header-logo" />
+        </div>
         <div className="fz-profile" onClick={() => setMenuOpen(true)}>
           <span className="fz-avatar">{activeMerchant.businessName.charAt(0).toUpperCase()}</span>
-          <span className="fz-greeting">
-            <span className="hello">Business</span>
-            <span className="name">{activeMerchant.businessName}</span>
-          </span>
         </div>
-        <button onClick={() => logout().then(() => router.push('/login'))} className="fz-notif-btn" title="Déconnexion">
-          ⏻
-        </button>
       </div>
 
       <BusinessSideMenu open={menuOpen} onClose={() => setMenuOpen(false)} />
@@ -74,6 +73,7 @@ export default function BusinessHomePage() {
       <div className="fz-balance-card">
         <div className="fz-balance-top">
           <div>
+            <span className="fz-balance-holder">{activeMerchant.businessName}</span>
             <span className="fz-balance-label">💰 Encaissements aujourd'hui</span>
             <span className="fz-balance-amount">
               {data ? formatFcfa(data.todayCollections) : '—'}

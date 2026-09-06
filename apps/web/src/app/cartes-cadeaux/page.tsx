@@ -34,6 +34,8 @@ export default function CartesCadeauxPage() {
   const [feeLoading, setFeeLoading] = useState(false);
   const [recipientEmail, setRecipientEmail] = useState('');
   const [pin, setPin] = useState('');
+  const [categories, setCategories] = useState<{ id: string; label: string; icon: string | null }[]>([]);
+  const [expenseCategoryId, setExpenseCategoryId] = useState('');
 
   const [submitting, setSubmitting] = useState(false);
   const [result, setResult] = useState<{
@@ -48,6 +50,12 @@ export default function CartesCadeauxPage() {
   useEffect(() => {
     if (user?.country) setCountry(user.country);
   }, [user?.country]);
+
+  useEffect(() => {
+    apiFetch<{ id: string; label: string; icon: string | null }[]>('/expenses/categories')
+      .then(setCategories)
+      .catch(() => setCategories([]));
+  }, []);
 
   useEffect(() => {
     setProductsLoading(true);
@@ -97,7 +105,7 @@ export default function CartesCadeauxPage() {
     if (!product) return;
     setSubmitting(true);
     try {
-      const res = await apiFetch<{ status: string; failureReason?: string; cardCode?: string; cardPin?: string }>('/gift-cards/orders', {
+      const res = await apiFetch<{ id: string; status: string; failureReason?: string; cardCode?: string; cardPin?: string }>('/gift-cards/orders', {
         method: 'POST',
         idempotent: true,
         body: JSON.stringify({
@@ -108,6 +116,12 @@ export default function CartesCadeauxPage() {
           countryCode: country,
         }),
       });
+      if (res.id && expenseCategoryId) {
+        apiFetch(`/expenses/transactions/${res.id}/category`, {
+          method: 'PATCH',
+          body: JSON.stringify({ categoryId: expenseCategoryId }),
+        }).catch(() => {});
+      }
       if (res.status === 'SUCCESS') {
         setResult({
           status: 'success',
@@ -327,6 +341,22 @@ export default function CartesCadeauxPage() {
               <span className="k">Bénéficiaire</span>
               <span className="v">{recipientEmail}</span>
             </div>
+            {categories.length > 0 && (
+              <label style={{ display: 'block', marginTop: 12 }}>
+                Type de charge (optionnel)
+                <select
+                  className="mp-input"
+                  style={{ width: '100%', marginTop: 6 }}
+                  value={expenseCategoryId}
+                  onChange={(e) => setExpenseCategoryId(e.target.value)}
+                >
+                  <option value="">Aucune catégorie</option>
+                  {categories.map((c) => (
+                    <option key={c.id} value={c.id}>{c.icon} {c.label}</option>
+                  ))}
+                </select>
+              </label>
+            )}
             <label style={{ display: 'block', marginTop: 16 }}>
               Code secret
               <PasswordInput

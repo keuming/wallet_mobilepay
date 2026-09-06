@@ -25,7 +25,8 @@ interface AuthContextValue {
   merchants: MyMerchant[];
   activeMerchant: MyMerchant | null;
   loading: boolean;
-  login: (phone: string, password: string) => Promise<void>;
+  login: (phone: string, password: string) => Promise<{ requiresOtp: boolean; maskedPhone: string }>;
+  verifyLoginOtp: (phone: string, password: string, code: string) => Promise<void>;
   logout: () => Promise<void>;
   setActiveMerchantId: (id: string) => void;
 }
@@ -68,10 +69,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const login = async (phone: string, password: string) => {
-    const result = await apiFetch<{ accessToken: string; refreshToken: string }>('/auth/login', {
+    return apiFetch<{ requiresOtp: boolean; maskedPhone: string }>('/auth/login', {
       method: 'POST',
       auth: false,
       body: JSON.stringify({ phone, password }),
+    });
+  };
+
+  const verifyLoginOtp = async (phone: string, password: string, code: string) => {
+    const result = await apiFetch<{ accessToken: string; refreshToken: string }>('/auth/login/verify-otp', {
+      method: 'POST',
+      auth: false,
+      body: JSON.stringify({ phone, password, code }),
     });
     storeTokens(result.accessToken, result.refreshToken);
     await bootstrap();
@@ -89,7 +98,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   return (
     <AuthContext.Provider
-      value={{ user, merchants, activeMerchant, loading, login, logout, setActiveMerchantId }}
+      value={{ user, merchants, activeMerchant, loading, login, verifyLoginOtp, logout, setActiveMerchantId }}
     >
       {children}
     </AuthContext.Provider>

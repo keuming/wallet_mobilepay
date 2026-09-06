@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { apiFetch, ApiError } from '../../lib/apiClient';
 import StatusModal, { ResultStatus } from '../../components/StatusModal';
 import PaymentMethodBadge, { PaymentMethodId } from '../../components/PaymentMethodBadge';
+import PasswordInput from '../../components/PasswordInput';
 import { useAuth } from '../../contexts/AuthContext';
 import { WORLD_COUNTRIES } from '../../lib/worldCountries';
 
@@ -74,6 +75,9 @@ export default function RechargerPage() {
   const [walletBalance, setWalletBalance] = useState<number | null>(null);
   const [feeAmount, setFeeAmount] = useState<number | null>(null);
   const [feeLoading, setFeeLoading] = useState(false);
+  const [categories, setCategories] = useState<{ id: string; label: string; icon: string | null }[]>([]);
+  const [expenseCategoryId, setExpenseCategoryId] = useState('');
+  const [pin, setPin] = useState('');
 
   const [submitting, setSubmitting] = useState(false);
   const [result, setResult] = useState<{ status: ResultStatus; message: string } | null>(null);
@@ -144,6 +148,9 @@ export default function RechargerPage() {
 
   useEffect(() => {
     apiFetch<{ cachedBalance: number }>('/wallet').then((w) => setWalletBalance(w.cachedBalance));
+    apiFetch<{ id: string; label: string; icon: string | null }[]>('/expenses/categories')
+      .then(setCategories)
+      .catch(() => setCategories([]));
   }, []);
 
   useEffect(() => {
@@ -200,8 +207,16 @@ export default function RechargerPage() {
           paymentMethod,
           momoProvider: paymentMethod === 'MOBILE_MONEY' ? momoOperator : undefined,
           countryCode: country,
+          pin,
         }),
       });
+
+      if (response.id && expenseCategoryId) {
+        apiFetch(`/expenses/transactions/${response.id}/category`, {
+          method: 'PATCH',
+          body: JSON.stringify({ categoryId: expenseCategoryId }),
+        }).catch(() => {});
+      }
 
       if (response.status === 'SUCCESS') {
         setResult({ status: 'success', message: `C'est fait ! ${CATEGORY_LABELS[category!].label} activé pour ${phone}. 🎉` });
@@ -521,7 +536,35 @@ export default function RechargerPage() {
                 </span>
               </div>
             </div>
-            <button className="mp-btn-primary" disabled={submitting} onClick={handleSubmit}>
+            {categories.length > 0 && (
+              <label>
+                Type de charge (optionnel)
+                <select
+                  className="mp-input"
+                  style={{ width: '100%', marginTop: 6 }}
+                  value={expenseCategoryId}
+                  onChange={(e) => setExpenseCategoryId(e.target.value)}
+                >
+                  <option value="">Aucune catégorie</option>
+                  {categories.map((c) => (
+                    <option key={c.id} value={c.id}>{c.icon} {c.label}</option>
+                  ))}
+                </select>
+              </label>
+            )}
+            <label>
+              Code secret
+              <PasswordInput
+                className="mp-input"
+                style={{ marginTop: 6, letterSpacing: 6, fontSize: 20, textAlign: 'center' }}
+                inputMode="numeric"
+                maxLength={6}
+                value={pin}
+                onChange={(e) => setPin(e.target.value.replace(/\D/g, ''))}
+                placeholder="••••"
+              />
+            </label>
+            <button className="mp-btn-primary" disabled={submitting || pin.length < 4} onClick={handleSubmit}>
               {submitting ? 'Envoi...' : '✅ Confirmer et acheter'}
             </button>
             <button className="mp-btn-ghost" onClick={() => setStep(0)}>

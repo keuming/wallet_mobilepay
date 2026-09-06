@@ -41,6 +41,8 @@ export default function FacturesPage() {
   const [feeAmount, setFeeAmount] = useState<number | null>(null);
   const [feeLoading, setFeeLoading] = useState(false);
   const [pin, setPin] = useState('');
+  const [categories, setCategories] = useState<{ id: string; label: string; icon: string | null }[]>([]);
+  const [expenseCategoryId, setExpenseCategoryId] = useState('');
 
   const [submitting, setSubmitting] = useState(false);
   const [result, setResult] = useState<{ status: 'success' | 'failed'; message: string } | null>(null);
@@ -48,6 +50,12 @@ export default function FacturesPage() {
   useEffect(() => {
     if (user?.country) setCountry(user.country);
   }, [user?.country]);
+
+  useEffect(() => {
+    apiFetch<{ id: string; label: string; icon: string | null }[]>('/expenses/categories')
+      .then(setCategories)
+      .catch(() => setCategories([]));
+  }, []);
 
   const [billersError, setBillersError] = useState<string | null>(null);
 
@@ -95,7 +103,7 @@ export default function FacturesPage() {
     if (!biller) return;
     setSubmitting(true);
     try {
-      const res = await apiFetch<{ status: string; failureReason?: string }>('/utility-payments/pay', {
+      const res = await apiFetch<{ id: string; status: string; failureReason?: string }>('/utility-payments/pay', {
         method: 'POST',
         idempotent: true,
         body: JSON.stringify({
@@ -107,6 +115,12 @@ export default function FacturesPage() {
           pin,
         }),
       });
+      if (res.id && expenseCategoryId) {
+        apiFetch(`/expenses/transactions/${res.id}/category`, {
+          method: 'PATCH',
+          body: JSON.stringify({ categoryId: expenseCategoryId }),
+        }).catch(() => {});
+      }
       if (res.status === 'SUCCESS' || res.status === 'PROCESSING') {
         setResult({ status: 'success', message: `Facture ${biller.name} payée ! 🎉` });
       } else {
@@ -271,6 +285,22 @@ export default function FacturesPage() {
                 {feeLoading ? '...' : feeAmount !== null ? `${(feeAmount / 100).toLocaleString('fr-FR')} FCFA` : '—'}
               </span>
             </div>
+            {categories.length > 0 && (
+              <label style={{ display: 'block', marginTop: 12 }}>
+                Type de charge (optionnel)
+                <select
+                  className="mp-input"
+                  style={{ width: '100%', marginTop: 6 }}
+                  value={expenseCategoryId}
+                  onChange={(e) => setExpenseCategoryId(e.target.value)}
+                >
+                  <option value="">Aucune catégorie</option>
+                  {categories.map((c) => (
+                    <option key={c.id} value={c.id}>{c.icon} {c.label}</option>
+                  ))}
+                </select>
+              </label>
+            )}
             <label style={{ display: 'block', marginTop: 16 }}>
               Code secret
               <PasswordInput className="mp-input" style={{ width: '100%', marginTop: 6 }} value={pin} onChange={(e) => setPin(e.target.value)} placeholder="••••" inputMode="numeric" />
