@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import * as crypto from 'crypto';
 import {
@@ -34,6 +34,7 @@ export interface PaymentIntentResult {
 @Injectable()
 export class Hub2Adapter implements PaymentProviderAdapter {
   readonly name = 'HUB2' as const;
+  private readonly logger = new Logger(Hub2Adapter.name);
 
   private readonly baseUrl: string;
   private readonly apiKey: string;
@@ -177,6 +178,10 @@ export class Hub2Adapter implements PaymentProviderAdapter {
       },
     };
 
+    this.logger.log(
+      `PAY-IN initié — provider=${attemptBody.provider} country=${attemptBody.country} msisdn=${params.customerPhone} reference=${params.reference}`,
+    );
+
     // Endpoint ASYNCHRONE — l'endpoint synchrone (/sync) est rejeté (401)
     // pour les opérateurs de ce compte. Le résultat final (succès/échec,
     // type d'action requise) arrive via webhook, événement
@@ -190,8 +195,11 @@ export class Hub2Adapter implements PaymentProviderAdapter {
     const rawText = await res.text();
 
     if (!res.ok) {
+      this.logger.error(`PAY-IN — HUB2 a rejeté la demande (${res.status}) : ${rawText}`);
       throw new Error(`HUB2 attempt payment error (${res.status}): ${rawText}`);
     }
+
+    this.logger.log(`PAY-IN — réponse HUB2 (200 OK) : ${rawText}`);
 
     const response = JSON.parse(rawText);
 
