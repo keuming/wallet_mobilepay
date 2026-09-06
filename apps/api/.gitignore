@@ -1,0 +1,7 @@
+# § Scripts d'administration d'urgence — ne doivent jamais être suivis par
+# git (manipulent directement mots de passe/codes secrets/comptes). Gardés
+# uniquement en local sur la machine de l'admin, jamais publiés sur GitHub.
+unlock-and-reset-pin.js
+diagnose-login.js
+reset-password.js
+update-account-name.js
