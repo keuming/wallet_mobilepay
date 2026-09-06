@@ -614,9 +614,16 @@ export class PaymentEngineService {
           phone,
           `MobilePay CI : compose le code de confirmation ${provider ?? 'Mobile Money'} habituel sur ton téléphone, puis saisis-le dans l'application pour valider ton paiement.`,
         );
+      } else if (nextActionType === 'ussd' || !nextActionType) {
+        // § Notification explicite demandée pour MTN/Moov — même si
+        // l'opérateur affiche normalement une invite USSD directement sur
+        // le téléphone, un SMS de secours confirme au client qu'une
+        // demande de paiement est en cours et ce qu'il doit faire.
+        await this.sms.send(
+          phone,
+          `MobilePay CI : une demande de paiement ${provider ?? 'Mobile Money'} vient d'être envoyée. Valide-la directement depuis le message ou le menu de ton opérateur sur ton téléphone pour finaliser.`,
+        );
       }
-      // "ussd" : l'opérateur affiche déjà une invite directement sur le
-      // téléphone du client — pas de SMS supplémentaire nécessaire ici.
     } catch {
       // Un échec d'envoi de ce SMS d'orientation ne doit jamais faire
       // échouer le paiement lui-même — le client garde de toute façon
