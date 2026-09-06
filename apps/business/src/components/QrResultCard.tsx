@@ -2,6 +2,8 @@
 
 import { useState } from 'react';
 import { apiFetch, ApiError } from '../lib/apiClient';
+import PhoneCountryInput from './PhoneCountryInput';
+import { HUB2_COUNTRIES } from '../lib/hub2Countries';
 
 interface QrResultCardProps {
   imageDataUrl: string;
@@ -19,6 +21,7 @@ interface QrResultCardProps {
 export default function QrResultCard({ imageDataUrl, url, title = 'Votre QR', filename = 'mobilepay-qr' }: QrResultCardProps) {
   const [copyStatus, setCopyStatus] = useState<'idle' | 'copied' | 'shared' | 'failed'>('idle');
   const [smsPhone, setSmsPhone] = useState('');
+  const [smsCountry, setSmsCountry] = useState('CI');
   const [smsSending, setSmsSending] = useState(false);
   const [smsSent, setSmsSent] = useState(false);
   const [smsError, setSmsError] = useState<string | null>(null);
@@ -59,12 +62,14 @@ export default function QrResultCard({ imageDataUrl, url, title = 'Votre QR', fi
 
   const handleSendSms = async () => {
     if (!smsPhone) return;
+    const dialCode = HUB2_COUNTRIES.find((c) => c.code === smsCountry)?.dialCode ?? '225';
+    const fullPhone = `+${dialCode}${smsPhone}`;
     setSmsSending(true);
     setSmsError(null);
     try {
       await apiFetch('/sms/send-link', {
         method: 'POST',
-        body: JSON.stringify({ toPhone: smsPhone, url, label: 'le lien de paiement' }),
+        body: JSON.stringify({ toPhone: fullPhone, url, label: 'le lien de paiement' }),
       });
       setSmsSent(true);
     } catch (err) {
@@ -151,27 +156,24 @@ export default function QrResultCard({ imageDataUrl, url, title = 'Votre QR', fi
       <div style={{ marginTop: 16, textAlign: 'left' }}>
         <label style={{ fontSize: 11.5, fontWeight: 700, color: 'var(--mp-muted)', textTransform: 'uppercase', letterSpacing: 0.4 }}>
           Envoyer par SMS
-          <div style={{ display: 'flex', gap: 8, marginTop: 6 }}>
-            <input
-              className="mp-input"
-              style={{ flex: 1, fontSize: 13 }}
-              value={smsPhone}
-              onChange={(e) => {
-                setSmsPhone(e.target.value);
-                setSmsSent(false);
-              }}
-              placeholder="+2250700000000"
-            />
-            <button
-              className="mp-btn-primary"
-              style={{ flexShrink: 0, padding: '0 14px', fontSize: 12.5 }}
-              disabled={smsSending || !smsPhone}
-              onClick={handleSendSms}
-            >
-              {smsSending ? 'Envoi...' : smsSent ? 'Envoyé ✓' : 'Envoyer'}
-            </button>
-          </div>
         </label>
+        <div style={{ marginTop: 6 }}>
+          <PhoneCountryInput
+            country={smsCountry}
+            onCountryChange={(c) => { setSmsCountry(c); setSmsSent(false); }}
+            localNumber={smsPhone}
+            onLocalNumberChange={(v) => { setSmsPhone(v); setSmsSent(false); }}
+            label=""
+          />
+          <button
+            className="mp-btn-primary"
+            style={{ width: '100%', marginTop: 8, padding: '10px 14px', fontSize: 12.5 }}
+            disabled={smsSending || !smsPhone}
+            onClick={handleSendSms}
+          >
+            {smsSending ? 'Envoi...' : smsSent ? 'Envoyé ✓' : 'Envoyer'}
+          </button>
+        </div>
         {smsError && <div style={{ marginTop: 6, fontSize: 12, color: 'var(--mp-red)' }}>{smsError}</div>}
       </div>
     </div>
