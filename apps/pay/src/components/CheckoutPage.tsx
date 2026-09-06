@@ -197,7 +197,7 @@ export default function CheckoutPage({
         status: 'otp',
         message: res.nextActionMessage ?? 'Saisis le code reçu par SMS pour confirmer.',
       });
-    } else if (res.nextActionType === 'redirect' && res.nextActionUrl) {
+    } else if (res.nextActionType === 'redirection' && res.nextActionUrl) {
       window.location.href = res.nextActionUrl;
     } else {
       setResult({
