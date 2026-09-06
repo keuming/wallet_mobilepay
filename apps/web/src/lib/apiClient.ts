@@ -98,7 +98,15 @@ export async function apiFetch<T = any>(path: string, options: RequestOptions = 
       response = await doFetch();
     } else {
       clearTokens();
-      if (typeof window !== 'undefined' && window.location.pathname !== '/login') window.location.href = '/login';
+      if (typeof window !== 'undefined') {
+        // § Préserve la destination d'origine (ex: /payer?link=xyz) à
+        // travers la connexion — sans ça, quelqu'un qui clique un lien de
+        // paiement sans être connecté atterrit sur le tableau de bord après
+        // s'être connecté, sans aucun moyen de revenir à son paiement.
+        const redirectTo = window.location.pathname + window.location.search;
+        const loginUrl = redirectTo && redirectTo !== '/' ? `/login?redirect=${encodeURIComponent(redirectTo)}` : '/login';
+        window.location.href = loginUrl;
+      }
       throw new ApiError('Session expirée.', 401);
     }
   }

@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, FormEvent } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, FormEvent, Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '../../contexts/AuthContext';
 import { ApiError, storeTokens } from '../../lib/apiClient';
@@ -9,8 +9,20 @@ import PasswordInput from '../../components/PasswordInput';
 import PhoneCountryInput from '../../components/PhoneCountryInput';
 
 export default function LoginPage() {
+  return (
+    <Suspense fallback={null}>
+      <LoginPageInner />
+    </Suspense>
+  );
+}
+
+function LoginPageInner() {
   const { login, verifyLoginOtp, refreshProfile } = useAuth();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  // § Préserve la destination d'origine (ex: /payer?link=xyz) si la personne
+  // a été renvoyée ici en pleine tentative de paiement sans être connectée.
+  const redirectTo = searchParams.get('redirect') || '/dashboard';
   const [country, setCountry] = useState('CI');
   const [localNumber, setLocalNumber] = useState('');
   const [password, setPassword] = useState('');
@@ -32,7 +44,7 @@ export default function LoginPage() {
       if (!res.requiresOtp && res.accessToken && res.refreshToken) {
         storeTokens(res.accessToken, res.refreshToken);
         await refreshProfile();
-        router.push('/dashboard');
+        router.push(redirectTo);
         return;
       }
       setMaskedPhone(res.maskedPhone ?? '');
@@ -50,7 +62,7 @@ export default function LoginPage() {
     setSubmitting(true);
     try {
       await verifyLoginOtp(localNumber, password, code, country);
-      router.push('/dashboard');
+      router.push(redirectTo);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Code invalide.');
     } finally {
