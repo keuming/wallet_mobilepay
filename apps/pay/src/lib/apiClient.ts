@@ -18,7 +18,14 @@ export async function apiFetch<T>(path: string, options: RequestInit & { idempot
     headers['idempotency-key'] = crypto.randomUUID();
   }
 
-  const response = await fetch(`${API_URL}${path}`, { ...options, headers });
+  let response: Response;
+  try {
+    response = await fetch(`${API_URL}${path}`, { ...options, headers });
+  } catch {
+    // § Le payeur est souvent sur une connexion mobile instable — une
+    // coupure doit produire un message clair, pas un `TypeError` brut.
+    throw new ApiError('Connexion impossible. Vérifie ta connexion internet et réessaie.', 0);
+  }
   const json = await response.json().catch(() => null);
 
   if (!response.ok) {

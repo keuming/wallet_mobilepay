@@ -71,6 +71,13 @@ export class ApiError extends Error {
 export async function apiFetch<T = any>(path: string, options: RequestOptions = {}): Promise<T> {
   const { auth = true, idempotent = false, headers, ...rest } = options;
 
+  // § Corrigé à l'audit : la clé était régénérée à CHAQUE tentative, y
+  // compris lors du rejeu après renouvellement du jeton — ce qui annulait
+  // la protection anti-double-débit précisément au moment où elle est la
+  // plus utile. Générée une seule fois ici, elle reste identique sur toutes
+  // les tentatives de CETTE requête.
+  const idempotencyKey = idempotent ? generateIdempotencyKey() : null;
+
   const doFetch = async (): Promise<Response> => {
     const finalHeaders: Record<string, string> = {
       'Content-Type': 'application/json',
@@ -81,11 +88,22 @@ export async function apiFetch<T = any>(path: string, options: RequestOptions = 
       const token = getAccessToken();
       if (token) finalHeaders.Authorization = `Bearer ${token}`;
     }
-    if (idempotent) {
-      finalHeaders['Idempotency-Key'] = generateIdempotencyKey();
+    if (idempotencyKey) {
+      finalHeaders['Idempotency-Key'] = idempotencyKey;
     }
 
-    return fetch(`${API_URL}${path}`, { ...rest, headers: finalHeaders });
+    try {
+      return await fetch(`${API_URL}${path}`, { ...rest, headers: finalHeaders });
+    } catch {
+      // § Corrigé à l'audit : une coupure réseau (fréquente en mobilité)
+      // levait un `TypeError: Failed to fetch` brut qui remontait tel quel
+      // jusqu'à l'écran — message technique incompréhensible, ou interface
+      // figée. On renvoie désormais une erreur claire et exploitable.
+      throw new ApiError(
+        'Connexion impossible. Vérifie ta connexion internet et réessaie.',
+        0,
+      );
+    }
   };
 
   let response = await doFetch();

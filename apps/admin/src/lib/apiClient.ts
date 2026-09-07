@@ -70,7 +70,11 @@ export async function apiFetch<T = any>(path: string, options: RequestOptions = 
       const token = getAccessToken();
       if (token) finalHeaders.Authorization = `Bearer ${token}`;
     }
-    return fetch(`${API_URL}${path}`, { ...rest, headers: finalHeaders });
+    try {
+      return await fetch(`${API_URL}${path}`, { ...rest, headers: finalHeaders });
+    } catch {
+      throw new ApiError('Connexion impossible. Vérifie ta connexion internet et réessaie.', 0);
+    }
   };
 
   let response = await doFetch();

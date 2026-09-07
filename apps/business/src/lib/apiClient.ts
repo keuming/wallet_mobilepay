@@ -65,6 +65,10 @@ export class ApiError extends Error {
 export async function apiFetch<T = any>(path: string, options: RequestOptions = {}): Promise<T> {
   const { auth = true, idempotent = false, headers, ...rest } = options;
 
+  // § La clé était régénérée à chaque tentative (y compris au rejeu après
+  // refresh du jeton), ce qui annulait la protection anti-double-débit.
+  const idempotencyKey = idempotent ? generateIdempotencyKey() : null;
+
   const doFetch = async (): Promise<Response> => {
     const finalHeaders: Record<string, string> = {
       'Content-Type': 'application/json',
@@ -74,8 +78,14 @@ export async function apiFetch<T = any>(path: string, options: RequestOptions = 
       const token = getAccessToken();
       if (token) finalHeaders.Authorization = `Bearer ${token}`;
     }
-    if (idempotent) finalHeaders['Idempotency-Key'] = generateIdempotencyKey();
-    return fetch(`${API_URL}${path}`, { ...rest, headers: finalHeaders });
+    if (idempotencyKey) finalHeaders['Idempotency-Key'] = idempotencyKey;
+    try {
+      return await fetch(`${API_URL}${path}`, { ...rest, headers: finalHeaders });
+    } catch {
+      // § Coupure réseau (fréquente en mobilité) — message clair au lieu
+      // d'un `TypeError: Failed to fetch` brut remonté jusqu'à l'écran.
+      throw new ApiError('Connexion impossible. Vérifie ta connexion internet et réessaie.', 0);
+    }
   };
 
   let response = await doFetch();
