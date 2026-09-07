@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import * as crypto from 'crypto';
 import { getCountryCallingCode, CountryCode } from 'libphonenumber-js';
@@ -17,6 +17,8 @@ export interface AirtimeResult {
   status: 'SUCCESS' | 'FAILED';
   raw: unknown;
   operatorName?: string;
+  /** Message actionnable en français en cas d'échec (§ audit conformité). */
+  failureReason?: string;
 }
 
 /**
@@ -103,6 +105,8 @@ function toLocalNumber(phoneNumber: string, countryCode: string): string {
  */
 @Injectable()
 export class ReloadlyAdapter {
+  private readonly logger = new Logger(ReloadlyAdapter.name);
+
   private readonly clientId: string;
   private readonly clientSecret: string;
   private readonly baseUrl: string;
@@ -210,8 +214,23 @@ export class ReloadlyAdapter {
     const json = await res.json().catch(() => ({}));
 
     if (!res.ok) {
-      return { providerRef: params.reference, status: 'FAILED', raw: json };
+      // § Corrigé à l'audit : l'échec était renvoyé SILENCIEUSEMENT, sans
+      // aucune trace — impossible de diagnostiquer pourquoi un achat de
+      // crédit/data échouait en production.
+      this.logger.error(
+        `Reloadly topup ÉCHEC (${res.status}) — operator=${params.operatorId} phone=${params.phoneNumber} ref=${params.reference} : ${JSON.stringify(json)}`,
+      );
+      return {
+        providerRef: params.reference,
+        status: 'FAILED',
+        raw: json,
+        failureReason: this.friendlyReloadlyError(json),
+      };
     }
+
+    this.logger.log(
+      `Reloadly topup OK — transactionId=${json.transactionId} operator=${json.operatorName} ref=${params.reference}`,
+    );
 
     return {
       providerRef: String(json.transactionId ?? params.reference),
@@ -249,4 +268,30 @@ export class ReloadlyAdapter {
     };
     return this.cachedToken.value;
   }
+
+  /**
+   * Traduit une erreur Reloadly en message actionnable pour l'utilisateur.
+   * Reloadly renvoie un `errorCode` machine + un `message` en anglais ; ni
+   * l'un ni l'autre n'est présentable tel quel à un client ivoirien.
+   */
+  private friendlyReloadlyError(json: any): string {
+    const code = String(json?.errorCode ?? '').toUpperCase();
+    const map: Record<string, string> = {
+      INVALID_RECIPIENT_PHONE: "Ce numéro n'est pas valide pour l'opérateur sélectionné.",
+      INVALID_PHONE_NUMBER: "Numéro de téléphone invalide.",
+      OPERATOR_NOT_SUPPORTED: "Cet opérateur n'est pas disponible pour le moment.",
+      INSUFFICIENT_BALANCE:
+        "Service momentanément indisponible — réessaie dans quelques instants.",
+      AMOUNT_BELOW_MIN: "Le montant est inférieur au minimum autorisé par l'opérateur.",
+      AMOUNT_ABOVE_MAX: "Le montant dépasse le maximum autorisé par l'opérateur.",
+      INVALID_AMOUNT: "Ce montant n'est pas accepté par l'opérateur.",
+      TRANSACTION_LIMIT_EXCEEDED: "Limite de transaction atteinte pour ce numéro.",
+      IP_NOT_WHITELISTED: "Service momentanément indisponible — réessaie plus tard.",
+    };
+    return (
+      map[code] ??
+      "La recharge n'a pas pu aboutir. Vérifie le numéro et l'opérateur, puis réessaie."
+    );
+  }
+
 }

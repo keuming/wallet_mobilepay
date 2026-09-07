@@ -347,18 +347,46 @@ export class Hub2Adapter implements PaymentProviderAdapter {
     // § Messages HUB2 bruts traduits en explications actionnables — un
     // code technique comme "authentication_failed" n'aide pas l'utilisateur
     // à savoir quoi faire différemment la prochaine fois.
+    //
+    // § Enrichi à l'audit pré-production avec les codes RÉELLEMENT observés
+    // dans les logs de production (les codes génériques ci-dessous ne
+    // couvraient pas les formats réels renvoyés par HUB2, ex:
+    // "customer_insufficient_funds", "wave_payment_expired" — l'utilisateur
+    // voyait donc un message technique en anglais).
     const FRIENDLY_FAILURE_MESSAGES: Record<string, string> = {
+      // Codes génériques
       authentication_failed:
         "La validation du paiement a échoué — vérifie que tu as bien confirmé avec le bon code PIN Mobile Money, puis réessaie.",
       insufficient_funds: "Solde Mobile Money insuffisant pour cette opération.",
       expired: "Le délai de confirmation a expiré avant que le paiement soit validé — réessaie.",
       cancelled: "Le paiement a été annulé.",
       timeout: "L'opérateur n'a pas répondu à temps — réessaie dans quelques instants.",
+
+      // Codes réels confirmés en production
+      customer_insufficient_funds:
+        "Solde insuffisant sur ton compte Mobile Money — recharge-le puis réessaie.",
+      wave_payment_expired:
+        "Le lien de paiement Wave a expiré. Relance l'opération pour obtenir un nouveau lien.",
+      customer_canceled: "Tu as annulé le paiement sur ton téléphone.",
+      customer_cancelled: "Tu as annulé le paiement sur ton téléphone.",
+      invalid_customer_number:
+        "Ce numéro Mobile Money n'est pas valide ou n'est pas actif chez cet opérateur.",
+      customer_not_found:
+        "Aucun compte Mobile Money trouvé pour ce numéro chez cet opérateur.",
+      transaction_limit_exceeded:
+        "Le montant dépasse le plafond autorisé par ton opérateur Mobile Money.",
+      operator_unavailable:
+        "L'opérateur Mobile Money est momentanément indisponible — réessaie dans quelques instants.",
     };
 
     const failureCode = payload.failure?.code;
+    // § Un code inconnu ne doit jamais être affiché brut à l'utilisateur
+    // (ex: "wave_payment_expired: Payment too old..." tel qu'observé en
+    // production) — on retombe sur un message générique compréhensible, le
+    // code technique restant journalisé côté serveur pour le diagnostic.
     const failureMessage = payload.failure?.message
-      ? FRIENDLY_FAILURE_MESSAGES[failureCode ?? ''] ?? `${failureCode ?? ''}: ${payload.failure.message}`.trim()
+      ? (FRIENDLY_FAILURE_MESSAGES[failureCode ?? ''] ??
+        "Le paiement n'a pas pu aboutir. Réessaie, ou contacte ton opérateur Mobile Money si le problème persiste.")
       : undefined;
 
     // § Frais HUB2 réels (tableau `fees` de l'objet Payment/Transfer,
@@ -374,6 +402,7 @@ export class Hub2Adapter implements PaymentProviderAdapter {
       providerRef: payload.id,
       status: statusMap[payload.status] ?? 'PENDING',
       failureReason: failureMessage,
+      failureCode,
       hub2FeeAmount,
     };
   }

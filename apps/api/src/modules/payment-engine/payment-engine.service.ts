@@ -1244,6 +1244,10 @@ export class PaymentEngineService {
           operatorId: params.operatorId,
           operatorName: result.operatorName,
           airtimeKind: params.kind,
+          // § Corrigé à l'audit : la raison de l'échec Reloadly n'était
+          // jamais enregistrée — l'utilisateur voyait un échec sans savoir
+          // pourquoi (numéro invalide ? montant hors limites ?).
+          failureReason: finalStatus === 'FAILED' ? result.failureReason : null,
         },
       });
     }).then(async (transaction) => {
@@ -1421,7 +1425,10 @@ export class PaymentEngineService {
         status: finalStatus,
         feeAmount: totalFee,
         operatorName: result.operatorName,
-        failureReason: finalStatus === 'FAILED' ? 'Paiement reçu mais échec de la livraison Reloadly — remboursement à traiter manuellement.' : undefined,
+        failureReason:
+          finalStatus === 'FAILED'
+            ? `Paiement reçu mais échec de la livraison Reloadly — remboursement à traiter manuellement.${result.failureReason ? ` (${result.failureReason})` : ''}`
+            : undefined,
       },
     });
 

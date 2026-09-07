@@ -151,6 +151,7 @@ export class WebhooksService {
 
     this.logger.log(
       `Webhook HUB2 : transaction ${transaction.id} (${transaction.type}) finalisée — statut=${verification.status}` +
+        (verification.failureCode ? ` code=${verification.failureCode}` : '') +
         (verification.failureReason ? ` raison=${verification.failureReason}` : ''),
     );
 
