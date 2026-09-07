@@ -966,11 +966,25 @@ export class AdminService {
           'Ce numéro est déjà un compte back-office. Modifiez plutôt ses permissions dans la liste.',
         );
       }
+      // § Corrigé : le mot de passe saisi dans le formulaire était IGNORÉ
+      // lors d'une promotion — le compte gardait son ancien mot de passe
+      // (souvent inconnu de l'admin qui vient de le créer), d'où un
+      // "identifiants invalides" à la première connexion. On applique
+      // désormais bien le mot de passe fourni, et on remet à zéro tout
+      // verrouillage anti-force-brute hérité du compte précédent.
+      const promotedPasswordHash = await bcrypt.hash(dto.password, 12);
       const promoted = await this.prisma.user.update({
         where: { id: existing.id },
         data: {
           role: 'ADMIN',
           adminPermissions: dto.permissions ?? [],
+          passwordHash: promotedPasswordHash,
+          // Le nom saisi dans le formulaire fait foi — l'admin le renseigne
+          // volontairement, il doit primer sur celui du compte existant.
+          firstName: dto.firstName,
+          lastName: dto.lastName,
+          securityFailedAttempts: 0,
+          securityLockedUntil: null,
         },
         select: {
           id: true,
