@@ -149,7 +149,7 @@ export default function LoginPage() {
               )}
             </form>
 
-            <p className="adm-login-footer">AXONE S.A</p>
+            <p className="adm-login-footer">ORZAYAH CI</p>
           </div>
         </div>
       </div>

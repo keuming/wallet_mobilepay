@@ -139,6 +139,10 @@ function LoginPageInner() {
           </button>
         </form>
       )}
+
+      <p style={{ textAlign: 'center', fontSize: 11.5, color: 'var(--fz-text-secondary)', opacity: 0.7, padding: '20px 0 16px', margin: 0 }}>
+        © {new Date().getFullYear()} ORZAYAH CI
+      </p>
     </div>
   );
 }
