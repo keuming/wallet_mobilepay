@@ -19,6 +19,7 @@ const NAV_ITEMS = [
   { href: '/paypal', label: '🅿️ PayPal' },
   { href: '/virement-bancaire', label: '🏦 Virement bancaire' },
   { href: '/providers', label: '🔌 Providers' },
+  { href: '/equipe', label: '👥 Équipe back-office' },
 ];
 
 type Theme = 'dark' | 'light';

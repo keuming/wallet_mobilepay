@@ -1,4 +1,4 @@
-import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Prisma, MerchantStatus, TransactionStatus } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
@@ -921,5 +921,107 @@ export class AdminService {
         mode: paypalId ? this.config.get('PAYPAL_ENV', 'sandbox') : 'non configuré',
       },
     ];
+  }
+
+  // ---------------------------------------------------------------------
+  // § Administration de l'équipe back-office (permissions granulaires)
+  // ---------------------------------------------------------------------
+
+  async listAdminTeam() {
+    return this.prisma.user.findMany({
+      where: { role: 'ADMIN' },
+      select: {
+        id: true,
+        phone: true,
+        firstName: true,
+        lastName: true,
+        isSuperAdmin: true,
+        adminPermissions: true,
+        isBlocked: true,
+        createdAt: true,
+      },
+      orderBy: { createdAt: 'asc' },
+    });
+  }
+
+  async createAdminUser(dto: {
+    phone: string;
+    firstName: string;
+    lastName: string;
+    password: string;
+    permissions?: string[];
+  }) {
+    const phone = normalizePhoneCI(dto.phone);
+    const existing = await this.prisma.user.findUnique({ where: { phone } });
+    if (existing) {
+      throw new ConflictException('Un compte existe déjà avec ce numéro.');
+    }
+
+    const passwordHash = await bcrypt.hash(dto.password, 12);
+    const user = await this.prisma.user.create({
+      data: {
+        phone,
+        firstName: dto.firstName,
+        lastName: dto.lastName,
+        passwordHash,
+        role: 'ADMIN',
+        adminPermissions: dto.permissions ?? [],
+        // Un compte créé depuis l'interface n'est JAMAIS super-admin : ce
+        // statut ne s'accorde qu'en base, volontairement, pour éviter
+        // qu'une erreur d'interface ne donne les pleins pouvoirs.
+        isSuperAdmin: false,
+      },
+      select: {
+        id: true,
+        phone: true,
+        firstName: true,
+        lastName: true,
+        adminPermissions: true,
+        createdAt: true,
+      },
+    });
+    return user;
+  }
+
+  async updateAdminPermissions(targetUserId: string, permissions: string[], actingUserId: string) {
+    const target = await this.prisma.user.findUnique({ where: { id: targetUserId } });
+    if (!target) throw new NotFoundException('Compte introuvable.');
+    if (target.role !== 'ADMIN') {
+      throw new BadRequestException("Ce compte n'est pas un compte back-office.");
+    }
+    // Un super-admin ne peut pas être restreint depuis l'interface — sinon
+    // une erreur (ou un acte malveillant) pourrait verrouiller définitivement
+    // l'accès complet au back-office.
+    if (target.isSuperAdmin) {
+      throw new ForbiddenException(
+        "Les permissions d'un super-administrateur ne se modifient pas depuis l'interface.",
+      );
+    }
+    if (targetUserId === actingUserId) {
+      throw new BadRequestException('Vous ne pouvez pas modifier vos propres permissions.');
+    }
+
+    return this.prisma.user.update({
+      where: { id: targetUserId },
+      data: { adminPermissions: permissions },
+      select: { id: true, adminPermissions: true },
+    });
+  }
+
+  async revokeAdminAccess(targetUserId: string, actingUserId: string) {
+    const target = await this.prisma.user.findUnique({ where: { id: targetUserId } });
+    if (!target) throw new NotFoundException('Compte introuvable.');
+    if (target.isSuperAdmin) {
+      throw new ForbiddenException("L'accès d'un super-administrateur ne peut pas être révoqué ici.");
+    }
+    if (targetUserId === actingUserId) {
+      throw new BadRequestException('Vous ne pouvez pas révoquer votre propre accès.');
+    }
+
+    await this.prisma.user.update({
+      where: { id: targetUserId },
+      data: { role: 'PARTICULIER', adminPermissions: [] },
+    });
+    return { message: 'Accès back-office révoqué.' };
   }
 }

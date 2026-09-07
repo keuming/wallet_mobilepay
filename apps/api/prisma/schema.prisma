@@ -182,6 +182,12 @@ model User {
   // corrige l'absence totale de protection constatée à l'audit sécurité.
   securityFailedAttempts Int       @default(0)
   securityLockedUntil    DateTime?
+  // § Permissions granulaires du back-office (§ administration d'équipe).
+  // Vide = aucune permission spécifique ; un ADMIN sans permission listée
+  // conserve l'accès complet UNIQUEMENT s'il est marqué isSuperAdmin.
+  // Voir AdminPermission dans common/constants/permissions.ts.
+  adminPermissions String[] @default([])
+  isSuperAdmin     Boolean  @default(false)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
