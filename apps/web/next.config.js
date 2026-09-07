@@ -3,18 +3,27 @@ const withPWA = require('@ducanh2912/next-pwa').default({
   dest: 'public',
   cacheOnFrontEndNav: true,
   aggressiveFrontEndNavCaching: true,
-  reloadOnOnline: true,
+  // § CAUSE DU CLIGNOTEMENT CORRIGÉE : `reloadOnOnline` recharge la page à
+  // CHAQUE retour de connexion. Sur un réseau mobile instable (typique en
+  // usage réel), le navigateur bascule sans cesse entre en ligne et hors
+  // ligne — provoquant des rechargements en boucle, donc un écran qui
+  // clignote sans fin. L'app fonctionne très bien sans : les requêtes
+  // échouées affichent maintenant un message clair (voir apiClient).
+  reloadOnOnline: false,
   disable: process.env.NODE_ENV === 'development',
-  // § Corrige une cause probable du bug "impossible de scroller" persistant
-  // sur la version APK malgré les correctifs déployés : sans ceci, un
-  // nouveau service worker peut rester "en attente" plusieurs redémarrages
-  // avant de vraiment prendre effet — l'app sert alors un CSS/JS obsolète
-  // qui contient encore les anciens bugs déjà corrigés côté code.
-  skipWaiting: true,
+  // § skipWaiting DÉSACTIVÉ (cause confirmée du clignotement) : la doc
+  // officielle Chrome/Workbox est explicite — avec skipWaiting, "la page
+  // actuelle se recharge automatiquement" dès qu'un nouveau service worker
+  // s'installe, ce que Google déconseille par défaut car cela "désoriente
+  // l'utilisateur et peut causer des pertes de données". Combiné à
+  // clientsClaim, cela provoquait des rechargements en boucle.
+  //
+  // Le compromis assumé : une mise à jour prend effet à la prochaine
+  // ouverture de l'app plutôt qu'instantanément — comportement normal et
+  // attendu d'une application mobile.
   workboxOptions: {
     disableDevLogs: true,
-    skipWaiting: true,
-    clientsClaim: true,
+    // skipWaiting/clientsClaim retirés — voir explication ci-dessus.
     // § Corrige un bug critique découvert en debug : le service worker
     // pouvait intercepter les appels vers l'API (domaine externe,
     // mobilepay-v2-api.onrender.com) et, suite à son propre plantage de

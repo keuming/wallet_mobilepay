@@ -86,7 +86,13 @@ export async function apiFetch<T = any>(path: string, options: RequestOptions = 
     } else {
       clearTokens();
       if (typeof window !== 'undefined' && window.location.pathname !== '/login') {
-        window.location.href = '/login';
+        // § BOUCLE DE REDIRECTION CORRIGÉE (cause du clignotement continu
+        // en production) : une session expirée SUR la page /login relançait
+        // /login -> /users/me -> 401 -> /login... en boucle, chaque cycle
+        // étant un rechargement complet de page.
+        if (!window.location.pathname.startsWith('/login')) {
+          window.location.href = '/login';
+        }
       }
       throw new ApiError('Session expirée.', 401);
     }

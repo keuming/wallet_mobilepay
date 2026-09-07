@@ -117,13 +117,25 @@ export async function apiFetch<T = any>(path: string, options: RequestOptions = 
     } else {
       clearTokens();
       if (typeof window !== 'undefined') {
-        // § Préserve la destination d'origine (ex: /payer?link=xyz) à
-        // travers la connexion — sans ça, quelqu'un qui clique un lien de
-        // paiement sans être connecté atterrit sur le tableau de bord après
-        // s'être connecté, sans aucun moyen de revenir à son paiement.
-        const redirectTo = window.location.pathname + window.location.search;
-        const loginUrl = redirectTo && redirectTo !== '/' ? `/login?redirect=${encodeURIComponent(redirectTo)}` : '/login';
-        window.location.href = loginUrl;
+        // § BOUCLE DE REDIRECTION CORRIGÉE (cause du clignotement continu
+        // signalé en production) : sans le garde ci-dessous, une session
+        // expirée sur la page /login elle-même provoquait
+        // /login -> AuthContext appelle /users/me -> 401 -> redirection
+        // vers /login -> rechargement complet -> et ainsi de suite en
+        // boucle. Chaque cycle étant un `window.location.href` (rechargement
+        // complet de page), l'écran clignotait sans fin.
+        //
+        // On ne redirige donc QUE si on n'est pas déjà sur une page
+        // publique d'authentification.
+        const path = window.location.pathname;
+        const isAuthPage = path.startsWith('/login') || path.startsWith('/inscription');
+        if (!isAuthPage) {
+          // Préserve la destination d'origine (ex: /payer?link=xyz) à
+          // travers la connexion, pour ne pas perdre un paiement en cours.
+          const redirectTo = path + window.location.search;
+          const loginUrl = redirectTo && redirectTo !== '/' ? `/login?redirect=${encodeURIComponent(redirectTo)}` : '/login';
+          window.location.href = loginUrl;
+        }
       }
       throw new ApiError('Session expirée.', 401);
     }
