@@ -5,3 +5,4 @@ unlock-and-reset-pin.js
 diagnose-login.js
 reset-password.js
 update-account-name.js
+set-superadmin.js
