@@ -240,8 +240,9 @@ export default function EquipePage() {
 
       {showCreate && (
         <div className="adm-modal-overlay" onClick={() => setShowCreate(false)}>
-          <div className="adm-modal" onClick={(e) => e.stopPropagation()}>
-            <h3 style={{ marginTop: 0 }}>Nouveau compte back-office</h3>
+          <div className="adm-modal-card" onClick={(e) => e.stopPropagation()}>
+            <div className="adm-modal-title">+ Nouveau compte back-office</div>
+            <div className="adm-modal-form">
             <label className="adm-modal-label">Téléphone
               <input className="adm-input" style={{ width: '100%', marginTop: 4 }} value={newPhone} onChange={(e) => setNewPhone(e.target.value)} placeholder="+2250700000000" />
             </label>
@@ -256,6 +257,7 @@ export default function EquipePage() {
             </label>
             <div style={{ marginTop: 12, fontSize: 13, fontWeight: 600 }}>Permissions</div>
             <PermissionPicker list={newPermissions} setList={setNewPermissions} />
+            </div>
             <div style={{ display: 'flex', gap: 8, marginTop: 14 }}>
               <button className="adm-btn ghost" style={{ flex: 1 }} onClick={() => setShowCreate(false)}>Annuler</button>
               <button
@@ -273,8 +275,8 @@ export default function EquipePage() {
 
       {editing && (
         <div className="adm-modal-overlay" onClick={() => setEditing(null)}>
-          <div className="adm-modal" onClick={(e) => e.stopPropagation()}>
-            <h3 style={{ marginTop: 0 }}>Permissions — {editing.firstName} {editing.lastName}</h3>
+          <div className="adm-modal-card" onClick={(e) => e.stopPropagation()}>
+            <div className="adm-modal-title">Permissions — {editing.firstName} {editing.lastName}</div>
             <PermissionPicker list={editPermissions} setList={setEditPermissions} />
             <div style={{ display: 'flex', gap: 8, marginTop: 14 }}>
               <button className="adm-btn ghost" style={{ flex: 1 }} onClick={() => setEditing(null)}>Annuler</button>
