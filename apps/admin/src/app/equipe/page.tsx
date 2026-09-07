@@ -201,7 +201,9 @@ export default function EquipePage() {
                     {u.isSuperAdmin ? (
                       <span className="adm-badge green">Accès complet (super-admin)</span>
                     ) : u.adminPermissions.length === 0 ? (
-                      <span style={{ color: 'var(--adm-muted)' }}>Aucune permission</span>
+                      <span className="adm-badge amber" title="Ce compte ne peut accéder à aucune section du back-office tant qu'aucune permission ne lui est attribuée.">
+                        Aucun accès
+                      </span>
                     ) : (
                       `${u.adminPermissions.length} permission(s)`
                     )}

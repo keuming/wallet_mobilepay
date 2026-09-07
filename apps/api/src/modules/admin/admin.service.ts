@@ -953,8 +953,35 @@ export class AdminService {
   }) {
     const phone = normalizePhoneCI(dto.phone);
     const existing = await this.prisma.user.findUnique({ where: { phone } });
+
+    // § Un compte existant n'est pas forcément une erreur : il est fréquent
+    // qu'un collaborateur ait DÉJÀ un compte particulier MobilePay avant
+    // qu'on lui donne accès au back-office. Refuser purement et simplement
+    // obligeait à créer un second compte avec un autre numéro, ce qui n'a
+    // pas de sens. On promeut donc le compte existant, sauf s'il est déjà
+    // administrateur (là, c'est bien un doublon réel).
     if (existing) {
-      throw new ConflictException('Un compte existe déjà avec ce numéro.');
+      if (existing.role === 'ADMIN') {
+        throw new ConflictException(
+          'Ce numéro est déjà un compte back-office. Modifiez plutôt ses permissions dans la liste.',
+        );
+      }
+      const promoted = await this.prisma.user.update({
+        where: { id: existing.id },
+        data: {
+          role: 'ADMIN',
+          adminPermissions: dto.permissions ?? [],
+        },
+        select: {
+          id: true,
+          phone: true,
+          firstName: true,
+          lastName: true,
+          adminPermissions: true,
+          createdAt: true,
+        },
+      });
+      return promoted;
     }
 
     const passwordHash = await bcrypt.hash(dto.password, 12);
