@@ -1,4 +1,5 @@
-import { IsEmail, IsIn, IsInt, IsOptional, IsPositive, IsString, MaxLength, Matches, Min, MinLength } from 'class-validator';
+import { IsEmail, IsIn, IsInt, IsOptional, IsPositive, IsString, MaxLength, Matches, Min, MinLength, Max } from 'class-validator';
+import { MAX_TRANSACTION_AMOUNT_CENTS, MAX_TRANSACTION_AMOUNT_FCFA } from '../../../common/constants/limits';
 
 export class CreateMerchantDto {
   @IsString()
@@ -21,6 +22,7 @@ export class CreatePaymentRequestDto {
 
   @IsInt()
   @IsPositive()
+  @Max(MAX_TRANSACTION_AMOUNT_CENTS, { message: 'Montant trop élevé.' })
   amount: number;
 
   @IsOptional()
@@ -32,6 +34,7 @@ export class CreatePaymentRequestDto {
 export class CreateDynamicQrDto {
   @IsInt()
   @IsPositive()
+  @Max(MAX_TRANSACTION_AMOUNT_CENTS, { message: 'Montant trop élevé.' })
   amount: number;
 
   @IsOptional()
@@ -64,6 +67,7 @@ export class TransferFromMerchantDto {
 
   @IsInt()
   @IsPositive()
+  @Max(MAX_TRANSACTION_AMOUNT_CENTS, { message: 'Montant trop élevé.' })
   amount: number;
 
   @IsOptional()
@@ -81,6 +85,7 @@ export class SellAirtimeDto {
 
   @IsInt()
   @IsPositive()
+  @Max(MAX_TRANSACTION_AMOUNT_CENTS, { message: 'Montant trop élevé.' })
   amount: number;
 
   @IsIn(['AIRTIME', 'DATA'])
@@ -132,13 +137,17 @@ export class PayUtilityBillDto {
   @MinLength(1, { message: 'Numéro de compte/compteur requis.' })
   subscriberAccountNumber: string;
 
+  // § Ce montant est en UNITÉS (converti en centimes côté service), d'où le
+  // plafond exprimé en FCFA et non en centimes comme ailleurs.
   @IsPositive()
+  @Max(MAX_TRANSACTION_AMOUNT_FCFA, { message: 'Montant trop élevé.' })
   amount: number;
 }
 
 export class RecordCashDto {
   @IsInt()
   @IsPositive()
+  @Max(MAX_TRANSACTION_AMOUNT_CENTS, { message: 'Montant trop élevé.' })
   amount: number;
 
   @IsOptional()
@@ -154,6 +163,7 @@ export class DebitDirectDto {
 
   @IsInt()
   @IsPositive()
+  @Max(MAX_TRANSACTION_AMOUNT_CENTS, { message: 'Montant trop élevé.' })
   amount: number;
 
   @IsIn(['orange', 'mtn', 'moov', 'wave'], { message: 'Opérateur Mobile Money invalide.' })
@@ -215,6 +225,7 @@ export class CreateRetailerDto {
 export class RetailerFundDto {
   @IsInt()
   @IsPositive()
+  @Max(MAX_TRANSACTION_AMOUNT_CENTS, { message: 'Montant trop élevé.' })
   amount: number;
 
   @IsOptional()

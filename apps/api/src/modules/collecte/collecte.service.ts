@@ -4,6 +4,7 @@ import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../config/prisma.service';
 import { LedgerService } from '../ledger/ledger.service';
 import { LockoutService } from '../security/lockout.service';
+import { assertIdempotencyKey } from '../../common/utils/idempotency.util';
 
 const MAX_RETRIES = 3;
 
@@ -70,6 +71,7 @@ export class CollecteService {
   // ---------- Approvisionnement / retrait ----------
 
   async deposit(userId: string, typeId: string, amountFcfa: number, pin: string, idempotencyKey: string) {
+    assertIdempotencyKey(idempotencyKey);
     const existing = await this.prisma.transaction.findUnique({ where: { idempotencyKey } });
     if (existing) return existing;
     await this.verifyPin(userId, pin);
@@ -112,6 +114,7 @@ export class CollecteService {
   }
 
   async withdraw(userId: string, typeId: string, amountFcfa: number, pin: string, idempotencyKey: string) {
+    assertIdempotencyKey(idempotencyKey);
     const existing = await this.prisma.transaction.findUnique({ where: { idempotencyKey } });
     if (existing) return existing;
     await this.verifyPin(userId, pin);
@@ -179,6 +182,7 @@ export class CollecteService {
   }
 
   async depositSavings(userId: string, typeId: string, amountFcfa: number, pin: string, idempotencyKey: string) {
+    assertIdempotencyKey(idempotencyKey);
     const existing = await this.prisma.transaction.findUnique({ where: { idempotencyKey } });
     if (existing) return existing;
     await this.verifyPin(userId, pin);
@@ -221,6 +225,7 @@ export class CollecteService {
   }
 
   async withdrawSavings(userId: string, typeId: string, amountFcfa: number, pin: string, idempotencyKey: string) {
+    assertIdempotencyKey(idempotencyKey);
     const existing = await this.prisma.transaction.findUnique({ where: { idempotencyKey } });
     if (existing) return existing;
     await this.verifyPin(userId, pin);
@@ -265,6 +270,7 @@ export class CollecteService {
   // ---------- Épargne Gold ----------
 
   async depositGold(userId: string, amountFcfa: number, pin: string, idempotencyKey: string) {
+    assertIdempotencyKey(idempotencyKey);
     const existing = await this.prisma.transaction.findUnique({ where: { idempotencyKey } });
     if (existing) return existing;
     await this.verifyPin(userId, pin);
@@ -303,6 +309,7 @@ export class CollecteService {
   }
 
   async withdrawGold(userId: string, amountFcfa: number, pin: string, idempotencyKey: string) {
+    assertIdempotencyKey(idempotencyKey);
     const existing = await this.prisma.transaction.findUnique({ where: { idempotencyKey } });
     if (existing) return existing;
     await this.verifyPin(userId, pin);

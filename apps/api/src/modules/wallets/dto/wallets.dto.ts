@@ -1,4 +1,5 @@
-import { IsIn, IsInt, IsOptional, IsPositive, IsString, MaxLength, MinLength } from 'class-validator';
+import { IsIn, IsInt, IsOptional, IsPositive, IsString, MaxLength, MinLength, Max } from 'class-validator';
+import { MAX_TRANSACTION_AMOUNT_CENTS } from '../../../common/constants/limits';
 
 export class TransferDto {
   // § Le "+" indicatif n'est pas exigé ici — le service essaie tous les
@@ -10,6 +11,7 @@ export class TransferDto {
 
   @IsInt()
   @IsPositive({ message: 'Le montant doit être positif.' })
+  @Max(MAX_TRANSACTION_AMOUNT_CENTS, { message: 'Montant trop élevé.' })
   amount: number; // en centimes — ex: 500000 = 5 000 FCFA
 
   @IsString()
@@ -24,6 +26,7 @@ export class TransferDto {
 export class TopupDto {
   @IsInt()
   @IsPositive()
+  @Max(MAX_TRANSACTION_AMOUNT_CENTS, { message: 'Montant trop élevé.' })
   amount: number;
 
   @IsIn(['ORANGE', 'MOOV', 'WAVE', 'MTN'])

@@ -4,6 +4,7 @@ import * as crypto from 'crypto';
 import { PrismaService } from '../../config/prisma.service';
 import { LedgerService } from '../ledger/ledger.service';
 import { SimulatedCardAdapter } from './providers/card-provider.interface';
+import { assertIdempotencyKey } from '../../common/utils/idempotency.util';
 
 const MAX_SERIALIZATION_RETRIES = 3;
 
@@ -93,6 +94,7 @@ export class CardsService {
       throw new BadRequestException('Cette carte n\'est pas active.');
     }
 
+    assertIdempotencyKey(idempotencyKey);
     const existing = await this.prisma.transaction.findUnique({ where: { idempotencyKey } });
     if (existing) return existing;
 

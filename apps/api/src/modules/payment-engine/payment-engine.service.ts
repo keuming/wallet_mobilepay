@@ -21,6 +21,7 @@ import { LockoutService } from '../security/lockout.service';
 import { KycLimitsService } from '../security/kyc-limits.service';
 import { SmsAdapter } from '../sms/sms.adapter';
 import { normalizePhoneCI } from '../../common/utils/phone.util';
+import { assertIdempotencyKey } from '../../common/utils/idempotency.util';
 
 const MAX_SERIALIZATION_RETRIES = 3;
 
@@ -82,6 +83,7 @@ export class PaymentEngineService {
     params: { operator: 'ORANGE' | 'MOOV' | 'WAVE' | 'MTN'; accountNumber: string; amount: bigint; pin: string; recipientName?: string; country?: string },
     idempotencyKey: string,
   ) {
+    assertIdempotencyKey(idempotencyKey);
     const existing = await this.prisma.transaction.findUnique({ where: { idempotencyKey } });
     if (existing) return existing;
 
@@ -412,6 +414,7 @@ export class PaymentEngineService {
     provider: string;
     pin: string;
   }, idempotencyKey: string) {
+    assertIdempotencyKey(idempotencyKey);
     const existing = await this.prisma.transaction.findUnique({ where: { idempotencyKey } });
     if (existing) return existing;
 
@@ -488,6 +491,7 @@ export class PaymentEngineService {
     },
     idempotencyKey: string,
   ) {
+    assertIdempotencyKey(idempotencyKey);
     const existing = await this.prisma.transaction.findUnique({ where: { idempotencyKey } });
     if (existing) return existing;
 
@@ -727,6 +731,7 @@ export class PaymentEngineService {
     params: { recipientUserId: string; customerPhone: string; provider: string; amount: bigint; description: string },
     idempotencyKey: string,
   ) {
+    assertIdempotencyKey(idempotencyKey);
     const existing = await this.prisma.transaction.findUnique({ where: { idempotencyKey } });
     if (existing) return existing;
 
@@ -893,6 +898,7 @@ export class PaymentEngineService {
     },
     idempotencyKey: string,
   ) {
+    assertIdempotencyKey(idempotencyKey);
     const existing = await this.prisma.transaction.findUnique({ where: { idempotencyKey } });
     if (existing) return existing;
 
@@ -932,6 +938,7 @@ export class PaymentEngineService {
     params: { productId: number; unitPrice: number; recipientEmail: string; pin: string; countryCode?: string },
     idempotencyKey: string,
   ) {
+    assertIdempotencyKey(idempotencyKey);
     const existing = await this.prisma.transaction.findUnique({ where: { idempotencyKey } });
     if (existing) return existing;
 
@@ -1054,6 +1061,7 @@ export class PaymentEngineService {
     params: { billerId: number; billerName: string; billType: string; subscriberAccountNumber: string; amount: number; pin: string },
     idempotencyKey: string,
   ) {
+    assertIdempotencyKey(idempotencyKey);
     const existing = await this.prisma.transaction.findUnique({ where: { idempotencyKey } });
     if (existing) return existing;
 

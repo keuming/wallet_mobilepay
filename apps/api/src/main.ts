@@ -21,7 +21,26 @@ async function bootstrap() {
     .filter(Boolean);
 
   const app = await NestFactory.create<NestExpressApplication>(AppModule, {
-    cors: { origin: allowedOrigins, credentials: true },
+    cors: {
+      // § Corrigé à l'audit pré-production (APK Expo) : une application
+      // mobile NATIVE n'envoie pas d'en-tête `Origin` (ou en envoie une que
+      // la liste blanche ne contient pas). Avec une vérification stricte,
+      // les APK particulier/marchand auraient été bloqués par CORS en
+      // production — un problème invisible en test navigateur, découvert
+      // seulement après distribution des APK.
+      //
+      // CORS est une protection propre au NAVIGATEUR : l'absence d'Origin
+      // signifie une requête non-navigateur (app native, appel serveur),
+      // qui n'est pas concernée par les attaques que CORS empêche. La
+      // sécurité réelle de ces appels reste assurée par le JWT, les gardes
+      // et le rate-limiting — pas par CORS.
+      origin: (origin, callback) => {
+        if (!origin) return callback(null, true); // client natif (Expo/APK) ou appel serveur
+        if (allowedOrigins.includes(origin)) return callback(null, true);
+        return callback(new Error(`Origine non autorisée par CORS : ${origin}`), false);
+      },
+      credentials: true,
+    },
     rawBody: true,
   });
 
@@ -34,6 +53,17 @@ async function bootstrap() {
   app.useBodyParser('urlencoded', { limit: '15mb', extended: true });
 
   app.use(helmet());
+
+  // § Corrigé à l'audit pré-production : l'API tourne derrière le proxy de
+  // Render. Sans "trust proxy", Express voit l'IP DU PROXY pour toutes les
+  // requêtes au lieu de celle du vrai client — le rate-limiting comptait
+  // donc tous les utilisateurs comme une seule et même IP. Concrètement :
+  // soit un seul utilisateur actif bloquait tous les autres, soit (pire) la
+  // protection anti-force-brute sur /auth/login devenait inopérante.
+  // Valeur 1 = fait confiance au premier proxy en amont (Render), sans
+  // accepter aveuglément une chaîne X-Forwarded-For falsifiée par le client.
+  app.set('trust proxy', 1);
+
   app.setGlobalPrefix('api');
 
   // Toute entrée est validée et nettoyée — aucune propriété inconnue tolérée.

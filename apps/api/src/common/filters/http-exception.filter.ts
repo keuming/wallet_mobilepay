@@ -25,12 +25,21 @@ export class HttpExceptionFilter implements ExceptionFilter {
     const exceptionResponse =
       exception instanceof HttpException ? exception.getResponse() : null;
 
-    const message =
-      typeof exceptionResponse === 'object' && exceptionResponse !== null
+    // § Corrigé à l'audit pré-production : le message d'une exception NON
+    // gérée (erreur Prisma, bug interne) était renvoyé tel quel au client.
+    // Ça pouvait exposer des noms de tables, des fragments de requêtes SQL
+    // ou des chemins de fichiers internes — exactement ce qu'un attaquant
+    // cherche pour cartographier le système. On ne renvoie désormais un
+    // message détaillé QUE pour les exceptions volontairement levées par le
+    // code métier (HttpException) ; tout le reste devient un message
+    // générique, le détail restant disponible dans les logs serveur.
+    const isHandledException = exception instanceof HttpException;
+
+    const message = isHandledException
+      ? typeof exceptionResponse === 'object' && exceptionResponse !== null
         ? (exceptionResponse as any).message
-        : exception instanceof Error
-          ? exception.message
-          : 'Erreur interne';
+        : (exception as HttpException).message
+      : 'Une erreur interne est survenue. Réessayez dans quelques instants.';
 
     if (status >= 500) {
       this.logger.error(

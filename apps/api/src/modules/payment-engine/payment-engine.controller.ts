@@ -1,6 +1,7 @@
 import { Body, Controller, Get, Headers, Param, Post, Query, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
-import { IsEmail, IsEnum, IsIn, IsInt, IsOptional, IsPositive, IsString, MinLength } from 'class-validator';
+import { IsEmail, IsEnum, IsIn, IsInt, IsOptional, IsPositive, IsString, Max, MinLength } from 'class-validator';
+import { MAX_TRANSACTION_AMOUNT_CENTS, MAX_TRANSACTION_AMOUNT_FCFA } from '../../common/constants/limits';
 import { PaymentEngineService } from './payment-engine.service';
 import { ReloadlyAdapter } from './providers/reloadly.adapter';
 import { TopupDto } from '../wallets/dto/wallets.dto';
@@ -16,6 +17,7 @@ export class PurchaseAirtimeDto {
 
   @IsInt()
   @IsPositive()
+  @Max(MAX_TRANSACTION_AMOUNT_CENTS, { message: 'Montant trop élevé.' })
   amount: number;
 
   @IsEnum(['AIRTIME', 'DATA'])
@@ -60,6 +62,7 @@ export class SendExternalDto {
 
   @IsInt()
   @IsPositive()
+  @Max(MAX_TRANSACTION_AMOUNT_CENTS, { message: 'Montant trop élevé.' })
   amount: number;
 
   @IsString()
@@ -165,7 +168,9 @@ export class PurchaseGiftCardDto {
   @IsPositive()
   productId: number;
 
+  // § Montant en UNITÉS (converti en centimes côté service).
   @IsPositive()
+  @Max(MAX_TRANSACTION_AMOUNT_FCFA, { message: 'Montant trop élevé.' })
   unitPrice: number;
 
   @IsEmail({}, { message: 'Adresse email du bénéficiaire invalide.' })
@@ -220,7 +225,9 @@ export class PayUtilityBillDto {
   @MinLength(1, { message: 'Numéro de compte/compteur requis.' })
   subscriberAccountNumber: string;
 
+  // § Montant en UNITÉS (converti en centimes côté service).
   @IsPositive()
+  @Max(MAX_TRANSACTION_AMOUNT_FCFA, { message: 'Montant trop élevé.' })
   amount: number;
 
   @IsString()

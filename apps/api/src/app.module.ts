@@ -58,18 +58,48 @@ import { IdempotencyMiddleware } from './common/middleware/idempotency.middlewar
 })
 export class AppModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {
-    // L'idempotence s'applique à toutes les routes qui déplacent de l'argent.
+    // L'idempotence s'applique à TOUTES les routes qui déplacent de l'argent.
+    //
+    // § Faille critique corrigée à l'audit pré-production : 13 routes
+    // financières utilisaient bien une clé d'idempotence dans leur code
+    // mais n'étaient PAS couvertes par ce middleware — si le client ne
+    // l'envoyait pas, `idempotencyKey` valait `undefined`, la recherche
+    // d'une transaction existante ne trouvait jamais rien, et une NOUVELLE
+    // transaction était créée à chaque appel. Concrètement : un double-clic
+    // ou une requête rejouée sur réseau instable provoquait un DOUBLE DÉBIT
+    // réel du client. Toute route financière doit figurer ici.
     consumer
       .apply(IdempotencyMiddleware)
       .forRoutes(
+        // Wallet particulier
         'api/wallets/transfer',
-        'api/merchants/:merchantId/payment-requests',
-        'api/qr/:code/pay',
-        'api/payment-links/:slug/pay',
         'api/wallets/topup',
         'api/wallets/withdraw',
+        'api/wallets/send-external',
         'api/airtime',
         'api/cards/:id/load',
+        // Cartes cadeaux / factures (particulier)
+        'api/gift-cards/orders',
+        'api/utility-payments/pay',
+        // QR / liens de paiement (connecté ET invité)
+        'api/qr/:code/pay',
+        'api/payment-links/:slug/pay',
+        'api/qr/:code/pay-external',
+        'api/payment-links/:slug/pay-external',
+        // Collecte & Épargne
+        'api/collecte/types/:id/deposit',
+        'api/collecte/types/:id/withdraw',
+        'api/savings/types/:id/deposit',
+        'api/savings/types/:id/withdraw',
+        'api/gold/deposit',
+        'api/gold/withdraw',
+        // Marchand
+        'api/merchants/:merchantId/payment-requests',
+        'api/merchants/:merchantId/transfer',
+        'api/merchants/:merchantId/airtime',
+        'api/merchants/:merchantId/debit-direct',
+        'api/merchants/:merchantId/gift-cards/orders',
+        'api/merchants/:merchantId/utility-payments/pay',
       );
   }
 }

@@ -10,6 +10,7 @@ import { PricingService } from '../pricing/pricing.service';
 import { KycLimitsService } from '../security/kyc-limits.service';
 import { normalizePhoneCI, normalizePhoneCandidates } from '../../common/utils/phone.util';
 import { CreateMerchantDto } from './dto/merchants.dto';
+import { assertIdempotencyKey } from '../../common/utils/idempotency.util';
 
 const MAX_SERIALIZATION_RETRIES = 3;
 
@@ -303,6 +304,7 @@ export class MerchantsService {
     dto: { toPhone: string; amount: number; description?: string },
     idempotencyKey: string,
   ) {
+    assertIdempotencyKey(idempotencyKey);
     const existing = await this.prisma.transaction.findUnique({ where: { idempotencyKey } });
     if (existing) return existing;
 
@@ -373,6 +375,7 @@ export class MerchantsService {
     dto: { phoneNumber: string; amount: number; kind: 'AIRTIME' | 'DATA'; operatorId?: string; operatorName?: string; countryCode?: string },
     idempotencyKey: string,
   ) {
+    assertIdempotencyKey(idempotencyKey);
     const existing = await this.prisma.transaction.findUnique({ where: { idempotencyKey } });
     if (existing) return existing;
 
@@ -453,6 +456,7 @@ export class MerchantsService {
     dto: { productId: number; unitPrice: number; recipientEmail: string; countryCode?: string },
     idempotencyKey: string,
   ) {
+    assertIdempotencyKey(idempotencyKey);
     const existing = await this.prisma.transaction.findUnique({ where: { idempotencyKey } });
     if (existing) return existing;
 
@@ -578,6 +582,7 @@ export class MerchantsService {
     dto: { billerId: number; billerName: string; billType: string; subscriberAccountNumber: string; amount: number },
     idempotencyKey: string,
   ) {
+    assertIdempotencyKey(idempotencyKey);
     const existing = await this.prisma.transaction.findUnique({ where: { idempotencyKey } });
     if (existing) return existing;
 
