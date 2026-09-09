@@ -1442,9 +1442,14 @@ export class PaymentEngineService {
   /** Initie une recharge de wallet particulier via HUB2 (cash-in mobile money). */
   async initiateTopup(
     userId: string,
-    params: { operator: 'ORANGE' | 'MOOV' | 'WAVE' | 'MTN'; accountNumber: string; amount: bigint; pin: string; otpCode?: string },
+    params: { operator: 'ORANGE' | 'MOOV' | 'WAVE' | 'MTN'; accountNumber: string; amount: bigint; pin?: string; otpCode?: string },
   ) {
-    await this.verifyTransactionPin(userId, params.pin);
+    // § Dépôt : le code secret n'est plus exigé (voir TopupDto). S'il est
+    // tout de même fourni par un client plus ancien, on le vérifie — on ne
+    // laisse jamais passer un code ERRONÉ silencieusement.
+    if (params.pin) {
+      await this.verifyTransactionPin(userId, params.pin);
+    }
 
     const wallet = await this.prisma.wallet.findUniqueOrThrow({ where: { userId } });
     const user = await this.prisma.user.findUniqueOrThrow({ where: { id: userId } });

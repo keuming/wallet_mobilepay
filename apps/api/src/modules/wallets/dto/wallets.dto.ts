@@ -47,6 +47,13 @@ export class TopupDto {
   @IsString()
   otpCode?: string;
 
+  // § Code secret NON exigé pour un dépôt (§ analyse sécurité) : l'argent
+  // entre dans le wallet du titulaire depuis son PROPRE compte Mobile Money,
+  // et c'est l'OPÉRATEUR qui authentifie le débit (code Orange, USSD
+  // MTN/Moov, lien Wave). Quelqu'un qui aurait le téléphone ne pourrait rien
+  // détourner — il ne ferait qu'alimenter le wallet de la victime. Exiger le
+  // code ajoutait donc de la friction sans bénéfice réel.
+  @IsOptional()
   @IsString()
-  pin: string;
+  pin?: string;
 }

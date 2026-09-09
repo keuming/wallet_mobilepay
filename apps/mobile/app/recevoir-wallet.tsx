@@ -7,6 +7,7 @@ import {
   Pressable,
   KeyboardAvoidingView,
   Platform,
+  Modal,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -33,7 +34,6 @@ export default function RecevoirWalletScreen() {
   const [operator, setOperator] = useState<string | null>(null);
   const [accountNumber, setAccountNumber] = useState('');
   const [amount, setAmount] = useState('');
-  const [pin, setPin] = useState('');
   const [upfrontOtp, setUpfrontOtp] = useState('');
   const [feeAmount, setFeeAmount] = useState<number | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -146,8 +146,9 @@ export default function RecevoirWalletScreen() {
         return true;
       case 4:
         // Orange exige le code généré par le client (#144*82#) ; les autres
-        // opérateurs valident directement sur le téléphone.
-        return operator === 'ORANGE' ? upfrontOtp.length >= 4 : pin.length >= 4;
+        // opérateurs authentifient directement sur le téléphone — aucun code
+        // secret MobilePay n'est demandé pour un dépôt (voir TopupDto).
+        return operator === 'ORANGE' ? upfrontOtp.length >= 4 : true;
       default:
         return false;
     }
@@ -164,7 +165,6 @@ export default function RecevoirWalletScreen() {
           operator,
           accountNumber,
           amount: Math.round(Number(amount) * 100),
-          pin,
           // § Orange : code fourni EN AMONT (recommandation officielle HUB2)
           // pour ne pas consommer le délai d'expiration de 10 minutes.
           ...(operator === 'ORANGE' && upfrontOtp ? { otpCode: upfrontOtp } : {}),
@@ -184,10 +184,13 @@ export default function RecevoirWalletScreen() {
         const txId = res.transactionId ?? res.id;
         if (txId) {
           setPendingTxId(txId);
-          setNextAction({
-            type: 'ussd',
-            message: "Vérifie ton téléphone et valide la demande avec ton code Mobile Money.",
-          });
+          // § On n'invente PLUS l'action requise : HUB2 est asynchrone et
+          // seul le webhook connaît le vrai type (lien Wave, code Orange,
+          // invite USSD). Afficher un message générique en attendant faisait
+          // que Wave restait bloqué sur la mauvaise consigne et n'affichait
+          // jamais son lien. On montre donc un état d'attente neutre, que le
+          // suivi remplace dès que le vrai type arrive.
+          setNextAction({ type: 'waiting', message: '' });
           pollStatus(txId);
         } else {
           setResult({
@@ -200,7 +203,6 @@ export default function RecevoirWalletScreen() {
       setError(err instanceof ApiError ? err.message : 'Échec du dépôt.');
     } finally {
       setSubmitting(false);
-      setPin('');
     }
   };
 
@@ -321,24 +323,17 @@ export default function RecevoirWalletScreen() {
           )}
 
           {step === 4 && operator !== 'ORANGE' && (
-            <>
-              <Text style={styles.hint}>
-                Saisis ton code secret MobilePay pour lancer le dépôt de{' '}
-                {Number(amount).toLocaleString('fr-FR')} FCFA. Ton opérateur te
-                demandera ensuite de confirmer sur ton téléphone.
+            <View style={styles.ussdBox}>
+              <Text style={styles.ussdTitle}>📲 Validation sur ton téléphone</Text>
+              <Text style={styles.ussdText}>
+                {operator === 'WAVE'
+                  ? "Un lien de paiement Wave va être généré. Tu pourras l'ouvrir directement ou l'envoyer par SMS/WhatsApp."
+                  : `${OPERATORS.find((o) => o.id === operator)?.label} va t'envoyer une demande de confirmation sur ton téléphone. Valide-la avec ton code Mobile Money pour finaliser.`}
               </Text>
-              <Input
-                label="Code secret"
-                value={pin}
-                onChangeText={(v) => setPin(v.replace(/\D/g, ''))}
-                placeholder="••••"
-                keyboardType="number-pad"
-                secureTextEntry
-                maxLength={6}
-                style={styles.pinInput}
-                autoFocus
-              />
-            </>
+              <Text style={[styles.ussdText, { marginTop: spacing.sm, fontWeight: '700' }]}>
+                Montant : {Number(amount).toLocaleString('fr-FR')} FCFA
+              </Text>
+            </View>
           )}
 
           <Button
@@ -352,22 +347,36 @@ export default function RecevoirWalletScreen() {
         </ScrollView>
       </KeyboardAvoidingView>
 
-      {nextAction && (
+      <Modal visible={!!nextAction} transparent animationType="fade">
         <View style={styles.actionOverlay}>
+          <ScrollView
+            contentContainerStyle={styles.actionScroll}
+            keyboardShouldPersistTaps="handled"
+          >
           <View style={styles.actionCard}>
-            {nextAction.type !== 'redirection' && (
+            {nextAction?.type === 'waiting' && (
               <>
-                <Text style={styles.actionIcon}>{nextAction.type === 'otp' ? '🔢' : '📲'}</Text>
-                <Text style={styles.actionTitle}>Action requise</Text>
-                <Text style={styles.actionMessage}>{nextAction.message}</Text>
+                <Text style={styles.actionIcon}>⏳</Text>
+                <Text style={styles.actionTitle}>Connexion à l'opérateur…</Text>
+                <Text style={styles.actionMessage}>
+                  Nous préparons ton paiement. Reste sur cet écran quelques secondes.
+                </Text>
               </>
             )}
 
-            {nextAction.type === 'redirection' && nextAction.url && (
+            {nextAction && nextAction.type !== 'redirection' && nextAction.type !== 'waiting' && (
+              <>
+                <Text style={styles.actionIcon}>{nextAction?.type === 'otp' ? '🔢' : '📲'}</Text>
+                <Text style={styles.actionTitle}>Action requise</Text>
+                <Text style={styles.actionMessage}>{nextAction?.message}</Text>
+              </>
+            )}
+
+            {nextAction?.type === 'redirection' && nextAction.url && (
               <WaveLinkActions url={nextAction.url} phone={accountNumber} />
             )}
 
-            {nextAction.type === 'otp' && (
+            {nextAction?.type === 'otp' && (
               <>
                 <Input
                   label="Code reçu"
@@ -392,8 +401,9 @@ export default function RecevoirWalletScreen() {
 
             <Text style={styles.actionWaiting}>⏳ En attente de confirmation…</Text>
           </View>
+          </ScrollView>
         </View>
-      )}
+      </Modal>
 
       {result && (
         <StatusModal
@@ -494,8 +504,11 @@ const styles = StyleSheet.create({
   },
 
   actionOverlay: {
-    ...StyleSheet.absoluteFillObject,
+    flex: 1,
     backgroundColor: 'rgba(15,45,82,0.45)',
+  },
+  actionScroll: {
+    flexGrow: 1,
     justifyContent: 'center',
     padding: spacing.lg,
   },
