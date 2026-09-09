@@ -1,14 +1,20 @@
 import { Body, Controller, Post, UseGuards, BadRequestException } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
-import { IsOptional, IsPhoneNumber, IsString, IsUrl, MaxLength } from 'class-validator';
+import { IsOptional, IsPhoneNumber, IsString, IsUrl, MaxLength, MinLength } from 'class-validator';
 import { SmsAdapter } from './sms.adapter';
 import { PrismaService } from '../../config/prisma.service';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { CurrentUser, AuthenticatedUser } from '../../common/decorators/current-user.decorator';
-import { normalizePhoneCI } from '../../common/utils/phone.util';
+import { normalizePhoneCI, normalizePhoneStrict } from '../../common/utils/phone.util';
 
 export class SendLinkSmsDto {
-  @IsPhoneNumber(undefined, { message: 'Numéro invalide.' })
+  // § @IsPhoneNumber exigeait le format international (+225...) et rejetait
+  // un numéro local pourtant valide ("0707400716") — alors que le service
+  // appelle juste après normalizePhoneCI(), qui sait précisément convertir
+  // ce format ET lever une erreur claire s'il est réellement invalide. La
+  // validation stricte faisait donc échouer des envois légitimes.
+  @IsString()
+  @MinLength(6, { message: 'Numéro invalide.' })
   toPhone: string;
 
   @IsUrl({}, { message: 'Lien invalide.' })
@@ -38,7 +44,9 @@ export class SmsController {
 
   @Post('send-link')
   async sendLink(@Body() dto: SendLinkSmsDto, @CurrentUser() user: AuthenticatedUser) {
-    const toPhone = normalizePhoneCI(dto.toPhone);
+    // Validation réelle ici : accepte le format local, rejette un numéro
+    // véritablement invalide avec un message clair.
+    const toPhone = normalizePhoneStrict(dto.toPhone);
     const message = `MobilePay CI : voici ${dto.label ?? 'ton lien'} — ${dto.url}`;
 
     const result = await this.sms.send(toPhone, message);

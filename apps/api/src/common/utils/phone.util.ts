@@ -1,3 +1,4 @@
+import { BadRequestException } from '@nestjs/common';
 import { parsePhoneNumber, CountryCode } from 'libphonenumber-js';
 
 /** Pays couverts par HUB2 (zones UEMOA + CEMAC) — source canonique, réutilisée pour la validation et la normalisation. */
@@ -42,4 +43,23 @@ export function normalizePhoneCandidates(phone: string): string[] {
     if (normalized && normalized !== phone) candidates.add(normalized);
   }
   return Array.from(candidates);
+}
+
+/**
+ * Normalise ET valide réellement un numéro.
+ *
+ * § normalizePhoneCI renvoie l'entrée inchangée quand le parsing échoue —
+ * pratique pour ne rien casser, mais dangereux quand on a besoin d'une
+ * certitude (envoi SMS, débit). Cette variante lève une erreur explicite
+ * plutôt que de laisser passer un numéro invalide qui échouerait
+ * silencieusement plus loin, chez l'opérateur.
+ */
+export function normalizePhoneStrict(phone: string, defaultCountry: CountryCode = 'CI'): string {
+  try {
+    const parsed = parsePhoneNumber(phone, defaultCountry);
+    if (!parsed.isValid()) throw new Error('invalid');
+    return parsed.number;
+  } catch {
+    throw new BadRequestException(`Numéro de téléphone invalide : ${phone}`);
+  }
 }
