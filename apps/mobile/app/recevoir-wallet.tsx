@@ -7,7 +7,6 @@ import {
   Pressable,
   KeyboardAvoidingView,
   Platform,
-  Linking,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -15,6 +14,7 @@ import { apiFetch, ApiError } from '../src/lib/apiClient';
 import { Button, Input, ErrorBanner } from '../src/components/ui';
 import StepHeader from '../src/components/StepHeader';
 import StatusModal, { ResultStatus } from '../src/components/StatusModal';
+import WaveLinkActions from '../src/components/WaveLinkActions';
 import { colors, spacing, fontSize, radius } from '../src/theme';
 
 const STEPS = ['Opérateur', 'Compte', 'Montant', 'Résumé', 'Validation'];
@@ -355,19 +355,16 @@ export default function RecevoirWalletScreen() {
       {nextAction && (
         <View style={styles.actionOverlay}>
           <View style={styles.actionCard}>
-            <Text style={styles.actionIcon}>
-              {nextAction.type === 'otp' ? '🔢' : nextAction.type === 'redirection' ? '🔗' : '📲'}
-            </Text>
-            <Text style={styles.actionTitle}>Action requise</Text>
-            <Text style={styles.actionMessage}>{nextAction.message}</Text>
+            {nextAction.type !== 'redirection' && (
+              <>
+                <Text style={styles.actionIcon}>{nextAction.type === 'otp' ? '🔢' : '📲'}</Text>
+                <Text style={styles.actionTitle}>Action requise</Text>
+                <Text style={styles.actionMessage}>{nextAction.message}</Text>
+              </>
+            )}
 
             {nextAction.type === 'redirection' && nextAction.url && (
-              <Button
-                onPress={() => Linking.openURL(nextAction.url!)}
-                style={{ alignSelf: 'stretch', marginTop: spacing.lg }}
-              >
-                Ouvrir le lien de paiement
-              </Button>
+              <WaveLinkActions url={nextAction.url} phone={accountNumber} />
             )}
 
             {nextAction.type === 'otp' && (
