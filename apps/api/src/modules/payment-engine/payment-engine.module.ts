@@ -9,10 +9,11 @@ import { LedgerModule } from '../ledger/ledger.module';
 import { SmsModule } from '../sms/sms.module';
 import { PricingModule } from '../pricing/pricing.module';
 import { SecurityModule } from '../security/security.module';
+import { ReconciliationService } from './reconciliation.service';
 
 @Module({
   imports: [LedgerModule, SmsModule, PricingModule, SecurityModule],
-  providers: [PaymentEngineService, Hub2Adapter, ReloadlyAdapter, ReloadlyGiftCardsAdapter, ReloadlyUtilitiesAdapter],
+  providers: [PaymentEngineService, ReconciliationService, Hub2Adapter, ReloadlyAdapter, ReloadlyGiftCardsAdapter, ReloadlyUtilitiesAdapter],
   controllers: [PaymentEngineController, AirtimeController, GiftCardsController, UtilityPaymentsController],
   exports: [PaymentEngineService, Hub2Adapter, ReloadlyAdapter, ReloadlyGiftCardsAdapter, ReloadlyUtilitiesAdapter],
 })
