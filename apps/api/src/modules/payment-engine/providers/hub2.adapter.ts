@@ -169,6 +169,10 @@ export class Hub2Adapter implements PaymentProviderAdapter {
       provider: params.provider.toLowerCase(),
       mobileMoney: {
         msisdn: params.customerPhone,
+        // § Si le client a déjà généré son code (Orange #144*82#), on
+        // l'envoie directement : le paiement part authentifié et ne
+        // consomme pas le délai d'expiration de 10 minutes d'Orange.
+        ...(params.otpCode ? { otp: params.otpCode } : {}),
         // Exigé par HUB2 pour certains circuits (Wave notamment, qui
         // redirige le client vers sa propre interface avant de revenir) —
         // doivent être imbriqués DANS mobileMoney (schéma officiel

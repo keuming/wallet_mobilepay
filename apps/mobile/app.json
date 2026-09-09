@@ -1,0 +1,28 @@
+{
+  "expo": {
+    "name": "MobilePay CI",
+    "slug": "mobilepay-ci",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "scheme": "mobilepay",
+    "userInterfaceStyle": "light",
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "ci.mobilepay.app"
+    },
+    "android": {
+      "package": "ci.mobilepay.app",
+      "edgeToEdgeEnabled": true
+    },
+    "plugins": [
+      "expo-router",
+      "expo-secure-store"
+    ],
+    "extra": {
+      "apiUrl": "https://mobilepay-v2-api.onrender.com/api",
+      "eas": {
+        "projectId": ""
+      }
+    }
+  }
+}

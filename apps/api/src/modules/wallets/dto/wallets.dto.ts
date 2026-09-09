@@ -38,6 +38,15 @@ export class TopupDto {
   @MinLength(6, { message: 'Numéro de compte invalide.' })
   accountNumber: string;
 
+  // § Code OTP Orange fourni EN AMONT (§ recommandation officielle HUB2) :
+  // "Orange aura un délai de 10 minutes. La bonne pratique pour éviter
+  // l'expiration est de demander l'OTP au client D'ABORD, avant de tenter le
+  // paiement." Le client génère son code via #144*82# puis le saisit ici —
+  // le paiement part alors déjà authentifié, sans consommer le délai.
+  @IsOptional()
+  @IsString()
+  otpCode?: string;
+
   @IsString()
   pin: string;
 }

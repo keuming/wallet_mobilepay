@@ -97,6 +97,7 @@ export class PaymentEngineController {
       accountNumber: dto.accountNumber,
       amount: BigInt(dto.amount),
       pin: dto.pin,
+      otpCode: dto.otpCode,
     });
   }
 

@@ -13,6 +13,13 @@ export interface InitiateTopupParams {
   reference: string; // référence interne MobilePay à faire revenir dans le webhook
   provider: string; // 'orange' | 'mtn' | 'moov' | 'wave' — exigé par le vrai flux PAY-IN HUB2
   country?: string; // code ISO 3166-1 alpha-2 — défaut 'CI' si absent
+  /**
+   * Code OTP fourni EN AMONT par le client (§ recommandation officielle
+   * HUB2 pour Orange CI) : "demander l'OTP au client d'abord, avant de
+   * tenter le paiement" — sinon le délai de 10 minutes imposé par Orange
+   * s'écoule pendant que le client cherche son code, et le paiement expire.
+   */
+  otpCode?: string;
 }
 
 export interface InitiateWithdrawalParams {

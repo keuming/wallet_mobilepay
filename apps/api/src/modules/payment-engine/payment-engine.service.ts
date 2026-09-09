@@ -1442,7 +1442,7 @@ export class PaymentEngineService {
   /** Initie une recharge de wallet particulier via HUB2 (cash-in mobile money). */
   async initiateTopup(
     userId: string,
-    params: { operator: 'ORANGE' | 'MOOV' | 'WAVE' | 'MTN'; accountNumber: string; amount: bigint; pin: string },
+    params: { operator: 'ORANGE' | 'MOOV' | 'WAVE' | 'MTN'; accountNumber: string; amount: bigint; pin: string; otpCode?: string },
   ) {
     await this.verifyTransactionPin(userId, params.pin);
 
@@ -1474,6 +1474,7 @@ export class PaymentEngineService {
       reference: transaction.id,
       provider: params.operator.toLowerCase(),
       country: user.country,
+      otpCode: params.otpCode,
     });
 
     await this.prisma.transaction.update({
