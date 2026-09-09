@@ -8,6 +8,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   Modal,
+  AppState,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -112,6 +113,46 @@ export default function RecevoirWalletScreen() {
         });
       }
     }, 3000);
+  };
+
+  // § Le parcours Wave fait SORTIR de l'application (le client paie dans
+  // Wave puis revient). Attendre le prochain cycle de sondage donnait
+  // l'impression que rien ne se passait alors que le paiement était déjà
+  // validé. On vérifie donc immédiatement dès que l'app repasse au premier
+  // plan — le moment exact où le client revient de Wave.
+  useEffect(() => {
+    if (!pendingTxId) return;
+    const sub = AppState.addEventListener('change', (state) => {
+      if (state === 'active' && pendingTxId) checkOnce(pendingTxId);
+    });
+    return () => sub.remove();
+  }, [pendingTxId]);
+
+  const checkOnce = async (transactionId: string) => {
+    try {
+      const tx = await apiFetch<{ status: string; failureReason?: string }>(
+        `/transactions/${transactionId}`,
+      );
+      if (tx.status === 'SUCCESS') {
+        if (pollRef.current) clearInterval(pollRef.current);
+        setNextAction(null);
+        setPendingTxId(null);
+        setResult({
+          status: 'success',
+          message: `Recharge réussie ! ${Number(amount).toLocaleString('fr-FR')} FCFA ajoutés à ton wallet.`,
+        });
+      } else if (tx.status === 'FAILED') {
+        if (pollRef.current) clearInterval(pollRef.current);
+        setNextAction(null);
+        setPendingTxId(null);
+        setResult({
+          status: 'failed',
+          message: tx.failureReason ?? "La recharge n'a pas pu être finalisée.",
+        });
+      }
+    } catch {
+      // Sans effet : le sondage régulier prendra le relais.
+    }
   };
 
   const submitOtp = async () => {
@@ -373,7 +414,11 @@ export default function RecevoirWalletScreen() {
             )}
 
             {nextAction?.type === 'redirection' && nextAction.url && (
-              <WaveLinkActions url={nextAction.url} phone={accountNumber} />
+              <WaveLinkActions
+                url={nextAction.url}
+                phone={accountNumber}
+                onCheckNow={() => pendingTxId && checkOnce(pendingTxId)}
+              />
             )}
 
             {nextAction?.type === 'otp' && (

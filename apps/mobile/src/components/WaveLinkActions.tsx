@@ -18,10 +18,13 @@ export default function WaveLinkActions({
   url,
   phone,
   label = 'ton lien de paiement Wave',
+  onCheckNow,
 }: {
   url: string;
   phone?: string;
   label?: string;
+  /** Vérification immédiate du paiement, sans attendre le cycle de sondage. */
+  onCheckNow?: () => void;
 }) {
   const [sending, setSending] = useState<'sms' | null>(null);
   const [sentSms, setSentSms] = useState(false);
@@ -101,6 +104,16 @@ export default function WaveLinkActions({
       >
         🟢 Envoyer par WhatsApp
       </Button>
+
+      {onCheckNow && (
+        <Button
+          variant="ghost"
+          onPress={onCheckNow}
+          style={{ alignSelf: 'stretch', marginTop: spacing.lg }}
+        >
+          ✓ J'ai payé — vérifier maintenant
+        </Button>
+      )}
 
       <Text style={styles.soon}>✉️ Envoi par e-mail — bientôt disponible</Text>
     </View>

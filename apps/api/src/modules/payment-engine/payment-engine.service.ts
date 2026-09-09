@@ -1580,13 +1580,14 @@ export class PaymentEngineService {
    * jamais arriver.
    */
   async refreshFromProvider(transactionId: string): Promise<void> {
-    // § HUB2 limite le débit de son API : le client sonde toutes les 2
-    // secondes, ce qui déclenchait autant d'appels et provoquait des 429 en
-    // rafale. On n'interroge donc le provider qu'une fois toutes les 10
-    // secondes par transaction — largement suffisant, le client continue
-    // d'obtenir une réponse immédiate depuis la base entre-temps.
+    // § HUB2 limite le débit de son API : appeler à chaque sondage client
+    // (toutes les 3 s) provoquait des 429 en rafale. On espace donc les
+    // relances — mais pas trop : à 10 s, un paiement déjà confirmé mettait
+    // jusqu'à 13 s à s'afficher, ce qui donnait l'impression que rien ne se
+    // passait. 5 s est le bon compromis : sous la limite de HUB2, et assez
+    // réactif pour que la confirmation paraisse immédiate.
     const last = PaymentEngineService.lastProviderRefresh.get(transactionId);
-    if (last && Date.now() - last < 10_000) return;
+    if (last && Date.now() - last < 5_000) return;
     PaymentEngineService.lastProviderRefresh.set(transactionId, Date.now());
 
     // Purge les entrées de plus d'une heure — une transaction suivie depuis
