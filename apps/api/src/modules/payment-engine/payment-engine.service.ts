@@ -1458,6 +1458,19 @@ export class PaymentEngineService {
       await this.verifyTransactionPin(userId, params.pin);
     }
 
+    // § Refus EN AMONT d'un dépôt dont les frais absorberaient tout le
+    // montant. Sans cette vérification, le client était débité chez son
+    // opérateur puis le crédit échouait — la pire séquence possible. Mieux
+    // vaut un refus clair avant tout mouvement d'argent.
+    const estimatedFee = await this.pricingService.computeOurFee(params.amount);
+    if (params.amount <= estimatedFee) {
+      const minimum = Number(estimatedFee + 100n) / 100;
+      throw new BadRequestException(
+        `Montant trop faible : les frais de ${Number(estimatedFee) / 100} FCFA absorberaient tout le dépôt. ` +
+          `Dépose au moins ${minimum.toLocaleString('fr-FR')} FCFA.`,
+      );
+    }
+
     const wallet = await this.prisma.wallet.findUniqueOrThrow({ where: { userId } });
     const user = await this.prisma.user.findUniqueOrThrow({ where: { id: userId } });
     const reference = `TOPUP-${nanoid(12)}`;
@@ -1537,7 +1550,27 @@ export class PaymentEngineService {
 
       // § Le client reçoit le montant net des frais (HUB2 + MobilePay) —
       // cohérent avec la pratique standard des opérateurs mobile money.
-      const netAmount = transaction.amount - totalFee > 0n ? transaction.amount - totalFee : 0n;
+      let netAmount = transaction.amount - totalFee;
+      let appliedFee = totalFee;
+
+      // § Cas limite corrigé en production : quand les frais atteignent ou
+      // dépassent le montant (petit dépôt + frais fixes), le crédit net
+      // tombait à zéro — le grand livre refusait le mouvement, la
+      // finalisation échouait, et la transaction restait bloquée en boucle
+      // alors que le CLIENT AVAIT DÉJÀ ÉTÉ DÉBITÉ chez son opérateur.
+      //
+      // Prendre 100 % du dépôt en frais serait indéfendable : on crédite donc
+      // l'intégralité et on renonce aux frais. Le cas est signalé pour que la
+      // grille tarifaire soit corrigée — mais jamais aux dépens du client.
+      if (netAmount <= 0n) {
+        this.logger.error(
+          `Frais supérieurs ou égaux au dépôt (transaction ${transactionId}) : ` +
+            `montant=${transaction.amount} frais=${totalFee}. Crédit intégral appliqué, frais annulés. ` +
+            `→ Revoir la grille tarifaire : le montant minimum de dépôt doit couvrir les frais fixes.`,
+        );
+        netAmount = transaction.amount;
+        appliedFee = 0n;
+      }
 
       await this.ledger.postDoubleEntry(tx, {
         transactionId: transaction.id,
@@ -1549,7 +1582,7 @@ export class PaymentEngineService {
 
       return tx.transaction.update({
         where: { id: transactionId },
-        data: { status: 'SUCCESS', feeAmount: totalFee },
+        data: { status: 'SUCCESS', feeAmount: appliedFee },
       });
     });
   }
