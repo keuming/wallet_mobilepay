@@ -36,6 +36,13 @@ const OPERATOR_LABELS: Record<string, string> = {
 export class PaymentEngineService {
   private readonly logger = new Logger(PaymentEngineService.name);
 
+  /**
+   * Dernière relance du provider par transaction — évite de saturer l'API
+   * HUB2 (limite de débit) pendant que le client suit sa transaction.
+   * Nettoyée périodiquement pour ne pas grossir indéfiniment.
+   */
+  private static readonly lastProviderRefresh = new Map<string, number>();
+
   constructor(
     private prisma: PrismaService,
     private ledger: LedgerService,
@@ -1573,6 +1580,24 @@ export class PaymentEngineService {
    * jamais arriver.
    */
   async refreshFromProvider(transactionId: string): Promise<void> {
+    // § HUB2 limite le débit de son API : le client sonde toutes les 2
+    // secondes, ce qui déclenchait autant d'appels et provoquait des 429 en
+    // rafale. On n'interroge donc le provider qu'une fois toutes les 10
+    // secondes par transaction — largement suffisant, le client continue
+    // d'obtenir une réponse immédiate depuis la base entre-temps.
+    const last = PaymentEngineService.lastProviderRefresh.get(transactionId);
+    if (last && Date.now() - last < 10_000) return;
+    PaymentEngineService.lastProviderRefresh.set(transactionId, Date.now());
+
+    // Purge les entrées de plus d'une heure — une transaction suivie depuis
+    // si longtemps est de toute façon terminée ou expirée.
+    if (PaymentEngineService.lastProviderRefresh.size > 500) {
+      const cutoff = Date.now() - 3_600_000;
+      for (const [key, ts] of PaymentEngineService.lastProviderRefresh) {
+        if (ts < cutoff) PaymentEngineService.lastProviderRefresh.delete(key);
+      }
+    }
+
     const transaction = await this.prisma.transaction.findUnique({
       where: { id: transactionId },
       include: { paymentAttempts: { orderBy: { createdAt: 'desc' }, take: 1 } },

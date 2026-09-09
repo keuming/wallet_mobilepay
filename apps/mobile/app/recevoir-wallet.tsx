@@ -61,7 +61,7 @@ export default function RecevoirWalletScreen() {
 
   const pollStatus = (transactionId: string) => {
     let attempts = 0;
-    const maxAttempts = 60; // ~2 minutes : le client peut mettre du temps à valider
+    const maxAttempts = 40; // ~2 minutes : le client peut mettre du temps à valider
     if (pollRef.current) clearInterval(pollRef.current);
 
     pollRef.current = setInterval(async () => {
@@ -111,7 +111,7 @@ export default function RecevoirWalletScreen() {
           message: "La confirmation prend plus de temps que prévu. Vérifie ton historique Mobile Money.",
         });
       }
-    }, 2000);
+    }, 3000);
   };
 
   const submitOtp = async () => {

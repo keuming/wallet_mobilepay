@@ -462,9 +462,13 @@ export class Hub2Adapter implements PaymentProviderAdapter {
       const res = await fetch(`${this.baseUrl}/payment-intents/${intentId}`, {
         method: 'GET',
         headers: {
+          'Content-Type': 'application/json',
           ApiKey: this.apiKey,
           MerchantId: this.merchantId,
-          'Content-Type': 'application/json',
+          // § L'en-tête Environment est EXIGÉ par HUB2 — son absence
+          // provoquait un 401 sur cette relance alors que les autres appels
+          // (qui l'envoient) fonctionnaient parfaitement.
+          Environment: this.environment,
         },
       });
 

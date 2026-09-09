@@ -72,8 +72,8 @@ export default function EnvoyerScreen() {
       } catch {
         // Erreur réseau ponctuelle — on retente au prochain passage.
       }
-      if (attempts >= 60 && pollRef.current) clearInterval(pollRef.current);
-    }, 2000);
+      if (attempts >= 40 && pollRef.current) clearInterval(pollRef.current);
+    }, 3000);
   };
 
   const isInternal = destination === 'MOBILEPAY';
