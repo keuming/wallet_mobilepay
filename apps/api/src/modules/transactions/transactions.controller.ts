@@ -17,6 +17,13 @@ export class TransactionsController {
 
   @Get(':id')
   async getOne(@Param('id') id: string, @CurrentUser() user: AuthenticatedUser) {
+    // § Filet de sécurité webhooks : si le client suit encore sa transaction,
+    // c'est qu'elle n'est pas finalisée. On interroge donc le provider avant
+    // de répondre, au lieu de dépendre uniquement d'un webhook qui peut ne
+    // jamais arriver (cas constaté en production : dépôts bloqués en
+    // PROCESSING sans jamais recevoir le lien de paiement).
+    await this.paymentEngine.refreshFromProvider(id).catch(() => null);
+
     const transaction = await this.prisma.transaction.findUnique({
       where: { id },
       include: { ledgerEntries: true, paymentAttempts: true },

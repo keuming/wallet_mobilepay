@@ -1562,4 +1562,57 @@ export class PaymentEngineService {
     }
     throw new ConflictException('Échec après plusieurs tentatives.');
   }
+
+  /**
+   * Rafraîchit une transaction bloquée en interrogeant directement le
+   * provider (§ filet de sécurité webhooks).
+   *
+   * Appelée pendant le suivi côté client : si la transaction est encore en
+   * cours et qu'aucune action n'a été reçue, on demande à HUB2 où en est le
+   * paiement plutôt que d'attendre indéfiniment un webhook qui peut ne
+   * jamais arriver.
+   */
+  async refreshFromProvider(transactionId: string): Promise<void> {
+    const transaction = await this.prisma.transaction.findUnique({
+      where: { id: transactionId },
+      include: { paymentAttempts: { orderBy: { createdAt: 'desc' }, take: 1 } },
+    });
+
+    if (!transaction) return;
+    if (transaction.providerName !== 'HUB2') return;
+    // Une transaction déjà finalisée n'a plus rien à apprendre du provider.
+    if (['SUCCESS', 'FAILED', 'CANCELLED', 'EXPIRED', 'REFUNDED'].includes(transaction.status)) return;
+
+    // L'identifiant d'intention (pi_...) n'est pas stocké en colonne : on le
+    // retrouve dans la réponse brute conservée sur la tentative de paiement.
+    const raw = transaction.paymentAttempts[0]?.rawResponse as any;
+    const intentId: string | undefined =
+      raw?.id ?? raw?.payments?.[0]?.intentId ?? undefined;
+    if (!intentId || !String(intentId).startsWith('pi_')) return;
+
+    const remote = await this.hub2.fetchPaymentIntentStatus(intentId);
+    if (!remote) return;
+
+    const data: any = {};
+    if (remote.nextActionType && !transaction.nextActionType) {
+      data.nextActionType = remote.nextActionType;
+      data.nextActionMessage = remote.nextActionMessage;
+      data.nextActionUrl = remote.nextActionUrl;
+    }
+
+    if (remote.status === 'SUCCESS' && transaction.status !== 'SUCCESS') {
+      // La finalisation comptable reste la responsabilité du circuit webhook
+      // (écritures au grand livre). On se contente ici de refléter l'action
+      // requise ; le webhook, s'il finit par arriver, fera le reste.
+      data.nextActionType = remote.nextActionType ?? transaction.nextActionType;
+    } else if (['FAILED', 'CANCELLED', 'EXPIRED'].includes(remote.status)) {
+      data.status = remote.status;
+      data.failureReason = remote.failureReason ?? "L'opération n'a pas abouti.";
+    }
+
+    if (Object.keys(data).length > 0) {
+      await this.prisma.transaction.update({ where: { id: transactionId }, data });
+    }
+  }
+
 }

@@ -436,4 +436,73 @@ export class Hub2Adapter implements PaymentProviderAdapter {
 
     return res.json();
   }
+
+  /**
+   * Interroge ACTIVEMENT HUB2 sur l'état d'un paiement.
+   *
+   * § Filet de sécurité indispensable : le circuit nominal repose sur les
+   * webhooks, mais si HUB2 ne parvient pas à joindre notre serveur (service
+   * en veille, coupure réseau, endpoint désactivé après échecs répétés), la
+   * transaction reste bloquée en PROCESSING indéfiniment et le client
+   * n'obtient jamais son lien de paiement — cas réellement constaté en
+   * production. On ne dépend donc plus uniquement d'être appelé : on va
+   * chercher l'information nous-mêmes.
+   */
+  async fetchPaymentIntentStatus(intentId: string): Promise<{
+    status: string;
+    nextActionType?: string;
+    nextActionMessage?: string;
+    nextActionUrl?: string;
+    failureCode?: string;
+    failureReason?: string;
+  } | null> {
+    if (!this.apiKey) return null;
+
+    try {
+      const res = await fetch(`${this.baseUrl}/payment-intents/${intentId}`, {
+        method: 'GET',
+        headers: {
+          ApiKey: this.apiKey,
+          MerchantId: this.merchantId,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!res.ok) {
+        this.logger.warn(`Relance statut HUB2 (${intentId}) — réponse ${res.status}`);
+        return null;
+      }
+
+      const json = await res.json();
+      const payment = json.payments?.[json.payments.length - 1];
+      const nextAction = payment?.nextAction ?? json.nextAction;
+
+      const statusMap: Record<string, string> = {
+        successful: 'SUCCESS',
+        succeeded: 'SUCCESS',
+        failed: 'FAILED',
+        canceled: 'CANCELLED',
+        cancelled: 'CANCELLED',
+        expired: 'EXPIRED',
+      };
+      const raw = String(payment?.status ?? json.status ?? '').toLowerCase();
+
+      this.logger.log(
+        `Relance statut HUB2 (${intentId}) : status=${raw} nextAction=${nextAction?.type ?? '(aucun)'}`,
+      );
+
+      return {
+        status: statusMap[raw] ?? 'PENDING',
+        nextActionType: nextAction?.type,
+        nextActionMessage: nextAction?.message,
+        nextActionUrl: nextAction?.data?.url,
+        failureCode: payment?.failure?.code ?? json.failure?.code,
+        failureReason: payment?.failure?.message ?? json.failure?.message,
+      };
+    } catch (err: any) {
+      this.logger.warn(`Relance statut HUB2 (${intentId}) — exception : ${err?.message ?? err}`);
+      return null;
+    }
+  }
+
 }
