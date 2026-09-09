@@ -1625,18 +1625,54 @@ export class PaymentEngineService {
       data.nextActionUrl = remote.nextActionUrl;
     }
 
-    if (remote.status === 'SUCCESS' && transaction.status !== 'SUCCESS') {
-      // La finalisation comptable reste la responsabilité du circuit webhook
-      // (écritures au grand livre). On se contente ici de refléter l'action
-      // requise ; le webhook, s'il finit par arriver, fera le reste.
-      data.nextActionType = remote.nextActionType ?? transaction.nextActionType;
-    } else if (['FAILED', 'CANCELLED', 'EXPIRED'].includes(remote.status)) {
-      data.status = remote.status;
-      data.failureReason = remote.failureReason ?? "L'opération n'a pas abouti.";
-    }
-
+    // On enregistre d'abord l'action requise si elle vient d'arriver.
     if (Object.keys(data).length > 0) {
       await this.prisma.transaction.update({ where: { id: transactionId }, data });
+    }
+
+    // § FINALISATION — point critique. Sans ceci, un paiement confirmé côté
+    // provider mais dont le webhook n'arrive jamais laisse le client DÉBITÉ
+    // chez son opérateur SANS être crédité chez nous : l'argent disparaît du
+    // point de vue du client. On applique donc exactement la même
+    // finalisation que le circuit webhook, en réutilisant les mêmes méthodes
+    // (elles sont idempotentes : si le webhook finit par arriver, il ne
+    // recréditera pas une seconde fois).
+    const isFinal = ['SUCCESS', 'FAILED', 'CANCELLED', 'EXPIRED'].includes(remote.status);
+    if (!isFinal) return;
+
+    const succeeded = remote.status === 'SUCCESS';
+    const reason = succeeded ? undefined : (remote.failureReason ?? "L'opération n'a pas abouti.");
+
+    this.logger.warn(
+      `Finalisation SANS webhook (${transactionId}, ${transaction.type}) — statut provider=${remote.status}. ` +
+        `Le webhook HUB2 n'est pas parvenu jusqu'à nous ; la transaction est finalisée depuis la relance active.`,
+    );
+
+    try {
+      switch (transaction.type) {
+        case 'TOPUP':
+          await this.completeTopup(transactionId, succeeded, reason, 0n);
+          break;
+        case 'WITHDRAWAL':
+          await this.completeWithdrawal(transactionId, succeeded, reason, 0n);
+          break;
+        case 'PAYMENT':
+          await this.completeExternalMerchantPayment(transactionId, succeeded, reason, 0n);
+          break;
+        case 'AIRTIME':
+          await this.completeAirtimeMobileMoneyDeposit(transactionId, succeeded, reason, 0n);
+          break;
+        default:
+          // Type sans finalisation dédiée : on reflète au moins le statut.
+          await this.prisma.transaction.update({
+            where: { id: transactionId },
+            data: { status: remote.status, failureReason: reason },
+          });
+      }
+    } catch (err: any) {
+      // Une finalisation déjà faite (webhook arrivé entre-temps) lève une
+      // erreur inoffensive — on ne la laisse jamais casser le suivi client.
+      this.logger.warn(`Finalisation sans webhook (${transactionId}) : ${err?.message ?? err}`);
     }
   }
 
