@@ -1,4 +1,5 @@
 import { Injectable, Logger, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
+import { TransactionStatus } from '@prisma/client';
 import { PrismaService } from '../../config/prisma.service';
 import { PaymentEngineService } from './payment-engine.service';
 
@@ -61,7 +62,7 @@ export class ReconciliationService implements OnModuleInit, OnModuleDestroy {
       const now = Date.now();
       const stuck = await this.prisma.transaction.findMany({
         where: {
-          status: { in: ['INITIATED', 'PENDING', 'PROCESSING'] },
+          status: { in: ['INITIATED', 'PENDING', 'PROCESSING'] as TransactionStatus[] },
           providerName: 'HUB2',
           createdAt: {
             gte: new Date(now - MAX_AGE_MS),

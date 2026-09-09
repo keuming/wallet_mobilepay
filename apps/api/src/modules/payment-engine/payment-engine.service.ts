@@ -6,7 +6,7 @@ import {
   NotFoundException,
   UnauthorizedException,
 } from '@nestjs/common';
-import { Prisma } from '@prisma/client';
+import { Prisma, TransactionStatus } from '@prisma/client';
 import { nanoid } from 'nanoid';
 import * as bcrypt from 'bcrypt';
 import * as crypto from 'crypto';
@@ -1667,9 +1667,12 @@ export class PaymentEngineService {
           break;
         default:
           // Type sans finalisation dédiée : on reflète au moins le statut.
+          // § `remote.status` est une chaîne générique venant du provider ;
+          // Prisma attend son type énuméré, d'où la conversion explicite —
+          // les valeurs possibles ont déjà été validées par `isFinal`.
           await this.prisma.transaction.update({
             where: { id: transactionId },
-            data: { status: remote.status, failureReason: reason },
+            data: { status: remote.status as TransactionStatus, failureReason: reason },
           });
       }
     } catch (err: any) {
