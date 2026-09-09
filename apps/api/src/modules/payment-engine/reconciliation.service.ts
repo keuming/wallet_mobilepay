@@ -69,8 +69,11 @@ export class ReconciliationService implements OnModuleInit, OnModuleDestroy {
           },
         },
         select: { id: true, type: true, createdAt: true },
-        orderBy: { createdAt: 'asc' },
-        take: 25, // borne le travail par passage — on rattrape au suivant
+        // Les plus récentes d'abord : ce sont celles où un client attend
+        // réellement son argent. Les anciennes seront reprises aux passages
+        // suivants.
+        orderBy: { createdAt: 'desc' },
+        take: 10, // borne le travail par passage — on rattrape au suivant
       });
 
       if (stuck.length === 0) return;
@@ -80,14 +83,23 @@ export class ReconciliationService implements OnModuleInit, OnModuleDestroy {
       );
 
       for (const tx of stuck) {
+        let calledProvider = false;
         try {
-          await this.paymentEngine.refreshFromProvider(tx.id);
+          calledProvider = await this.paymentEngine.refreshFromProvider(tx.id);
         } catch (err: any) {
           this.logger.warn(`Réconciliation (${tx.id}) : ${err?.message ?? err}`);
         }
-        // Espacement volontaire : HUB2 limite le débit de son API, et ce
-        // balayage ne doit jamais pénaliser les requêtes des clients réels.
-        await new Promise((r) => setTimeout(r, 1_200));
+
+        // Inutile d'attendre si aucun appel n'a été fait (transaction sans
+        // identifiant provider exploitable, ou déjà finalisée entre-temps).
+        if (!calledProvider) continue;
+        // § Espacement calibré sur le comportement RÉEL de HUB2, mesuré en
+        // production : à ~1 s d'intervalle, l'API renvoie des 429 en rafale
+        // (34 sur 35 appels lors d'un test) ; à ~12 s, aucun rejet. On retient
+        // 5 s — assez espacé pour passer, assez rapide pour traiter le lot
+        // dans l'intervalle de balayage. Ce rythme garantit aussi que la
+        // réconciliation ne consomme jamais le quota des clients réels.
+        await new Promise((r) => setTimeout(r, 5_000));
       }
     } catch (err: any) {
       this.logger.error(`Réconciliation — échec du passage : ${err?.message ?? err}`);

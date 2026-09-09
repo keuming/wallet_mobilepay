@@ -1579,7 +1579,7 @@ export class PaymentEngineService {
    * paiement plutôt que d'attendre indéfiniment un webhook qui peut ne
    * jamais arriver.
    */
-  async refreshFromProvider(transactionId: string): Promise<void> {
+  async refreshFromProvider(transactionId: string): Promise<boolean> {
     // § HUB2 limite le débit de son API : appeler à chaque sondage client
     // (toutes les 3 s) provoquait des 429 en rafale. On espace donc les
     // relances — mais pas trop : à 10 s, un paiement déjà confirmé mettait
@@ -1587,7 +1587,7 @@ export class PaymentEngineService {
     // passait. 5 s est le bon compromis : sous la limite de HUB2, et assez
     // réactif pour que la confirmation paraisse immédiate.
     const last = PaymentEngineService.lastProviderRefresh.get(transactionId);
-    if (last && Date.now() - last < 5_000) return;
+    if (last && Date.now() - last < 5_000) return false;
     PaymentEngineService.lastProviderRefresh.set(transactionId, Date.now());
 
     // Purge les entrées de plus d'une heure — une transaction suivie depuis
@@ -1604,20 +1604,22 @@ export class PaymentEngineService {
       include: { paymentAttempts: { orderBy: { createdAt: 'desc' }, take: 1 } },
     });
 
-    if (!transaction) return;
-    if (transaction.providerName !== 'HUB2') return;
+    if (!transaction) return false;
+    if (transaction.providerName !== 'HUB2') return false;
     // Une transaction déjà finalisée n'a plus rien à apprendre du provider.
-    if (['SUCCESS', 'FAILED', 'CANCELLED', 'EXPIRED', 'REFUNDED'].includes(transaction.status)) return;
+    if (['SUCCESS', 'FAILED', 'CANCELLED', 'EXPIRED', 'REFUNDED'].includes(transaction.status)) return false;
 
     // L'identifiant d'intention (pi_...) n'est pas stocké en colonne : on le
     // retrouve dans la réponse brute conservée sur la tentative de paiement.
     const raw = transaction.paymentAttempts[0]?.rawResponse as any;
     const intentId: string | undefined =
       raw?.id ?? raw?.payments?.[0]?.intentId ?? undefined;
-    if (!intentId || !String(intentId).startsWith('pi_')) return;
+    // Sans identifiant d'intention exploitable, aucun appel n'est possible :
+    // on le signale pour ne pas gaspiller le délai d'espacement.
+    if (!intentId || !String(intentId).startsWith('pi_')) return false;
 
     const remote = await this.hub2.fetchPaymentIntentStatus(intentId);
-    if (!remote) return;
+    if (!remote) return true; // appel effectué, même sans réponse exploitable
 
     const data: any = {};
     if (remote.nextActionType && !transaction.nextActionType) {
@@ -1639,7 +1641,7 @@ export class PaymentEngineService {
     // (elles sont idempotentes : si le webhook finit par arriver, il ne
     // recréditera pas une seconde fois).
     const isFinal = ['SUCCESS', 'FAILED', 'CANCELLED', 'EXPIRED'].includes(remote.status);
-    if (!isFinal) return;
+    if (!isFinal) return true;
 
     const succeeded = remote.status === 'SUCCESS';
     const reason = succeeded ? undefined : (remote.failureReason ?? "L'opération n'a pas abouti.");
@@ -1675,6 +1677,8 @@ export class PaymentEngineService {
       // erreur inoffensive — on ne la laisse jamais casser le suivi client.
       this.logger.warn(`Finalisation sans webhook (${transactionId}) : ${err?.message ?? err}`);
     }
+
+    return true;
   }
 
 }
