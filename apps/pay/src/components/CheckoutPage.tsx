@@ -370,7 +370,35 @@ export default function CheckoutPage({
             href={walletAppPath === 'envoyer' ? `${walletAppUrl}/envoyer` : `${walletAppUrl}/${walletAppPath}?${walletAppQueryKey}=${identifier}`}
             className="mp-feature-card featured"
           >
-            <div className="mp-feature-icon">💚</div>
+            {/* § Badge de marque « M-Pay » — remplace le cœur vert 💚, un emoji
+                générique qui ne dit rien de MobilePay. Le format est
+                rectangulaire : « M-Pay » est un mot, il ne tient pas dans un
+                carré sans se couper sur deux lignes. */}
+            <div
+              style={{
+                width: 58,
+                height: 38,
+                borderRadius: 10,
+                background: '#0f2d52',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                flexShrink: 0,
+              }}
+            >
+              <span
+                style={{
+                  color: '#00D27A',
+                  fontWeight: 900,
+                  fontSize: 15,
+                  letterSpacing: -0.3,
+                  whiteSpace: 'nowrap',
+                  lineHeight: 1,
+                }}
+              >
+                M-Pay
+              </span>
+            </div>
             <div className="mp-feature-text">
               <div className="mp-feature-title">Payer avec MobilePay</div>
               <div className="mp-feature-sub">{mobilePaySubtitle}</div>

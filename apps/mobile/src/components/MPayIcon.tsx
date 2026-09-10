@@ -24,7 +24,10 @@ export default function MPayIcon({
     <View
       style={[
         {
-          width: size,
+          // § « M-Pay » est un mot : dans un carré, il se coupait sur deux
+          // lignes. Le badge est donc plus large que haut, comme tout
+          // logotype textuel.
+          width: size * 1.55,
           height: size,
           borderRadius: size * 0.24,
           backgroundColor: colors.navy,
@@ -39,7 +42,7 @@ export default function MPayIcon({
           color: colors.accent,
           fontWeight: '900',
           // Proportion calée sur le favicon pour un rendu identique.
-          fontSize: size * 0.34,
+          fontSize: size * 0.36,
           letterSpacing: -0.3,
           includeFontPadding: false,
         }}

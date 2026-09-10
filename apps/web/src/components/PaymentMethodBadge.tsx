@@ -64,7 +64,9 @@ export default function PaymentMethodBadge({
       ) : (
         <span
           style={{
-            width: size,
+            // Un mot a besoin de plus de largeur qu'un emoji : le badge
+            // s'élargit uniquement dans ce cas, les autres restent carrés.
+            width: meta.fallbackEmoji ? size : size * 1.55,
             height: size,
             borderRadius: size / 4,
             background: meta.fallbackBg,
@@ -80,7 +82,10 @@ export default function PaymentMethodBadge({
               style={{
                 color: '#00D27A',
                 fontWeight: 900,
-                fontSize: size * 0.34,
+                // § « M-Pay » est un mot : sans `nowrap`, il se coupait entre
+                // « M- » et « Pay » sur deux lignes dans un badge carré.
+                whiteSpace: 'nowrap',
+                fontSize: size * 0.36,
                 letterSpacing: -0.3,
                 lineHeight: 1,
               }}
