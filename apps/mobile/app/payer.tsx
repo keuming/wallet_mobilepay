@@ -13,6 +13,7 @@ import { apiFetch, ApiError } from '../src/lib/apiClient';
 import { Button, Input, ErrorBanner } from '../src/components/ui';
 import StepHeader from '../src/components/StepHeader';
 import StatusModal, { ResultStatus } from '../src/components/StatusModal';
+import QrScanner from '../src/components/QrScanner';
 import { colors, spacing, fontSize, radius } from '../src/theme';
 
 const STEPS = ['Marchand', 'Montant', 'Résumé', 'Code secret'];
@@ -34,6 +35,7 @@ export default function PayerScreen() {
   const [code, setCode] = useState(params.qr ?? params.link ?? '');
   const [target, setTarget] = useState<ResolvedTarget | null>(null);
   const [resolving, setResolving] = useState(false);
+  const [scannerOpen, setScannerOpen] = useState(false);
   const [amount, setAmount] = useState('');
   const [pin, setPin] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -44,8 +46,8 @@ export default function PayerScreen() {
    * Résout un code saisi : QR marchand/personnel ou lien de paiement.
    * On tente le QR d'abord (cas le plus courant), puis le lien.
    */
-  const resolveCode = async () => {
-    const trimmed = code.trim();
+  const resolveCode = async (override?: string) => {
+    const trimmed = (override ?? code).trim();
     if (!trimmed) return;
     setResolving(true);
     setError(null);
@@ -162,8 +164,18 @@ export default function PayerScreen() {
           {step === 0 && (
             <>
               <Text style={styles.hint}>
-                Saisis le code du marchand ou du lien de paiement (il figure sous le QR code).
+                Scanne le QR code du marchand — ou saisis son code à la main.
               </Text>
+
+              <Button
+                onPress={() => setScannerOpen(true)}
+                style={{ alignSelf: 'stretch', marginBottom: spacing.lg }}
+              >
+                📷 Scanner un QR code
+              </Button>
+
+              <Text style={styles.orLabel}>ou</Text>
+
               <Input
                 label="Code"
                 value={code}
@@ -253,6 +265,17 @@ export default function PayerScreen() {
         </ScrollView>
       </KeyboardAvoidingView>
 
+      <QrScanner
+        visible={scannerOpen}
+        onClose={() => setScannerOpen(false)}
+        onScanned={(scanned) => {
+          setCode(scanned);
+          // Résolution immédiate : après un scan, faire appuyer sur
+          // « Rechercher » serait une étape de trop.
+          resolveCode(scanned);
+        }}
+      />
+
       {result && (
         <StatusModal
           status={result.status}
@@ -280,6 +303,14 @@ const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.bg },
   scroll: { padding: spacing.lg, paddingBottom: spacing.xxl },
   hint: { fontSize: fontSize.md, color: colors.textSecondary, marginBottom: spacing.md },
+  orLabel: {
+    textAlign: 'center',
+    fontSize: fontSize.xs,
+    color: colors.textSecondary,
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+    marginBottom: spacing.md,
+  },
 
   foundBox: {
     marginTop: spacing.lg,

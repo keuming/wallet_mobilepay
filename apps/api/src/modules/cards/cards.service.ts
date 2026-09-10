@@ -59,12 +59,22 @@ export class CardsService {
     const merchantLinks = await this.prisma.merchantUser.findMany({ where: { userId } });
     const merchantIds = merchantLinks.map((l) => l.merchantId);
 
-    return this.prisma.virtualCard.findMany({
+    const cards = await this.prisma.virtualCard.findMany({
       where: {
         OR: [{ ownerUserId: userId }, { ownerMerchantId: { in: merchantIds } }],
       },
       orderBy: { createdAt: 'desc' },
     });
+
+    // § Tant qu'aucun émetteur réel n'est branché, les cartes sont générées
+    // par SimulatedCardAdapter : numéros fictifs, inutilisables pour un vrai
+    // paiement. Le client DOIT le savoir — laisser croire à une carte
+    // fonctionnelle exposerait l'utilisateur à des tentatives de paiement
+    // vouées à l'échec, et nous à un problème de confiance.
+    return cards.map((card) => ({
+      ...card,
+      simulated: card.providerRef?.startsWith('SIMULATED-CARD-') ?? false,
+    }));
   }
 
   private async assertOwnership(cardId: string, userId: string) {
