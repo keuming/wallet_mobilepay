@@ -15,9 +15,16 @@ import { Button, Input, ErrorBanner } from '../src/components/ui';
 import StepHeader from '../src/components/StepHeader';
 import StatusModal, { ResultStatus } from '../src/components/StatusModal';
 import MPayIcon from '../src/components/MPayIcon';
+import CountryPicker from '../src/components/CountryPicker';
+import { HUB2_COUNTRIES } from '../src/lib/hub2Countries';
 import { colors, spacing, fontSize, radius } from '../src/theme';
 
-const STEPS = ['Destination', 'Compte', 'Montant', 'Résumé', 'Code secret'];
+// § Le pays est demandé pour un envoi EXTERNE : MobilePay agrège des
+// fournisseurs à couverture internationale, et l'opérateur destinataire
+// dépend du pays. Un transfert interne MobilePay n'en a pas besoin — le
+// bénéficiaire est retrouvé par son numéro.
+const STEPS_INTERNAL = ['Destination', 'Compte', 'Montant', 'Résumé', 'Code secret'];
+const STEPS_EXTERNAL = ['Destination', 'Pays', 'Compte', 'Montant', 'Résumé', 'Code secret'];
 
 /** Mêmes destinations que le web : MobilePay interne + 4 opérateurs externes. */
 const DESTINATIONS = [
@@ -33,6 +40,7 @@ export default function EnvoyerScreen() {
 
   const [step, setStep] = useState(0);
   const [destination, setDestination] = useState<string | null>(null);
+  const [destCountry, setDestCountry] = useState('CI');
   const [accountNumber, setAccountNumber] = useState('');
   const [recipientName, setRecipientName] = useState('');
   const [amount, setAmount] = useState('');
@@ -78,21 +86,27 @@ export default function EnvoyerScreen() {
   };
 
   const isInternal = destination === 'MOBILEPAY';
+  const STEPS = isInternal ? STEPS_INTERNAL : STEPS_EXTERNAL;
+  // On raisonne par NOM d'étape et non par index : le parcours diffère selon
+  // le type d'envoi, des numéros en dur casseraient à la moindre évolution.
+  const currentStep = STEPS[step];
 
   const canGoNext = (): boolean => {
-    switch (step) {
-      case 0:
+    switch (currentStep) {
+      case 'Destination':
         return destination !== null;
-      case 1:
+      case 'Pays':
+        return !!destCountry;
+      case 'Compte':
         return (
           accountNumber.replace(/\D/g, '').length >= 8 &&
           (isInternal || recipientName.trim().length >= 2)
         );
-      case 2:
+      case 'Montant':
         return !!amount && Number(amount) > 0;
-      case 3:
+      case 'Résumé':
         return true;
-      case 4:
+      case 'Code secret':
         return pin.length >= 4;
       default:
         return false;
@@ -115,7 +129,7 @@ export default function EnvoyerScreen() {
             accountNumber,
             amount: Math.round(Number(amount) * 100),
             pin,
-            country: 'CI',
+            country: destCountry,
             recipientName,
           };
 
@@ -174,7 +188,7 @@ export default function EnvoyerScreen() {
           {error && <ErrorBanner message={error} />}
 
           {/* Étape 0 — destination */}
-          {step === 0 && (
+          {currentStep === 'Destination' && (
             <>
               <Text style={styles.hint}>Où veux-tu envoyer l'argent ?</Text>
               {DESTINATIONS.map((d) => (
@@ -199,7 +213,19 @@ export default function EnvoyerScreen() {
           )}
 
           {/* Étape 1 — compte destinataire */}
-          {step === 1 && (
+          {currentStep === 'Pays' && (
+            <CountryPicker
+              countries={HUB2_COUNTRIES}
+              value={destCountry}
+              onChange={setDestCountry}
+              label="Pays du bénéficiaire"
+              helper={`Dans quel pays se trouve le compte ${
+                DESTINATIONS.find((d) => d.id === destination)?.label ?? ''
+              } à créditer ?`}
+            />
+          )}
+
+          {currentStep === 'Compte' && (
             <>
               <Text style={styles.hint}>
                 {isInternal
@@ -226,7 +252,7 @@ export default function EnvoyerScreen() {
           )}
 
           {/* Étape 2 — montant */}
-          {step === 2 && (
+          {currentStep === 'Montant' && (
             <>
               <Text style={styles.hint}>Quel montant veux-tu envoyer ?</Text>
               <Input
@@ -249,11 +275,17 @@ export default function EnvoyerScreen() {
           )}
 
           {/* Étape 3 — résumé */}
-          {step === 3 && (
+          {currentStep === 'Résumé' && (
             <View style={styles.summary}>
               <Text style={styles.summaryTitle}>🔍 Vérifie avant de continuer</Text>
               <Row k="Objet" v="Transfert d'argent" />
               <Row k="Destination" v={DESTINATIONS.find((d) => d.id === destination)?.label ?? ''} />
+              {!isInternal && (
+                <Row
+                  k="Pays"
+                  v={HUB2_COUNTRIES.find((c) => c.code === destCountry)?.name ?? destCountry}
+                />
+              )}
               <Row k="Numéro" v={accountNumber} />
               {!isInternal && <Row k="Bénéficiaire" v={recipientName} />}
               {isInternal && description ? <Row k="Motif" v={description} /> : null}
@@ -262,7 +294,7 @@ export default function EnvoyerScreen() {
           )}
 
           {/* Étape 4 — code secret */}
-          {step === 4 && (
+          {currentStep === 'Code secret' && (
             <>
               <Text style={styles.hint}>
                 Saisis ton code secret pour confirmer l'envoi de{' '}

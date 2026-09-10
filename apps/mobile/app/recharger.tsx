@@ -18,6 +18,7 @@ import StepHeader from '../src/components/StepHeader';
 import StatusModal, { ResultStatus } from '../src/components/StatusModal';
 import { colors, spacing, fontSize, radius } from '../src/theme';
 import { WORLD_COUNTRIES } from '../src/lib/worldCountries';
+import CountryPicker from '../src/components/CountryPicker';
 import { useAuth } from '../src/contexts/AuthContext';
 
 interface Operator {
@@ -46,7 +47,6 @@ export default function RechargerScreen() {
 
   const [step, setStep] = useState(0);
   const [country, setCountry] = useState('CI');
-  const [countryQuery, setCountryQuery] = useState('');
   const [category, setCategory] = useState<Category | null>(null);
   const [operators, setOperators] = useState<Operator[]>([]);
   const [operator, setOperator] = useState<Operator | null>(null);
@@ -158,40 +158,13 @@ export default function RechargerScreen() {
           {error && <ErrorBanner message={error} />}
 
           {step === 0 && (
-            <>
-              <Text style={styles.hint}>
-                Dans quel pays se trouve le numéro à recharger ?
-              </Text>
-              <Input
-                label="Rechercher un pays"
-                value={countryQuery}
-                onChangeText={setCountryQuery}
-                placeholder="Côte d'Ivoire, Sénégal, France…"
-              />
-              {WORLD_COUNTRIES
-                // Sans filtre, on n'affiche que le pays retenu : dérouler 192
-                // pays d'un coup serait illisible sur un téléphone.
-                .filter((c) =>
-                  countryQuery.trim()
-                    ? c.name.toLowerCase().includes(countryQuery.trim().toLowerCase())
-                    : c.code === country,
-                )
-                .slice(0, 25)
-                .map((c) => (
-                  <Pressable
-                    key={c.code}
-                    onPress={() => {
-                      setCountry(c.code);
-                      setCountryQuery('');
-                    }}
-                    style={[styles.choice, country === c.code && styles.choiceActive]}
-                  >
-                    <Text style={styles.choiceIcon}>🌍</Text>
-                    <Text style={styles.choiceLabel}>{c.name}</Text>
-                    {country === c.code && <Text style={styles.check}>✓</Text>}
-                  </Pressable>
-                ))}
-            </>
+            <CountryPicker
+              countries={WORLD_COUNTRIES}
+              value={country}
+              onChange={setCountry}
+              label="Pays du numéro"
+              helper="Dans quel pays se trouve le numéro à recharger ? Plus de 190 pays sont couverts."
+            />
           )}
 
           {step === 1 && (
