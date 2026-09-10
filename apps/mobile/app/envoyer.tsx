@@ -49,6 +49,16 @@ export default function EnvoyerScreen() {
   const [destCountry, setDestCountry] = useState(() =>
     resolveDefaultCountry(user?.country, HUB2_COUNTRIES),
   );
+  // § L'initialisation ne s'exécute qu'au montage : si le profil n'est pas
+  // encore chargé à cet instant, le pays du compte est absent et on retombe
+  // sur l'appareil — c'est ce qui affichait le Bénin pour un compte ivoirien.
+  // On réapplique donc le pays du compte dès son arrivée, sauf si la
+  // personne a déjà fait son propre choix.
+  const [countryTouched, setCountryTouched] = useState(false);
+  useEffect(() => {
+    if (countryTouched || !user?.country) return;
+    setDestCountry(resolveDefaultCountry(user.country, HUB2_COUNTRIES));
+  }, [user?.country, countryTouched]);
   const [accountNumber, setAccountNumber] = useState('');
   const [recipientName, setRecipientName] = useState('');
   const [amount, setAmount] = useState('');
@@ -225,7 +235,7 @@ export default function EnvoyerScreen() {
             <CountryPicker
               countries={HUB2_COUNTRIES}
               value={destCountry}
-              onChange={setDestCountry}
+              onChange={(code) => { setCountryTouched(true); setDestCountry(code); }}
               label="Pays du bénéficiaire"
               helper={`Dans quel pays se trouve le compte ${
                 DESTINATIONS.find((d) => d.id === destination)?.label ?? ''

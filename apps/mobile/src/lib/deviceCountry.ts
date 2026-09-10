@@ -45,8 +45,16 @@ export function getDeviceCountry(): string | null {
 }
 
 /**
- * Pays par défaut à proposer : l'appareil d'abord, puis le pays du compte,
- * puis la Côte d'Ivoire en dernier recours.
+ * Pays par défaut à proposer.
+ *
+ * § L'ordre de priorité compte, et l'expérience l'a démontré : la
+ * configuration régionale d'un appareil est peu fiable (SIM en itinérance,
+ * langue système, téléphone acheté à l'étranger) — un compte ouvert en Côte
+ * d'Ivoire se voyait proposer le Bénin.
+ *
+ * Le pays ENREGISTRÉ SUR LE COMPTE fait donc foi : c'est la résidence
+ * déclarée par le titulaire, celle qui fonde son KYC et ses plafonds. La
+ * détection appareil ne sert que de repli quand le compte n'en porte pas.
  *
  * `allowed` restreint au périmètre réellement couvert par le fournisseur
  * concerné — inutile de pré-sélectionner un pays où le service échouerait.
@@ -58,8 +66,13 @@ export function resolveDefaultCountry(
   const isAllowed = (code: string | null | undefined): code is string =>
     !!code && (!allowed || allowed.some((c) => c.code === code));
 
+  // 1. Pays de résidence déclaré sur le compte — la source de vérité.
+  if (isAllowed(profileCountry)) return profileCountry;
+
+  // 2. À défaut seulement, ce que suggère l'appareil.
   const device = getDeviceCountry();
   if (isAllowed(device)) return device;
-  if (isAllowed(profileCountry)) return profileCountry;
+
+  // 3. Repli sûr.
   return allowed?.[0]?.code ?? 'CI';
 }

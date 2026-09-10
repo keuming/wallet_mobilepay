@@ -50,6 +50,13 @@ export default function RechargerScreen() {
   // Reloadly couvrant plus de 190 pays, aucune restriction n'est appliquée :
   // le pays de l'appareil est retenu tel quel.
   const [country, setCountry] = useState(() => resolveDefaultCountry(user?.country));
+  // Voir explication identique dans l'écran Transfert : le profil peut
+  // arriver après le montage de l'écran.
+  const [countryTouched, setCountryTouched] = useState(false);
+  useEffect(() => {
+    if (countryTouched || !user?.country) return;
+    setCountry(resolveDefaultCountry(user.country));
+  }, [user?.country, countryTouched]);
   const [category, setCategory] = useState<Category | null>(null);
   const [operators, setOperators] = useState<Operator[]>([]);
   const [operator, setOperator] = useState<Operator | null>(null);
@@ -158,7 +165,7 @@ export default function RechargerScreen() {
             <CountryPicker
               countries={WORLD_COUNTRIES}
               value={country}
-              onChange={setCountry}
+              onChange={(code) => { setCountryTouched(true); setCountry(code); }}
               label="Pays du numéro"
               helper="Dans quel pays se trouve le numéro à recharger ? Plus de 190 pays sont couverts."
             />
