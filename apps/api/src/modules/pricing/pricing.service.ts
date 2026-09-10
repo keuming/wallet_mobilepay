@@ -15,8 +15,15 @@ export class PricingService {
       data: {
         key,
         label: 'Tarification standard — services particulier',
+        // § Grille par défaut, applicable à TOUS les flux (dépôt, retrait,
+        // transfert…) : une seule configuration gouverne l'ensemble.
+        // Ajustable à tout moment depuis le back-office (Tarification).
+        //
+        // 100 FCFA de frais fixes rendaient les petits dépôts impossibles
+        // (un dépôt de 100 FCFA générait 101 FCFA de frais) et pesaient
+        // lourd sur les montants courants du marché ivoirien.
         percentageBps: 100, // 1,00 %
-        flatFeeCents: 10000n, // 100 FCFA
+        flatFeeCents: 5000n, // 50 FCFA
       },
     });
   }
