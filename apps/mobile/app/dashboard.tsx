@@ -14,6 +14,7 @@ import { useAuth } from '../src/contexts/AuthContext';
 import { apiFetch } from '../src/lib/apiClient';
 import { colors, spacing, fontSize, radius, shadow } from '../src/theme';
 import SideMenu from '../src/components/SideMenu';
+import MPayIcon from '../src/components/MPayIcon';
 
 interface Wallet {
   cachedBalance: number;
@@ -110,9 +111,7 @@ export default function DashboardScreen() {
             <Text style={styles.iconBtnText}>☰</Text>
           </Pressable>
           <View style={styles.logoBadge}>
-            <View style={styles.logoMark}>
-              <Text style={styles.logoMarkText}>📈</Text>
-            </View>
+            <MPayIcon size={26} />
             <Text style={styles.logoText}>
               Mobile<Text style={{ color: colors.accent }}>Pay</Text>
             </Text>

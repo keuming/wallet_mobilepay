@@ -13,6 +13,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '../src/contexts/AuthContext';
 import { ApiError } from '../src/lib/apiClient';
 import { Button, Input, ErrorBanner } from '../src/components/ui';
+import MPayIcon from '../src/components/MPayIcon';
 import { colors, spacing, fontSize, radius } from '../src/theme';
 
 /**
@@ -81,7 +82,7 @@ export default function LoginScreen() {
           showsVerticalScrollIndicator={false}
         >
           <View style={styles.brand}>
-            <View style={styles.brandDot} />
+            <MPayIcon size={34} style={{ marginRight: spacing.sm }} />
             <Text style={styles.brandText}>MobilePay CI</Text>
           </View>
 

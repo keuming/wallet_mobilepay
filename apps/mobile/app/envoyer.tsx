@@ -14,13 +14,14 @@ import { apiFetch, ApiError } from '../src/lib/apiClient';
 import { Button, Input, ErrorBanner } from '../src/components/ui';
 import StepHeader from '../src/components/StepHeader';
 import StatusModal, { ResultStatus } from '../src/components/StatusModal';
+import MPayIcon from '../src/components/MPayIcon';
 import { colors, spacing, fontSize, radius } from '../src/theme';
 
 const STEPS = ['Destination', 'Compte', 'Montant', 'Résumé', 'Code secret'];
 
 /** Mêmes destinations que le web : MobilePay interne + 4 opérateurs externes. */
 const DESTINATIONS = [
-  { id: 'MOBILEPAY', label: 'MobilePay', icon: '💚', hint: 'Vers un autre compte MobilePay' },
+  { id: 'MOBILEPAY', label: 'MobilePay', icon: null, hint: 'Vers un autre compte MobilePay' },
   { id: 'ORANGE', label: 'Orange Money', icon: '🟠', hint: 'Vers un compte Orange Money' },
   { id: 'MTN', label: 'MTN MoMo', icon: '🟡', hint: 'Vers un compte MTN MoMo' },
   { id: 'MOOV', label: 'Moov Money', icon: '🔵', hint: 'Vers un compte Moov Money' },
@@ -182,7 +183,11 @@ export default function EnvoyerScreen() {
                   onPress={() => setDestination(d.id)}
                   style={[styles.choice, destination === d.id && styles.choiceActive]}
                 >
-                  <Text style={styles.choiceIcon}>{d.icon}</Text>
+                  {d.icon ? (
+                    <Text style={styles.choiceIcon}>{d.icon}</Text>
+                  ) : (
+                    <MPayIcon size={26} />
+                  )}
                   <View style={{ flex: 1 }}>
                     <Text style={styles.choiceLabel}>{d.label}</Text>
                     <Text style={styles.choiceHint}>{d.hint}</Text>
