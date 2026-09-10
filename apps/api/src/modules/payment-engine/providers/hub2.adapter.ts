@@ -162,7 +162,24 @@ export class Hub2Adapter implements PaymentProviderAdapter {
       throw new Error('HUB2 non configuré — impossible de tenter un paiement.');
     }
 
-    const attemptBody = {
+    // § Carte bancaire : HUB2 est partenaire Visa et expose la carte dans la
+    // même API que le mobile money. Le circuit est celui d'une redirection
+    // (page sécurisée 3-D Secure hébergée par le prestataire), exactement
+    // comme Wave — aucune donnée de carte ne transite donc par nos serveurs,
+    // ce qui nous évite toute obligation de conformité PCI.
+    const isCard = params.provider.toLowerCase() === 'card';
+
+    const attemptBody: Record<string, unknown> = isCard
+      ? {
+          token: intent.token,
+          paymentMethod: 'card',
+          country: params.country ?? 'CI',
+          card: {
+            onSuccessRedirectionUrl: 'https://pay.mobilepay-ci.com/retour?statut=succes',
+            onFailedRedirectionUrl: 'https://pay.mobilepay-ci.com/retour?statut=echec',
+          },
+        }
+      : {
       token: intent.token,
       paymentMethod: 'mobile_money',
       country: params.country ?? 'CI',
@@ -183,7 +200,8 @@ export class Hub2Adapter implements PaymentProviderAdapter {
     };
 
     this.logger.log(
-      `PAY-IN initié — provider=${attemptBody.provider} country=${attemptBody.country} msisdn=${params.customerPhone} reference=${params.reference}`,
+      `PAY-IN initié — méthode=${attemptBody.paymentMethod} provider=${attemptBody.provider ?? 'carte'} ` +
+        `country=${attemptBody.country} reference=${params.reference}`,
     );
 
     // Endpoint ASYNCHRONE — l'endpoint synchrone (/sync) est rejeté (401)

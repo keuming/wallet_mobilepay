@@ -86,7 +86,7 @@ export default function CheckoutPage({
 }) {
   const [target, setTarget] = useState<ResolvedTarget | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
-  const [mode, setMode] = useState<'choice' | 'external'>('choice');
+  const [mode, setMode] = useState<'choice' | 'external' | 'card'>('choice');
 
   const [localNumber, setLocalNumber] = useState('');
   const [provider, setProvider] = useState('');
@@ -238,6 +238,45 @@ export default function CheckoutPage({
     }, 3000);
   };
 
+  /**
+   * Paiement par carte : même endpoint que le mobile money, avec le
+   * fournisseur "card". HUB2 répond par une redirection vers sa page 3-D
+   * Secure — aucun numéro de carte ne passe par nos serveurs.
+   */
+  const submitCard = async () => {
+    setSubmitting(true);
+    setError(null);
+    try {
+      const res = await apiFetch<PaymentResponse>(payExternalEndpoint, {
+        method: 'POST',
+        idempotent: true,
+        body: JSON.stringify({
+          amount: fixedAmount ?? Math.round(Number(amount) * 100),
+          provider: 'card',
+          // Le circuit carte n'exige pas de numéro de téléphone, mais
+          // l'API attend le champ : on transmet celui du bénéficiaire pour
+          // conserver une trace exploitable côté suivi.
+          customerPhone: '',
+        }),
+      });
+
+      if (res.nextActionUrl) {
+        // Redirection immédiate vers la page sécurisée du prestataire.
+        window.location.href = res.nextActionUrl;
+        return;
+      }
+      applyResponse(res);
+      if (res.id) startPolling(res.id);
+    } catch (err) {
+      setError(
+        err instanceof ApiError
+          ? err.message
+          : "Le paiement par carte n'a pas pu démarrer.",
+      );
+      setSubmitting(false);
+    }
+  };
+
   const submit = async () => {
     setSubmitting(true);
     setError(null);
@@ -346,6 +385,56 @@ export default function CheckoutPage({
             </div>
             <div className="mp-feature-chevron">→</div>
           </div>
+          <div className="mp-feature-card" onClick={() => setMode('card')}>
+            <div className="mp-feature-icon">💳</div>
+            <div className="mp-feature-text">
+              <div className="mp-feature-title">Payer par carte bancaire</div>
+              <div className="mp-feature-sub">Visa ou Mastercard — paiement sécurisé</div>
+            </div>
+            <div className="mp-feature-chevron">→</div>
+          </div>
+        </div>
+      )}
+
+      {target && mode === 'card' && !result && (
+        <div className="mp-form">
+          <button
+            className="mp-back-link"
+            onClick={() => { setMode('choice'); setError(null); }}
+          >
+            ← Retour
+          </button>
+
+          <p style={{ fontSize: 13.5, color: 'var(--fz-text-secondary)' }}>
+            {/* § Aucune donnée de carte n'est saisie ici : le paiement se fait
+                sur la page sécurisée du prestataire (3-D Secure), ce qui
+                protège le payeur et nous dispense de toute obligation PCI. */}
+            Tu seras redirigé vers une page sécurisée pour saisir les informations
+            de ta carte. Aucune donnée bancaire ne transite par MobilePay.
+          </p>
+
+          {!fixedAmount && (
+            <label>
+              Montant à payer (FCFA)
+              <input
+                className="mp-input"
+                inputMode="numeric"
+                value={amount}
+                onChange={(e) => setAmount(e.target.value.replace(/\D/g, ''))}
+                placeholder="0"
+              />
+            </label>
+          )}
+
+          {error && <div className="mp-error">{error}</div>}
+
+          <button
+            className="mp-btn-primary"
+            disabled={submitting || (!fixedAmount && !amount)}
+            onClick={() => submitCard()}
+          >
+            {submitting ? 'Redirection...' : '💳 Payer par carte'}
+          </button>
         </div>
       )}
 
