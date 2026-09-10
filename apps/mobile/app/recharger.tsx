@@ -19,6 +19,7 @@ import StatusModal, { ResultStatus } from '../src/components/StatusModal';
 import { colors, spacing, fontSize, radius } from '../src/theme';
 import { WORLD_COUNTRIES } from '../src/lib/worldCountries';
 import CountryPicker from '../src/components/CountryPicker';
+import { resolveDefaultCountry } from '../src/lib/deviceCountry';
 import { useAuth } from '../src/contexts/AuthContext';
 
 interface Operator {
@@ -46,7 +47,9 @@ export default function RechargerScreen() {
   const { user } = useAuth();
 
   const [step, setStep] = useState(0);
-  const [country, setCountry] = useState('CI');
+  // Reloadly couvrant plus de 190 pays, aucune restriction n'est appliquée :
+  // le pays de l'appareil est retenu tel quel.
+  const [country, setCountry] = useState(() => resolveDefaultCountry(user?.country));
   const [category, setCategory] = useState<Category | null>(null);
   const [operators, setOperators] = useState<Operator[]>([]);
   const [operator, setOperator] = useState<Operator | null>(null);
@@ -57,12 +60,6 @@ export default function RechargerScreen() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<{ status: ResultStatus; message: string } | null>(null);
-
-  // Pré-sélectionne le pays du titulaire : la recharge locale reste le cas
-  // le plus fréquent, autant éviter une saisie inutile.
-  useEffect(() => {
-    if (user?.country) setCountry(user.country);
-  }, [user?.country]);
 
   useEffect(() => {
     if (step !== 2) return;

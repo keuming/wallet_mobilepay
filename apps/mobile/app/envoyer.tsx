@@ -17,6 +17,8 @@ import StatusModal, { ResultStatus } from '../src/components/StatusModal';
 import MPayIcon from '../src/components/MPayIcon';
 import CountryPicker from '../src/components/CountryPicker';
 import { HUB2_COUNTRIES } from '../src/lib/hub2Countries';
+import { resolveDefaultCountry } from '../src/lib/deviceCountry';
+import { useAuth } from '../src/contexts/AuthContext';
 import { colors, spacing, fontSize, radius } from '../src/theme';
 
 // § Le pays est demandé pour un envoi EXTERNE : MobilePay agrège des
@@ -40,7 +42,13 @@ export default function EnvoyerScreen() {
 
   const [step, setStep] = useState(0);
   const [destination, setDestination] = useState<string | null>(null);
-  const [destCountry, setDestCountry] = useState('CI');
+  const { user } = useAuth();
+  // § Le pays d'utilisation de l'appareil est pré-sélectionné : envoyer dans
+  // son propre pays est le cas courant. La recherche ne sert qu'aux envois
+  // vers l'étranger. On se limite au périmètre HUB2 (mobile money).
+  const [destCountry, setDestCountry] = useState(() =>
+    resolveDefaultCountry(user?.country, HUB2_COUNTRIES),
+  );
   const [accountNumber, setAccountNumber] = useState('');
   const [recipientName, setRecipientName] = useState('');
   const [amount, setAmount] = useState('');
