@@ -87,7 +87,14 @@ export class QrService {
   async resolveQr(code: string) {
     const qr = await this.prisma.qrCode.findUnique({
       where: { code },
-      include: { merchant: true, ownerUser: { select: { firstName: true, lastName: true } } },
+      include: {
+        // § Le payeur doit voir CLAIREMENT à qui il envoie de l'argent :
+        // nom complet ET numéro. Sans le numéro, rien ne permet de vérifier
+        // qu'on paie bien la bonne personne — c'est la première cause
+        // d'abandon sur une page de paiement.
+        merchant: { include: { users: { where: { role: 'MERCHANT_ADMIN' }, take: 1, include: { user: { select: { phone: true } } } } } },
+        ownerUser: { select: { firstName: true, lastName: true, phone: true } },
+      },
     });
     if (!qr) throw new NotFoundException('QR introuvable.');
     if (qr.status === 'BLOCKED') throw new BadRequestException('Ce QR a été bloqué.');
@@ -177,7 +184,10 @@ export class QrService {
   async resolvePaymentLink(slug: string) {
     const link = await this.prisma.paymentLink.findUnique({
       where: { slug },
-      include: { merchant: true },
+      include: {
+        // Même exigence de transparence que pour un QR (voir resolveQr).
+        merchant: { include: { users: { where: { role: 'MERCHANT_ADMIN' }, take: 1, include: { user: { select: { phone: true } } } } } },
+      },
     });
     if (!link) throw new NotFoundException('Lien de paiement introuvable.');
     if (link.status !== 'ACTIVE') throw new BadRequestException('Ce lien n\'est plus actif.');

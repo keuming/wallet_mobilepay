@@ -12,8 +12,11 @@ const MOMO_PROVIDERS = [
 
 interface ResolvedTarget {
   businessName?: string;
-  merchant?: { businessName: string };
-  ownerUser?: { firstName: string; lastName: string };
+  merchant?: {
+    businessName: string;
+    users?: { user: { phone: string } }[];
+  };
+  ownerUser?: { firstName: string; lastName: string; phone?: string };
   amount?: number | null;
   fixedAmount?: number | null;
   description?: string | null;
@@ -116,6 +119,16 @@ export default function CheckoutPage({
     target?.merchant?.businessName ??
     target?.businessName ??
     (target?.ownerUser ? `${target.ownerUser.firstName} ${target.ownerUser.lastName}` : undefined);
+
+  // § Le numéro du bénéficiaire est affiché À CÔTÉ du nom : sans lui, le
+  // payeur n'a aucun moyen de vérifier qu'il envoie bien son argent à la
+  // bonne personne. C'est l'information qui rassure — ou qui alerte.
+  const beneficiaryPhone =
+    target?.ownerUser?.phone ?? target?.merchant?.users?.[0]?.user?.phone ?? undefined;
+
+  /** Masque partiellement le numéro : identifiable sans être exposé publiquement. */
+  const maskPhone = (phone: string) =>
+    phone.replace(/^(\+\d{3}\d{2})\d+(\d{2})$/, '$1••••$2');
   const fixedAmount = target?.fixedAmount ?? target?.amount ?? null;
   const dialCode = MOMO_PROVIDERS.find((p) => p.id === provider)?.dialCode ?? '225';
 
@@ -294,6 +307,11 @@ export default function CheckoutPage({
         <div style={{ fontFamily: 'Sora, sans-serif', fontSize: 24, fontWeight: 800, marginTop: 8 }}>
           {businessName ?? (target ? '—' : 'Chargement...')}
         </div>
+        {beneficiaryPhone && (
+          <div style={{ fontSize: 14.5, fontWeight: 600, opacity: 0.9, marginTop: 4, letterSpacing: 0.4 }}>
+            {maskPhone(beneficiaryPhone)}
+          </div>
+        )}
         {target?.description && (
           <div style={{ fontSize: 12.5, opacity: 0.85, marginTop: 4 }}>{target.description}</div>
         )}
