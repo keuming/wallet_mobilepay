@@ -32,5 +32,13 @@ export async function apiFetch<T>(path: string, options: RequestInit & { idempot
     throw new ApiError(json?.error?.message ?? 'Une erreur est survenue.', response.status);
   }
 
-  return json as T;
+  // § L'API enveloppe TOUTES ses réponses dans { success, data } (voir
+  // ResponseInterceptor côté serveur). Cette app renvoyait l'enveloppe
+  // brute au lieu de son contenu : les composants recevaient
+  // { success, data } et cherchaient leurs champs à la racine, où ils
+  // n'existent pas. C'est ce qui empêchait le nom et le numéro du
+  // bénéficiaire de s'afficher, quel que soit le correctif appliqué en
+  // amont. Les autres applications (web, business, admin) extraient
+  // correctement `data` — seule celle-ci avait été oubliée.
+  return (json?.data ?? json) as T;
 }
