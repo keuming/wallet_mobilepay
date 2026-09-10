@@ -23,6 +23,16 @@ import { SmsAdapter } from '../sms/sms.adapter';
 import { normalizePhoneCI } from '../../common/utils/phone.util';
 import { assertIdempotencyKey } from '../../common/utils/idempotency.util';
 
+/**
+ * Durée pendant laquelle un webhook reçu suffit à considérer le canal comme
+ * opérationnel pour une transaction. Au-delà de ce silence, la relance
+ * active reprend la main.
+ */
+const WEBHOOK_TRUST_WINDOW_MS = 45_000;
+
+/** Espacement minimal entre deux interrogations du provider, par transaction. */
+const PROVIDER_REFRESH_COOLDOWN_MS = 10_000;
+
 const MAX_SERIALIZATION_RETRIES = 3;
 
 const OPERATOR_LABELS: Record<string, string> = {
@@ -1613,14 +1623,29 @@ export class PaymentEngineService {
    * jamais arriver.
    */
   async refreshFromProvider(transactionId: string): Promise<boolean> {
-    // § HUB2 limite le débit de son API : appeler à chaque sondage client
-    // (toutes les 3 s) provoquait des 429 en rafale. On espace donc les
-    // relances — mais pas trop : à 10 s, un paiement déjà confirmé mettait
-    // jusqu'à 13 s à s'afficher, ce qui donnait l'impression que rien ne se
-    // passait. 5 s est le bon compromis : sous la limite de HUB2, et assez
-    // réactif pour que la confirmation paraisse immédiate.
+    // § La relance active est un FILET DE SÉCURITÉ, pas le circuit nominal.
+    // Quand les webhooks fonctionnent, elle est inutile : on a observé 17
+    // appels à HUB2 sur une transaction que le webhook traitait déjà
+    // parfaitement — du quota consommé pour rien.
+    //
+    // On interroge donc le provider UNIQUEMENT si le canal webhook semble
+    // muet pour cette transaction. Dès qu'un webhook arrive, on se met en
+    // retrait ; s'il cesse d'arriver, la relance reprend automatiquement.
+    // Aucun réglage manuel : le système s'adapte selon que HUB2 nous parle
+    // ou non.
+    const recentWebhook = await this.prisma.webhookEvent.findFirst({
+      where: {
+        transactionId,
+        createdAt: { gte: new Date(Date.now() - WEBHOOK_TRUST_WINDOW_MS) },
+      },
+      select: { id: true },
+    });
+    if (recentWebhook) return false;
+
+    // Espacement entre deux relances : HUB2 limite le débit de son API
+    // (des 429 en rafale à ~1 s d'intervalle, aucun rejet à ~12 s).
     const last = PaymentEngineService.lastProviderRefresh.get(transactionId);
-    if (last && Date.now() - last < 5_000) return false;
+    if (last && Date.now() - last < PROVIDER_REFRESH_COOLDOWN_MS) return false;
     PaymentEngineService.lastProviderRefresh.set(transactionId, Date.now());
 
     // Purge les entrées de plus d'une heure — une transaction suivie depuis
