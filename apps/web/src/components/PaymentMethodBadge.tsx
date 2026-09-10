@@ -19,7 +19,11 @@ interface MethodMeta {
 }
 
 const METHODS: Record<PaymentMethodId, MethodMeta> = {
-  MOBILEPAY: { label: 'MobilePay', fallbackBg: 'linear-gradient(135deg,#47b686,#0d9488)', fallbackEmoji: '💚', logoFile: 'mobilepay.png' },
+  // § Le cœur vert 💚 servait de repli pour MobilePay : un emoji générique,
+  // rendu différemment selon l'appareil, qui ne dit rien de la marque. Il est
+  // remplacé par le badge « M-Pay » — même identité que le favicon de
+  // pay.mobilepay-ci.com et que l'application mobile.
+  MOBILEPAY: { label: 'MobilePay', fallbackBg: '#0f2d52', fallbackEmoji: '', logoFile: 'mobilepay.png' },
   ORANGE: { label: 'Orange Money', fallbackBg: '#FF6600', fallbackEmoji: '🟠', logoFile: 'orange-money.png' },
   MOOV: { label: 'Moov Money', fallbackBg: '#0072CE', fallbackEmoji: '🔵', logoFile: 'moov-money.png' },
   WAVE: { label: 'Wave', fallbackBg: '#1DC8E8', fallbackEmoji: '💙', logoFile: 'wave.png' },
@@ -71,7 +75,19 @@ export default function PaymentMethodBadge({
             flexShrink: 0,
           }}
         >
-          {meta.fallbackEmoji}
+          {meta.fallbackEmoji || (
+            <span
+              style={{
+                color: '#00D27A',
+                fontWeight: 900,
+                fontSize: size * 0.34,
+                letterSpacing: -0.3,
+                lineHeight: 1,
+              }}
+            >
+              M-Pay
+            </span>
+          )}
         </span>
       )}
       {showLabel && <span>{meta.label}</span>}
