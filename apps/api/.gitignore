@@ -6,3 +6,7 @@ diagnose-login.js
 reset-password.js
 update-account-name.js
 set-superadmin.js
+hub2-webhooks.js
+check-webhooks.js
+check-stuck.js
+get-qr.js
