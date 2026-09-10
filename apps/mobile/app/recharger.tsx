@@ -8,6 +8,7 @@ import {
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
+  Image,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -16,6 +17,8 @@ import { Button, Input, ErrorBanner } from '../src/components/ui';
 import StepHeader from '../src/components/StepHeader';
 import StatusModal, { ResultStatus } from '../src/components/StatusModal';
 import { colors, spacing, fontSize, radius } from '../src/theme';
+import { WORLD_COUNTRIES } from '../src/lib/worldCountries';
+import { useAuth } from '../src/contexts/AuthContext';
 
 interface Operator {
   operatorId: string;
@@ -30,16 +33,20 @@ const CATEGORIES: { id: Category; label: string; icon: string; hint: string }[] 
   { id: 'DATA_PASS', label: 'Pass internet', icon: '📶', hint: 'Forfait data' },
 ];
 
-// § Parcours volontairement raccourci par rapport au web (7 étapes) : sur
-// téléphone, enchaîner autant d'écrans décourage. Le pays est déduit du
-// profil, et le paiement se fait depuis le wallet — le mode Mobile Money
-// reste accessible depuis la version web pour les cas particuliers.
-const STEPS = ['Catégorie', 'Opérateur', 'Bénéficiaire', 'Montant', 'Code secret'];
+// § Le pays est une étape à part entière : Reloadly couvre plus de 190
+// pays, et recharger un numéro à l'étranger est un usage courant de la
+// diaspora. Le pays du profil est simplement pré-sélectionné pour que le
+// cas le plus fréquent (recharge locale) reste rapide.
+const STEPS = ['Pays', 'Catégorie', 'Opérateur', 'Bénéficiaire', 'Montant', 'Code secret'];
 
 export default function RechargerScreen() {
   const router = useRouter();
 
+  const { user } = useAuth();
+
   const [step, setStep] = useState(0);
+  const [country, setCountry] = useState('CI');
+  const [countryQuery, setCountryQuery] = useState('');
   const [category, setCategory] = useState<Category | null>(null);
   const [operators, setOperators] = useState<Operator[]>([]);
   const [operator, setOperator] = useState<Operator | null>(null);
@@ -51,26 +58,41 @@ export default function RechargerScreen() {
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<{ status: ResultStatus; message: string } | null>(null);
 
+  // Pré-sélectionne le pays du titulaire : la recharge locale reste le cas
+  // le plus fréquent, autant éviter une saisie inutile.
   useEffect(() => {
-    if (step !== 1 || operators.length > 0) return;
+    if (user?.country) setCountry(user.country);
+  }, [user?.country]);
+
+  useEffect(() => {
+    if (step !== 2) return;
     setLoadingOperators(true);
-    apiFetch<Operator[]>('/airtime/operators?country=CI')
+    setError(null);
+    apiFetch<Operator[]>(`/airtime/operators?country=${country}`)
       .then(setOperators)
-      .catch(() => setError("Impossible de charger la liste des opérateurs."))
+      .catch(() => setError("Impossible de charger la liste des opérateurs pour ce pays."))
       .finally(() => setLoadingOperators(false));
-  }, [step, operators.length]);
+  }, [step, country]);
+
+  // Changer de pays invalide l'opérateur choisi : il n'existe pas ailleurs.
+  useEffect(() => {
+    setOperator(null);
+    setOperators([]);
+  }, [country]);
 
   const canGoNext = (): boolean => {
     switch (step) {
       case 0:
-        return category !== null;
+        return !!country;
       case 1:
-        return operator !== null;
+        return category !== null;
       case 2:
-        return phone.replace(/\D/g, '').length >= 8;
+        return operator !== null;
       case 3:
-        return !!amount && Number(amount) > 0;
+        return phone.replace(/\D/g, '').length >= 8;
       case 4:
+        return !!amount && Number(amount) > 0;
+      case 5:
         return pin.length >= 4;
       default:
         return false;
@@ -90,7 +112,7 @@ export default function RechargerScreen() {
           kind: category === 'DATA_PASS' ? 'DATA' : 'AIRTIME',
           operatorId: operator?.operatorId,
           paymentMethod: 'WALLET',
-          countryCode: 'CI',
+          countryCode: country,
           pin,
         }),
       });
@@ -137,6 +159,43 @@ export default function RechargerScreen() {
 
           {step === 0 && (
             <>
+              <Text style={styles.hint}>
+                Dans quel pays se trouve le numéro à recharger ?
+              </Text>
+              <Input
+                label="Rechercher un pays"
+                value={countryQuery}
+                onChangeText={setCountryQuery}
+                placeholder="Côte d'Ivoire, Sénégal, France…"
+              />
+              {WORLD_COUNTRIES
+                // Sans filtre, on n'affiche que le pays retenu : dérouler 192
+                // pays d'un coup serait illisible sur un téléphone.
+                .filter((c) =>
+                  countryQuery.trim()
+                    ? c.name.toLowerCase().includes(countryQuery.trim().toLowerCase())
+                    : c.code === country,
+                )
+                .slice(0, 25)
+                .map((c) => (
+                  <Pressable
+                    key={c.code}
+                    onPress={() => {
+                      setCountry(c.code);
+                      setCountryQuery('');
+                    }}
+                    style={[styles.choice, country === c.code && styles.choiceActive]}
+                  >
+                    <Text style={styles.choiceIcon}>🌍</Text>
+                    <Text style={styles.choiceLabel}>{c.name}</Text>
+                    {country === c.code && <Text style={styles.check}>✓</Text>}
+                  </Pressable>
+                ))}
+            </>
+          )}
+
+          {step === 1 && (
+            <>
               <Text style={styles.hint}>Que veux-tu acheter ?</Text>
               {CATEGORIES.map((c) => (
                 <Pressable
@@ -155,7 +214,7 @@ export default function RechargerScreen() {
             </>
           )}
 
-          {step === 1 && (
+          {step === 2 && (
             <>
               <Text style={styles.hint}>Chez quel opérateur ?</Text>
               {loadingOperators ? (
@@ -170,7 +229,21 @@ export default function RechargerScreen() {
                       operator?.operatorId === o.operatorId && styles.choiceActive,
                     ]}
                   >
-                    <Text style={styles.choiceIcon}>📡</Text>
+                    {/* § Reloadly fournit les logos officiels des opérateurs
+                        (champ logoUrls) : bien plus reconnaissable qu'une
+                        icône générique, surtout dans une liste de plusieurs
+                        opérateurs d'un même pays. L'index 2 est la version
+                        haute définition ; on retombe sur la première
+                        disponible, puis sur une icône si aucune n'existe. */}
+                    {o.logoUrls?.[2] || o.logoUrls?.[0] ? (
+                      <Image
+                        source={{ uri: o.logoUrls[2] ?? o.logoUrls[0] }}
+                        style={styles.operatorLogo}
+                        resizeMode="contain"
+                      />
+                    ) : (
+                      <Text style={styles.choiceIcon}>📡</Text>
+                    )}
                     <Text style={styles.choiceLabel}>{o.name}</Text>
                     {operator?.operatorId === o.operatorId && <Text style={styles.check}>✓</Text>}
                   </Pressable>
@@ -179,7 +252,7 @@ export default function RechargerScreen() {
             </>
           )}
 
-          {step === 2 && (
+          {step === 3 && (
             <>
               <Text style={styles.hint}>Quel numéro veux-tu recharger ?</Text>
               <Input
@@ -193,7 +266,7 @@ export default function RechargerScreen() {
             </>
           )}
 
-          {step === 3 && (
+          {step === 4 && (
             <>
               <Text style={styles.hint}>Quel montant ?</Text>
               <Input
@@ -206,11 +279,15 @@ export default function RechargerScreen() {
             </>
           )}
 
-          {step === 4 && (
+          {step === 5 && (
             <>
               <View style={styles.summary}>
                 <Text style={styles.summaryTitle}>🔍 Vérifie avant de continuer</Text>
                 <Row k="Objet" v={CATEGORIES.find((c) => c.id === category)?.label ?? ''} />
+                <Row
+                  k="Pays"
+                  v={WORLD_COUNTRIES.find((c) => c.code === country)?.name ?? country}
+                />
                 <Row k="Opérateur" v={operator?.name ?? ''} />
                 <Row k="Numéro" v={phone} />
                 <Row k="Montant" v={`${Number(amount).toLocaleString('fr-FR')} FCFA`} />
@@ -285,6 +362,12 @@ const styles = StyleSheet.create({
   },
   choiceActive: { borderColor: colors.accent, backgroundColor: colors.accentSoft },
   choiceIcon: { fontSize: 24 },
+  operatorLogo: {
+    width: 38,
+    height: 38,
+    borderRadius: radius.sm,
+    backgroundColor: '#fff',
+  },
   choiceLabel: { flex: 1, fontSize: fontSize.md, fontWeight: '700', color: colors.textPrimary },
   choiceHint: { fontSize: fontSize.xs, color: colors.textSecondary, marginTop: 1 },
   check: { color: colors.accent, fontSize: fontSize.lg, fontWeight: '800' },
