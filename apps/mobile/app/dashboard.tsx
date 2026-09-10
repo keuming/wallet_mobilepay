@@ -171,28 +171,55 @@ export default function DashboardScreen() {
           </Pressable>
         </View>
 
-        {/* Bannière Carte virtuelle */}
-        <View style={styles.promoCard}>
-          <View style={styles.promoTop}>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.promoTitle}>Carte virtuelle</Text>
-              <Text style={styles.promoSubtitle}>Payer en ligne partout dans le monde</Text>
-            </View>
-            <Pressable style={styles.promoBtn} onPress={() => router.push('/carte')}>
-              <Text style={styles.promoBtnText}>Découvrir</Text>
-            </Pressable>
+        {/* § Services regroupés PAR USAGE et non par produit. Les mettre
+            tous sous « Carte virtuelle » était trompeur : cartes cadeaux,
+            factures et épargne n'ont rien d'une carte bancaire. On sépare
+            donc ce qu'on fait SORTIR de l'argent de ce qu'on MET DE CÔTÉ —
+            deux intentions opposées qui ne doivent pas se confondre. */}
+        <View style={styles.section}>
+          <Text style={styles.groupTitle}>Payer & acheter</Text>
+          <View style={styles.tileGrid}>
+            <Tile
+              icon="💳"
+              label="Carte virtuelle"
+              hint="Payer en ligne"
+              onPress={() => router.push('/carte')}
+            />
+            <Tile
+              icon="🎁"
+              label="Cartes cadeaux"
+              hint="Offrir, s'offrir"
+              onPress={() => router.push('/cartes-cadeaux')}
+            />
+            <Tile
+              icon="🧾"
+              label="Factures"
+              hint="Électricité, eau"
+              onPress={() => router.push('/factures')}
+            />
           </View>
 
-          <View style={styles.pillRow}>
-            <Pressable style={styles.pillLight} onPress={() => router.push('/cartes-cadeaux')}>
-              <Text style={styles.pillLightText} numberOfLines={1}>🎁 Cartes cadeaux</Text>
-            </Pressable>
-            <Pressable style={styles.pillLight} onPress={() => router.push('/factures')}>
-              <Text style={styles.pillLightText} numberOfLines={1}>🧾 Factures</Text>
-            </Pressable>
-            <Pressable style={styles.pillGold} onPress={() => router.push('/epargne')}>
-              <Text style={styles.pillGoldText} numberOfLines={1}>🥇 Épargne Gold</Text>
-            </Pressable>
+          <Text style={[styles.groupTitle, { marginTop: spacing.lg }]}>Mettre de côté</Text>
+          <View style={styles.tileGrid}>
+            <Tile
+              icon="🥇"
+              label="Épargne Gold"
+              hint="Faire fructifier"
+              gold
+              onPress={() => router.push('/epargne')}
+            />
+            <Tile
+              icon="🗃️"
+              label="Collecte"
+              hint="Mes cagnottes"
+              onPress={() => router.push('/collecte')}
+            />
+            <Tile
+              icon="📊"
+              label="Mes dépenses"
+              hint="Suivre mon budget"
+              onPress={() => router.push('/releve-depenses')}
+            />
           </View>
         </View>
 
@@ -248,6 +275,36 @@ export default function DashboardScreen() {
   );
 }
 
+/** Tuile de service — format carré, trois par ligne. */
+function Tile({
+  icon,
+  label,
+  hint,
+  gold,
+  onPress,
+}: {
+  icon: string;
+  label: string;
+  hint: string;
+  gold?: boolean;
+  onPress: () => void;
+}) {
+  return (
+    <Pressable
+      onPress={onPress}
+      style={({ pressed }) => [styles.tile, gold && styles.tileGold, pressed && { opacity: 0.85 }]}
+    >
+      <Text style={styles.tileIcon}>{icon}</Text>
+      <Text style={[styles.tileLabel, gold && { color: '#3d2b00' }]} numberOfLines={2}>
+        {label}
+      </Text>
+      <Text style={[styles.tileHint, gold && { color: '#6b4e00' }]} numberOfLines={1}>
+        {hint}
+      </Text>
+    </Pressable>
+  );
+}
+
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.bg },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.bg },
@@ -289,42 +346,7 @@ logoBadge: {
   logoMarkText: { fontSize: 13 },
   logoText: { color: '#fff', fontWeight: '800', fontSize: fontSize.lg },
 
-  promoCard: {
-    margin: spacing.lg,
-    marginTop: spacing.md,
-    padding: spacing.lg,
-    borderRadius: radius.xl,
-    backgroundColor: '#c8f0da',
-  },
-  promoTop: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
-  promoTitle: { fontSize: fontSize.lg, fontWeight: '800', color: colors.textPrimary },
-  promoSubtitle: { fontSize: fontSize.sm, color: colors.textSecondary, marginTop: 2 },
-  promoBtn: {
-    backgroundColor: 'rgba(255,255,255,0.75)',
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.sm + 2,
-    borderRadius: radius.pill,
-  },
-  promoBtnText: { fontWeight: '700', fontSize: fontSize.sm, color: colors.textPrimary },
 
-  pillLight: {
-    flex: 1,
-    minWidth: 0,
-    backgroundColor: 'rgba(255,255,255,0.7)',
-    borderRadius: radius.pill,
-    paddingVertical: spacing.sm + 2,
-    alignItems: 'center',
-  },
-  pillLightText: { fontWeight: '700', fontSize: 11.5, color: colors.textPrimary },
-  pillGold: {
-    flex: 1,
-    minWidth: 0,
-    backgroundColor: colors.gold,
-    borderRadius: radius.pill,
-    paddingVertical: spacing.sm + 2,
-    alignItems: 'center',
-  },
-  pillGoldText: { fontWeight: '700', fontSize: 11.5, color: '#3d2b00' },
 
   sectionHeader: {
     flexDirection: 'row',
@@ -400,6 +422,41 @@ logoBadge: {
   miniAmount: { fontSize: 13, fontWeight: '700', color: colors.textPrimary, marginTop: 1 },
 
   section: { padding: spacing.lg },
+  groupTitle: {
+    fontSize: fontSize.sm,
+    fontWeight: '800',
+    color: colors.textSecondary,
+    textTransform: 'uppercase',
+    letterSpacing: 0.6,
+    marginBottom: spacing.sm,
+  },
+  tileGrid: { flexDirection: 'row', gap: spacing.sm },
+  tile: {
+    flex: 1,
+    minWidth: 0,
+    aspectRatio: 1,
+    borderRadius: radius.lg,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: spacing.sm,
+  },
+  tileGold: { backgroundColor: colors.goldLight, borderColor: colors.gold },
+  tileIcon: { fontSize: 26, marginBottom: spacing.xs },
+  tileLabel: {
+    fontSize: 12.5,
+    fontWeight: '800',
+    color: colors.textPrimary,
+    textAlign: 'center',
+  },
+  tileHint: {
+    fontSize: 10.5,
+    color: colors.textSecondary,
+    textAlign: 'center',
+    marginTop: 2,
+  },
   sectionTitle: { fontSize: fontSize.lg, fontWeight: '800', color: colors.textPrimary },
   empty: { color: colors.textSecondary, fontSize: fontSize.sm },
 
