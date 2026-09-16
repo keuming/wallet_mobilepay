@@ -10,3 +10,4 @@ hub2-webhooks.js
 check-webhooks.js
 check-stuck.js
 get-qr.js
+hub2-solde.js
