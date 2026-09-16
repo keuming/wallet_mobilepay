@@ -228,7 +228,7 @@ export default function PayerScreen() {
               <Row k="Bénéficiaire" v={target?.name ?? ''} />
               {target?.description ? <Row k="Description" v={target.description} /> : null}
               <Row k="Montant" v={`${(effectiveAmount / 100).toLocaleString('fr-FR')} FCFA`} />
-              <Row k="Payé depuis" v="Mon solde MobilePay" />
+              <Row k="Payé depuis" v="Mon solde ORZAYAH" />
             </View>
           )}
 

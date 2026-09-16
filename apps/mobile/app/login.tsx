@@ -2,6 +2,7 @@ import { useState } from 'react';
 import {
   View,
   Text,
+  Image,
   StyleSheet,
   KeyboardAvoidingView,
   Platform,
@@ -13,7 +14,6 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '../src/contexts/AuthContext';
 import { ApiError } from '../src/lib/apiClient';
 import { Button, Input, ErrorBanner } from '../src/components/ui';
-import MPayIcon from '../src/components/MPayIcon';
 import { colors, spacing, fontSize, radius } from '../src/theme';
 
 /**
@@ -82,8 +82,15 @@ export default function LoginScreen() {
           showsVerticalScrollIndicator={false}
         >
           <View style={styles.brand}>
-            <MPayIcon size={34} style={{ marginRight: spacing.sm }} />
-            <Text style={styles.brandText}>MobilePay CI</Text>
+            {/* § Logotype complet ici plutôt que le monogramme : c'est le
+                premier contact avec la marque, elle doit y être nommée en
+                entier. Le monogramme « OR » sert aux usages en ligne, où
+                l'espace est compté. */}
+            <Image
+              source={require('../assets/logo.png')}
+              style={styles.brandLogo}
+              resizeMode="contain"
+            />
           </View>
 
           <Text style={styles.title}>Bon retour parmi nous</Text>
@@ -175,6 +182,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.accent,
     marginRight: spacing.sm,
   },
+  brandLogo: { width: 190, height: 57 },
   brandText: { fontSize: fontSize.lg, fontWeight: '800', color: colors.textPrimary },
   title: { fontSize: fontSize.xxl, fontWeight: '800', color: colors.textPrimary },
   subtitle: {

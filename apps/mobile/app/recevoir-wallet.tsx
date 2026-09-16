@@ -188,7 +188,7 @@ export default function RecevoirWalletScreen() {
       case 4:
         // Orange exige le code généré par le client (#144*82#) ; les autres
         // opérateurs authentifient directement sur le téléphone — aucun code
-        // secret MobilePay n'est demandé pour un dépôt (voir TopupDto).
+        // secret ORZAYAH n'est demandé pour un dépôt (voir TopupDto).
         return operator === 'ORANGE' ? upfrontOtp.length >= 4 : true;
       default:
         return false;

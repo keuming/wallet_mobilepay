@@ -268,7 +268,7 @@ export default function RechargerScreen() {
                 <Row k="Opérateur" v={operator?.name ?? ''} />
                 <Row k="Numéro" v={phone} />
                 <Row k="Montant" v={`${Number(amount).toLocaleString('fr-FR')} FCFA`} />
-                <Row k="Payé depuis" v="Mon solde MobilePay" />
+                <Row k="Payé depuis" v="Mon solde ORZAYAH" />
               </View>
 
               <Text style={[styles.hint, { marginTop: spacing.lg }]}>

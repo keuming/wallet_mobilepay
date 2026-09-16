@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "MobilePay CI",
+    "name": "ORZAYAH",
     "slug": "mobilepay-ci",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -12,7 +12,11 @@
     },
     "android": {
       "package": "ci.mobilepay.app",
-      "edgeToEdgeEnabled": true
+      "edgeToEdgeEnabled": true,
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#0B1B3A"
+      }
     },
     "plugins": [
       "expo-router",
@@ -29,6 +33,7 @@
       "eas": {
         "projectId": ""
       }
-    }
+    },
+    "icon": "./assets/icon.png"
   }
 }

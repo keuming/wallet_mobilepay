@@ -30,7 +30,7 @@ interface PersonalQr {
  * Recevoir de l'argent d'une autre personne.
  *
  * Le lien pointe vers pay.mobilepay-ci.com : le payeur n'a besoin d'AUCUN
- * compte MobilePay, il règle depuis son propre Mobile Money et le montant
+ * compte ORZAYAH, il règle depuis son propre Mobile Money et le montant
  * arrive sur le wallet du titulaire du lien.
  */
 export default function RecevoirPersonneScreen() {
@@ -58,8 +58,8 @@ export default function RecevoirPersonneScreen() {
     amount && qr ? `${qr.url}?montant=${Math.round(Number(amount) * 100)}` : qr?.url;
 
   const message = amount
-    ? `Merci de m'envoyer ${Number(amount).toLocaleString('fr-FR')} FCFA via MobilePay : ${requestLink}`
-    : `Envoie-moi de l'argent via MobilePay : ${requestLink}`;
+    ? `Merci de m'envoyer ${Number(amount).toLocaleString('fr-FR')} FCFA via ORZAYAH : ${requestLink}`
+    : `Envoie-moi de l'argent via ORZAYAH : ${requestLink}`;
 
   const shareNative = () => {
     if (!requestLink) return;
@@ -182,7 +182,7 @@ export default function RecevoirPersonneScreen() {
               </View>
 
               <Text style={styles.note}>
-                La personne qui paie n'a pas besoin d'un compte MobilePay : elle règle
+                La personne qui paie n'a pas besoin d'un compte ORZAYAH : elle règle
                 depuis son propre Mobile Money, et le montant arrive sur ton wallet.
               </Text>
             </>

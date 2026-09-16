@@ -21,16 +21,16 @@ import { resolveDefaultCountry } from '../src/lib/deviceCountry';
 import { useAuth } from '../src/contexts/AuthContext';
 import { colors, spacing, fontSize, radius } from '../src/theme';
 
-// § Le pays est demandé pour un envoi EXTERNE : MobilePay agrège des
+// § Le pays est demandé pour un envoi EXTERNE : ORZAYAH agrège des
 // fournisseurs à couverture internationale, et l'opérateur destinataire
-// dépend du pays. Un transfert interne MobilePay n'en a pas besoin — le
+// dépend du pays. Un transfert interne ORZAYAH n'en a pas besoin — le
 // bénéficiaire est retrouvé par son numéro.
 const STEPS_INTERNAL = ['Destination', 'Compte', 'Montant', 'Résumé', 'Code secret'];
 const STEPS_EXTERNAL = ['Destination', 'Pays', 'Compte', 'Montant', 'Résumé', 'Code secret'];
 
-/** Mêmes destinations que le web : MobilePay interne + 4 opérateurs externes. */
+/** Mêmes destinations que le web : ORZAYAH interne + 4 opérateurs externes. */
 const DESTINATIONS = [
-  { id: 'MOBILEPAY', label: 'MobilePay', icon: null, hint: 'Vers un autre compte MobilePay' },
+  { id: 'MOBILEPAY', label: 'ORZAYAH', icon: null, hint: 'Vers un autre compte ORZAYAH' },
   { id: 'ORANGE', label: 'Orange Money', icon: '🟠', hint: 'Vers un compte Orange Money' },
   { id: 'MTN', label: 'MTN MoMo', icon: '🟡', hint: 'Vers un compte MTN MoMo' },
   { id: 'MOOV', label: 'Moov Money', icon: '🔵', hint: 'Vers un compte Moov Money' },
@@ -247,7 +247,7 @@ export default function EnvoyerScreen() {
             <>
               <Text style={styles.hint}>
                 {isInternal
-                  ? 'Numéro du compte MobilePay destinataire'
+                  ? 'Numéro du compte ORZAYAH destinataire'
                   : "Numéro du compte à créditer chez l'opérateur"}
               </Text>
               <Input
