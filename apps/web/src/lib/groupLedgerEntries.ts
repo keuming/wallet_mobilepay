@@ -22,7 +22,7 @@ export interface GroupedEntry {
 
 /**
  * Un paiement marchand génère 2 écritures de ledger distinctes pour le payeur
- * (le montant net vers le marchand + les frais MobilePay séparément), toutes
+ * (le montant net vers le marchand + les frais ORZAYAH séparément), toutes
  * deux rattachées à la même transaction. Plutôt que d'afficher 2 lignes pour
  * une seule opération, on les regroupe ici en une seule ligne avec le frais
  * affiché en complément — sans toucher à la comptabilité (double entrée)
@@ -38,8 +38,8 @@ export function groupLedgerEntries(entries: LedgerEntryLike[]): GroupedEntry[] {
 
   const rows: GroupedEntry[] = [];
   for (const [ref, group] of byReference) {
-    const feeEntry = group.find((e) => e.description === 'Frais MobilePay');
-    const mainEntry = group.find((e) => e.description !== 'Frais MobilePay') ?? group[0];
+    const feeEntry = group.find((e) => e.description === 'Frais ORZAYAH');
+    const mainEntry = group.find((e) => e.description !== 'Frais ORZAYAH') ?? group[0];
     rows.push({ key: ref, main: mainEntry, feeAmount: feeEntry ? feeEntry.amount : null });
   }
 

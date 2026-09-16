@@ -185,7 +185,7 @@ function PayerContent() {
   };
 
   // Préremplissage automatique depuis pay.mobilepay-ci.com (§ page publique) —
-  // le client a choisi "Payer avec MobilePay" et arrive ici avec le QR/lien
+  // le client a choisi "Payer avec ORZAYAH" et arrive ici avec le QR/lien
   // déjà identifié, pas besoin de le ressaisir.
   useEffect(() => {
     const qrCode = searchParams.get('qr');
@@ -537,7 +537,7 @@ function PayerContent() {
               onClick={() => setFundingSource('WALLET')}
               className={`mp-list-card ${fundingSource === 'WALLET' ? 'selected' : ''}`}
             >
-              💰 Solde MobilePay (rapide)
+              💰 Solde ORZAYAH (rapide)
             </button>
             <div style={{ fontSize: 12.5, color: 'var(--fz-text-secondary)', fontWeight: 600, marginTop: 4 }}>
               MOBILE MONEY (prélèvement instantané)
@@ -666,7 +666,7 @@ function PayerContent() {
                 <span className="k">Mode de paiement</span>
                 <span className="v">
                   {fundingSource === 'WALLET'
-                    ? 'Solde MobilePay'
+                    ? 'Solde ORZAYAH'
                     : fundingSource === 'CARD'
                       ? `Carte virtuelle •••• ${cardNumber.replace(/\D/g, '').slice(-4)}`
                       : `Mobile Money — ${momoAccount}`}

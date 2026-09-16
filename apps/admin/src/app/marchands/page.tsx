@@ -264,7 +264,7 @@ export default function MerchantsPage() {
                 />
               </label>
               <p style={{ fontSize: 11, color: 'var(--adm-muted)' }}>
-                Si ce numéro n'a pas encore de compte MobilePay, un compte lui sera créé
+                Si ce numéro n'a pas encore de compte ORZAYAH, un compte lui sera créé
                 automatiquement avec le code PIN saisi ci-dessus. Si le numéro a déjà un compte, ce
                 champ est ignoré.
               </p>

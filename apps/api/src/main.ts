@@ -81,8 +81,8 @@ async function bootstrap() {
 
   if (process.env.NODE_ENV !== 'production') {
     const config = new DocumentBuilder()
-      .setTitle('MobilePay CI API')
-      .setDescription('API du MVP MobilePay CI — Particulier, Marchand, Agent, Admin')
+      .setTitle('ORZAYAH API')
+      .setDescription('API du MVP ORZAYAH — Particulier, Marchand, Agent, Admin')
       .setVersion('0.1')
       .addBearerAuth()
       .build();
@@ -93,7 +93,7 @@ async function bootstrap() {
   const port = process.env.PORT ?? 3000;
   await app.listen(port);
   // eslint-disable-next-line no-console
-  console.log(`MobilePay API démarrée sur le port ${port} (docs: /docs)`);
+  console.log(`ORZAYAH API démarrée sur le port ${port} (docs: /docs)`);
 }
 
 bootstrap();

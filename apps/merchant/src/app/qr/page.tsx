@@ -80,7 +80,7 @@ export default function QrPage() {
     <MerchantShell title="QR Code">
       <p style={{ color: 'var(--mc-muted)', fontSize: 13.5, margin: '0 0 20px', maxWidth: 560 }}>
         Ton QR permanent — à imprimer et afficher en boutique. Un client peut le scanner pour te
-        payer directement, avec ou sans compte MobilePay.
+        payer directement, avec ou sans compte ORZAYAH.
       </p>
 
       {fetching ? (

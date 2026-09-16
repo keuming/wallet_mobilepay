@@ -253,7 +253,7 @@ export class QrService {
 
   /**
    * Paiement PUBLIC (sans connexion) d'un QR marchand — pour un client sans
-   * compte MobilePay, via Mobile Money externe (§ pay.mobilepay-ci.com).
+   * compte ORZAYAH, via Mobile Money externe (§ pay.mobilepay-ci.com).
    */
   async payQrExternal(
     code: string,
@@ -286,7 +286,7 @@ export class QrService {
 
   /**
    * Paiement PUBLIC d'un QR personnel (particulier) — envoie de l'argent à
-   * ce particulier via Mobile Money externe, sans compte MobilePay requis
+   * ce particulier via Mobile Money externe, sans compte ORZAYAH requis
    * côté payeur (§ pay.mobilepay-ci.com, route /u/:code).
    */
   private async payParticulierQrExternal(

@@ -1,8 +1,8 @@
 import Link from 'next/link';
 
 export const metadata = {
-  title: 'Politique de confidentialité — MobilePay CI',
-  description: "Politique de confidentialité de MobilePay CI, édité par la Compagnie des Services Numériques (CSN).",
+  title: 'Politique de confidentialité — ORZAYAH',
+  description: "Politique de confidentialité de ORZAYAH, édité par la Compagnie des Services Numériques (CSN).",
 };
 
 const S = { marginBottom: 22 } as const;
@@ -26,10 +26,10 @@ export default function ConfidentialitePage() {
         <div style={S}>
           <h2 style={H}>1. Qui sommes-nous</h2>
           <p style={P}>
-            MobilePay CI est édité par la <strong>Compagnie des Services Numériques (CSN)</strong>,
+            ORZAYAH est édité par la <strong>Compagnie des Services Numériques (CSN)</strong>,
             dont le siège est situé à Cocody Riviera 2, Immeuble Paul, en face du Groupe Scolaire
             André Malraux, Abidjan, Côte d'Ivoire. La présente politique décrit quelles données
-            personnelles nous collectons lorsque vous utilisez l'application MobilePay CI (wallet
+            personnelles nous collectons lorsque vous utilisez l'application ORZAYAH (wallet
             particulier et application marchand Business), pourquoi nous les collectons, et les
             droits dont vous disposez à leur sujet.
           </p>
@@ -42,7 +42,7 @@ export default function ConfidentialitePage() {
             <li style={LI}><strong>Identité et compte</strong> — nom, prénom, numéro de téléphone, adresse email (facultative), pays de résidence, mot de passe (chiffré) et code secret de transaction (chiffré).</li>
             <li style={LI}><strong>Vérification d'identité (KYC)</strong> — photos recto/verso de votre pièce d'identité, photo selfie de vérification, et localisation GPS au moment de la soumission, lorsque vous demandez un relèvement de plafond.</li>
             <li style={LI}><strong>Transactions</strong> — historique de vos dépôts, retraits, transferts, paiements marchands, achats de crédit/data, cartes cadeaux et factures, avec montants, dates et destinataires.</li>
-            <li style={LI}><strong>Carte virtuelle</strong> — informations liées à votre carte virtuelle MobilePay (numéro masqué, date d'expiration, solde), jamais le numéro complet ni le code de sécurité.</li>
+            <li style={LI}><strong>Carte virtuelle</strong> — informations liées à votre carte virtuelle ORZAYAH (numéro masqué, date d'expiration, solde), jamais le numéro complet ni le code de sécurité.</li>
             <li style={LI}><strong>Données techniques</strong> — type d'appareil, version de l'application, et journaux techniques nécessaires au bon fonctionnement et à la sécurité du service.</li>
           </ul>
         </div>
@@ -104,7 +104,7 @@ export default function ConfidentialitePage() {
         <div style={S}>
           <h2 style={H}>8. Confidentialité des mineurs</h2>
           <p style={P}>
-            MobilePay CI est réservé aux personnes majeures capables de contracter. Nous ne
+            ORZAYAH est réservé aux personnes majeures capables de contracter. Nous ne
             collectons pas sciemment de données auprès de mineurs.
           </p>
         </div>

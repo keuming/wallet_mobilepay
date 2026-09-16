@@ -133,8 +133,8 @@ export default function PotActionPanel({
 
         <p style={{ color: 'var(--fz-text-secondary)', fontSize: 13, margin: 0 }}>
           {mode === 'deposit'
-            ? `Le montant sera débité de ton solde MobilePay et ajouté à "${selected?.label ?? ''}".`
-            : `Le montant sera retiré de "${selected?.label ?? ''}" et recrédité sur ton solde MobilePay.`}
+            ? `Le montant sera débité de ton solde ORZAYAH et ajouté à "${selected?.label ?? ''}".`
+            : `Le montant sera retiré de "${selected?.label ?? ''}" et recrédité sur ton solde ORZAYAH.`}
         </p>
 
         <label>

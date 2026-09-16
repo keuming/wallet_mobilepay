@@ -147,7 +147,7 @@ export class PaymentEngineService {
           fromWalletId: wallet.id,
           toWalletId: null,
           amount: ourFee,
-          description: 'Frais de transaction MobilePay',
+          description: 'Frais de transaction ORZAYAH',
         });
       }
 
@@ -235,7 +235,7 @@ export class PaymentEngineService {
 
   /**
    * Encaissement marchand (§12, §25) : débite le wallet du payeur (particulier),
-   * crédite le wallet marchand net des frais MobilePay. Utilisé par QR statique,
+   * crédite le wallet marchand net des frais ORZAYAH. Utilisé par QR statique,
    * QR dynamique, Payment Link et demande de paiement — tous convergent ici.
    */
   async collectForMerchant(params: {
@@ -308,7 +308,7 @@ export class PaymentEngineService {
           fromWalletId: payerWallet.id,
           toWalletId: null,
           amount: merchantFee,
-          description: 'Frais MobilePay',
+          description: 'Frais ORZAYAH',
         });
       }
 
@@ -320,7 +320,7 @@ export class PaymentEngineService {
           fromWalletId: payerWallet.id,
           toWalletId: null,
           amount: ourFee,
-          description: 'Frais de transaction MobilePay',
+          description: 'Frais de transaction ORZAYAH',
         });
       }
 
@@ -493,8 +493,8 @@ export class PaymentEngineService {
   /**
    * Débit direct initié par un marchand (§ app Business — Phase A) : collecte
    * HUB2 directement sur le Mobile Money du client, sans exiger que celui-ci
-   * soit déjà utilisateur MobilePay ni saisisse de code secret — le client
-   * confirme via le prompt USSD/PIN de son propre opérateur, hors MobilePay.
+   * soit déjà utilisateur ORZAYAH ni saisisse de code secret — le client
+   * confirme via le prompt USSD/PIN de son propre opérateur, hors ORZAYAH.
    * C'est le marchand (initiatedByUserId) qui déclenche la demande.
    */
   async debitDirect(
@@ -594,11 +594,11 @@ export class PaymentEngineService {
   /**
    * Utilisateur système "invité" (§ page de paiement publique pay.mobilepay-ci.com)
    * — sert de valeur pour `initiatedByUserId` (champ requis) lorsqu'un client
-   * SANS compte MobilePay paie via Mobile Money externe. Créé une seule fois,
+   * SANS compte ORZAYAH paie via Mobile Money externe. Créé une seule fois,
    * réutilisé ensuite (jamais de mot de passe fonctionnel, jamais connecté).
    */
   /**
-   * Envoie le lien de validation par SMS, signé MobilePay, au numéro qui
+   * Envoie le lien de validation par SMS, signé ORZAYAH, au numéro qui
    * sert de compte pour cette transaction — obligatoire pour Wave, quel que
    * soit le type de PAY-IN (dépôt, demande de paiement particulier,
    * encaissement marchand), car sans ce lien ouvert manuellement par le
@@ -606,7 +606,7 @@ export class PaymentEngineService {
    */
   private async sendValidationLinkIfNeeded(phone: string, nextActionType?: string, nextActionUrl?: string) {
     if (nextActionType === 'redirect' && nextActionUrl) {
-      await this.sms.send(phone, `MobilePay CI : pour valider ton paiement, ouvre ce lien — ${nextActionUrl}`);
+      await this.sms.send(phone, `ORZAYAH : pour valider ton paiement, ouvre ce lien — ${nextActionUrl}`);
     }
   }
 
@@ -628,15 +628,15 @@ export class PaymentEngineService {
     let message: string | null = null;
     try {
       if (nextActionType === 'redirection' && nextActionUrl) {
-        message = `MobilePay CI : pour valider ton paiement ${provider ?? 'Mobile Money'}, ouvre ce lien maintenant : ${nextActionUrl}`;
+        message = `ORZAYAH : pour valider ton paiement ${provider ?? 'Mobile Money'}, ouvre ce lien maintenant : ${nextActionUrl}`;
       } else if (nextActionType === 'otp') {
-        message = `MobilePay CI : compose le code de confirmation ${provider ?? 'Mobile Money'} habituel sur ton téléphone, puis saisis-le dans l'application pour valider ton paiement.`;
+        message = `ORZAYAH : compose le code de confirmation ${provider ?? 'Mobile Money'} habituel sur ton téléphone, puis saisis-le dans l'application pour valider ton paiement.`;
       } else if (nextActionType === 'ussd' || !nextActionType) {
         // § Notification explicite demandée pour MTN/Moov — même si
         // l'opérateur affiche normalement une invite USSD directement sur
         // le téléphone, un SMS de secours confirme au client qu'une
         // demande de paiement est en cours et ce qu'il doit faire.
-        message = `MobilePay CI : une demande de paiement ${provider ?? 'Mobile Money'} vient d'être envoyée. Valide-la directement depuis le message ou le menu de ton opérateur sur ton téléphone pour finaliser.`;
+        message = `ORZAYAH : une demande de paiement ${provider ?? 'Mobile Money'} vient d'être envoyée. Valide-la directement depuis le message ou le menu de ton opérateur sur ton téléphone pour finaliser.`;
       }
       if (!message) return;
 
@@ -675,7 +675,7 @@ export class PaymentEngineService {
   }
 
   /**
-   * Statut d'une transaction initiée par un payeur SANS compte MobilePay
+   * Statut d'une transaction initiée par un payeur SANS compte ORZAYAH
    * (§ pay.mobilepay-ci.com) — public par nécessité (le payeur n'a pas de
    * jeton d'authentification), mais restreint aux seules transactions du
    * compte "invité" partagé : impossible de consulter une vraie transaction
@@ -716,7 +716,7 @@ export class PaymentEngineService {
 
   /**
    * Paiement public d'un marchand via Mobile Money externe (§ pay.mobilepay-ci.com)
-   * — pour un client SANS compte MobilePay, scannant un QR ou ouvrant un lien.
+   * — pour un client SANS compte ORZAYAH, scannant un QR ou ouvrant un lien.
    * Même mécanique que `debitDirect`, mais initiée par le CLIENT lui-même
    * (page publique, sans connexion), pas par le marchand.
    */
@@ -740,7 +740,7 @@ export class PaymentEngineService {
 
   /**
    * Envoie de l'argent à un PARTICULIER via Mobile Money externe (§ QR/lien
-   * personnel sur pay.mobilepay-ci.com) — pour un payeur SANS compte MobilePay.
+   * personnel sur pay.mobilepay-ci.com) — pour un payeur SANS compte ORZAYAH.
    * Distinct de payMerchantAnonymously : pas de frais marchand, crédite
    * directement le wallet du particulier destinataire, type TRANSFER.
    */
@@ -931,7 +931,7 @@ export class PaymentEngineService {
         // environnement (module + migration Prisma à venir) — on refuse
         // explicitement plutôt que de laisser un flux à moitié fonctionnel.
         throw new BadRequestException(
-          'Le paiement par carte virtuelle sera bientôt disponible — utilisez le solde MobilePay ou Mobile Money en attendant.',
+          'Le paiement par carte virtuelle sera bientôt disponible — utilisez le solde ORZAYAH ou Mobile Money en attendant.',
         );
       case 'MOBILE_MONEY':
         return this.purchaseAirtimeFromMobileMoney(userId, params, idempotencyKey);
@@ -1003,7 +1003,7 @@ export class PaymentEngineService {
           fromWalletId: wallet.id,
           toWalletId: null,
           amount: ourFee,
-          description: 'Frais de transaction MobilePay',
+          description: 'Frais de transaction ORZAYAH',
         });
       }
 
@@ -1121,7 +1121,7 @@ export class PaymentEngineService {
           fromWalletId: wallet.id,
           toWalletId: null,
           amount: ourFee,
-          description: 'Frais de transaction MobilePay',
+          description: 'Frais de transaction ORZAYAH',
         });
       }
 
@@ -1174,7 +1174,7 @@ export class PaymentEngineService {
     });
   }
 
-  /** Source : solde du wallet MobilePay — débit immédiat, remboursement si échec. */
+  /** Source : solde du wallet ORZAYAH — débit immédiat, remboursement si échec. */
   private async purchaseAirtimeFromWallet(
     userId: string,
     params: { phoneNumber: string; operatorId?: string; amount: bigint; kind: 'AIRTIME' | 'DATA'; countryCode?: string },
@@ -1218,7 +1218,7 @@ export class PaymentEngineService {
           fromWalletId: wallet.id,
           toWalletId: null,
           amount: ourFee,
-          description: 'Frais de transaction MobilePay',
+          description: 'Frais de transaction ORZAYAH',
         });
       }
 
@@ -1279,13 +1279,13 @@ export class PaymentEngineService {
   private async notifyAirtimeDelivery(phoneNumber: string, amount: bigint, kind: 'AIRTIME' | 'DATA', operatorName?: string | null) {
     const label = kind === 'DATA' ? 'forfait data' : 'crédit';
     const amountLabel = (Number(amount) / 100).toLocaleString('fr-FR');
-    const message = `MobilePay CI : ton ${label} de ${amountLabel} FCFA${operatorName ? ` (${operatorName})` : ''} a été livré avec succès.`;
+    const message = `ORZAYAH : ton ${label} de ${amountLabel} FCFA${operatorName ? ` (${operatorName})` : ''} a été livré avec succès.`;
     await this.sms.send(phoneNumber, message).catch(() => null); // notification best-effort — n'échoue jamais l'achat lui-même
   }
 
   /**
    * Source : Mobile Money externe (Orange Money/MTN MoMo/Moov/Wave, hors wallet
-   * MobilePay) via HUB2. SIMPLIFICATION MVP assumée et documentée : en l'absence
+   * ORZAYAH) via HUB2. SIMPLIFICATION MVP assumée et documentée : en l'absence
    * d'infrastructure de test pour le webhook HUB2 dans ce flux précis, la
    * collecte est traitée comme confirmée dès la réponse initiale de HUB2 (déjà
    * simulée en local sans credentials — voir Hub2Adapter), puis l'achat Reloadly
@@ -1388,7 +1388,7 @@ export class PaymentEngineService {
 
     if (!paymentSuccess) {
       // Le client n'a pas payé (ou a annulé) — aucun crédit envoyé, aucune
-      // perte pour MobilePay. C'est précisément le cas que corrige ce chantier.
+      // perte pour ORZAYAH. C'est précisément le cas que corrige ce chantier.
       return this.prisma.transaction.update({
         where: { id: transactionId },
         data: { status: 'FAILED', failureReason: failureReason ?? "Le paiement n'a pas pu être confirmé." },
@@ -1534,7 +1534,7 @@ export class PaymentEngineService {
    * le top-up en créditant réellement le wallet, ou marque l'échec.
    */
   async completeTopup(transactionId: string, success: boolean, failureReason?: string, hub2FeeAmount: bigint = 0n) {
-    // § La tarification (§ pourcentage + frais fixe MobilePay, paramétrable
+    // § La tarification (§ pourcentage + frais fixe ORZAYAH, paramétrable
     // en back-office) doit être calculée AVANT la transaction Prisma — un
     // appel réseau/DB externe dans une transaction Serializable risquerait
     // un conflit de verrou inutile.
@@ -1558,7 +1558,7 @@ export class PaymentEngineService {
         });
       }
 
-      // § Le client reçoit le montant net des frais (HUB2 + MobilePay) —
+      // § Le client reçoit le montant net des frais (HUB2 + ORZAYAH) —
       // cohérent avec la pratique standard des opérateurs mobile money.
       let netAmount = transaction.amount - totalFee;
       let appliedFee = totalFee;

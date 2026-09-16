@@ -103,7 +103,7 @@ export class QrController {
   }
 
   // --- Paiement PUBLIC, sans connexion (§ pay.mobilepay-ci.com) — client sans
-  // compte MobilePay, via Mobile Money externe uniquement. ---
+  // compte ORZAYAH, via Mobile Money externe uniquement. ---
   @Post('qr/:code/pay-external')
   payQrExternal(
     @Param('code') code: string,

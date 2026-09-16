@@ -219,7 +219,7 @@ export default function CartePage() {
                 }}
               />
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', position: 'relative', marginBottom: 22 }}>
-                <span style={{ fontSize: 12, opacity: 0.75, fontWeight: 600 }}>MobilePay CI — Business</span>
+                <span style={{ fontSize: 12, opacity: 0.75, fontWeight: 600 }}>ORZAYAH — Business</span>
                 <BrandMark network={card.network} />
               </div>
               <div style={{ fontSize: 19, letterSpacing: 3, marginBottom: 18, position: 'relative', fontFamily: 'Sora, sans-serif' }}>

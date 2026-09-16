@@ -129,7 +129,7 @@ export default function DashboardPage() {
           ☰
         </button>
         <div className="fz-header-logo-wrap">
-          <img src="/brand/mobilepay-logo-badge-dark.svg" alt="MobilePay" className="fz-header-logo" />
+          <img src="/brand/ORZAYAH-logo-badge-dark.svg" alt="ORZAYAH" className="fz-header-logo" />
         </div>
         <Link href="/profil" className="fz-profile" title="Mon profil">
           {user.profilePhotoBase64 ? (
@@ -282,7 +282,7 @@ export default function DashboardPage() {
                     </div>
                     {feeAmount !== null && (
                       <div className="mp-detail-row">
-                        <span className="k">Frais MobilePay</span>
+                        <span className="k">Frais ORZAYAH</span>
                         <span className="v">{formatFcfa(feeAmount)} FCFA</span>
                       </div>
                     )}

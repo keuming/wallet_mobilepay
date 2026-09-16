@@ -27,7 +27,7 @@ export interface PaymentIntentResult {
  * Adaptateur HUB2 (§26) — fournisseur de paiement mobile-money local
  * (Orange Money, MTN MoMo, Moov, Wave via l'agrégateur HUB2).
  *
- * Flux cash-in (top-up) : MobilePay initie une demande de collecte auprès de
+ * Flux cash-in (top-up) : ORZAYAH initie une demande de collecte auprès de
  * HUB2, qui pousse un USSD/prompt sur le téléphone du client ; HUB2 notifie
  * ensuite le résultat via webhook signé (voir WebhooksService).
  */
@@ -275,7 +275,7 @@ export class Hub2Adapter implements PaymentProviderAdapter {
       reference: params.reference.replace(/[^A-Za-z0-9\-_. ]/g, ''), // HUB2 rejette les caractères spéciaux
       amount: Number(params.amount) / 100,
       currency: params.currency,
-      description: `MobilePay — envoi vers ${params.recipientName}`,
+      description: `ORZAYAH — envoi vers ${params.recipientName}`,
       destination: {
         type: 'mobile_money',
         country: params.country ?? 'CI',
@@ -401,7 +401,7 @@ export class Hub2Adapter implements PaymentProviderAdapter {
       : undefined;
 
     // § Frais HUB2 réels (tableau `fees` de l'objet Payment/Transfer,
-    // confirmé par la doc officielle) — jamais paramétrés côté MobilePay,
+    // confirmé par la doc officielle) — jamais paramétrés côté ORZAYAH,
     // juste lus et additionnés ici pour la tarification (§ pricing).
     const hub2FeeAmount = Array.isArray(payload.fees)
       ? payload.fees.reduce((sum: bigint, f: any) => sum + BigInt(Math.round(Number(f.amount ?? 0) * 100)), 0n)

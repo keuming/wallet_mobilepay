@@ -311,7 +311,7 @@ export class MerchantsService {
     const merchant = await this.prisma.merchant.findUniqueOrThrow({ where: { id: merchantId } });
     if (!merchant.transfersEnabled) {
       throw new BadRequestException(
-        "Le transfert d'argent n'est pas autorisé pour ce marchand — contactez un administrateur MobilePay.",
+        "Le transfert d'argent n'est pas autorisé pour ce marchand — contactez un administrateur ORZAYAH.",
       );
     }
     if (merchant.status !== 'ACTIVE') {
@@ -322,7 +322,7 @@ export class MerchantsService {
     // on essaie chaque pays supporté plutôt que de supposer 'CI'.
     const recipientUser = await this.prisma.user.findFirst({ where: { phone: { in: normalizePhoneCandidates(dto.toPhone) } } });
     if (!recipientUser) {
-      throw new NotFoundException('Aucun compte MobilePay associé à ce numéro.');
+      throw new NotFoundException('Aucun compte ORZAYAH associé à ce numéro.');
     }
 
     const amount = BigInt(dto.amount);
@@ -508,7 +508,7 @@ export class MerchantsService {
           fromWalletId: merchantWallet.id,
           toWalletId: null,
           amount: ourFee,
-          description: 'Frais de transaction MobilePay',
+          description: 'Frais de transaction ORZAYAH',
         });
       }
 
@@ -630,7 +630,7 @@ export class MerchantsService {
           fromWalletId: merchantWallet.id,
           toWalletId: null,
           amount: ourFee,
-          description: 'Frais de transaction MobilePay',
+          description: 'Frais de transaction ORZAYAH',
         });
       }
 

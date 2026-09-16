@@ -14,7 +14,7 @@ interface QrResultCardProps {
  * permanent, QR dynamique, Payment Link) — image QR, copie du lien,
  * partage natif (WhatsApp/SMS...) et téléchargement de l'image.
  */
-export default function QrResultCard({ imageDataUrl, url, title = 'Votre QR', filename = 'mobilepay-qr' }: QrResultCardProps) {
+export default function QrResultCard({ imageDataUrl, url, title = 'Votre QR', filename = 'ORZAYAH-qr' }: QrResultCardProps) {
   const [copyStatus, setCopyStatus] = useState<'idle' | 'copied' | 'shared' | 'failed'>('idle');
 
   const handleCopy = async () => {
@@ -30,7 +30,7 @@ export default function QrResultCard({ imageDataUrl, url, title = 'Votre QR', fi
   const handleShare = async () => {
     try {
       if (navigator.share) {
-        await navigator.share({ title, text: `Payez via MobilePay : ${url}`, url });
+        await navigator.share({ title, text: `Payez via ORZAYAH : ${url}`, url });
         setCopyStatus('shared');
       } else {
         await navigator.clipboard.writeText(url);

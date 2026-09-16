@@ -58,7 +58,7 @@ function fcfa(cents: number): string {
 
 /**
  * Page de paiement publique (§ pay.mobilepay-ci.com) — accessible sans compte
- * MobilePay. Le client choisit soit de payer avec son solde MobilePay (s'il
+ * ORZAYAH. Le client choisit soit de payer avec son solde ORZAYAH (s'il
  * en a un, redirection vers le wallet), soit avec un autre Mobile Money
  * (Orange/MTN/Moov/Wave), directement sur cette page sans connexion.
  *
@@ -73,7 +73,7 @@ export default function CheckoutPage({
   walletAppUrl,
   walletAppQueryKey,
   walletAppPath = 'payer',
-  mobilePaySubtitle = "J'ai déjà un compte MobilePay",
+  mobilePaySubtitle = "J'ai déjà un compte ORZAYAH",
   identifier,
 }: {
   resolveEndpoint: string;
@@ -145,7 +145,7 @@ export default function CheckoutPage({
     doc.setTextColor('#FFFFFF');
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(18);
-    doc.text('MobilePay CI', 10, 14);
+    doc.text('ORZAYAH', 10, 14);
     doc.setFontSize(10);
     doc.setFont('helvetica', 'normal');
     doc.text('Reçu de paiement', 10, 19);
@@ -188,11 +188,11 @@ export default function CheckoutPage({
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(8.5);
     doc.setTextColor(gray);
-    doc.text("Ce reçu confirme un paiement effectué via MobilePay CI.", 10, y);
+    doc.text("Ce reçu confirme un paiement effectué via ORZAYAH.", 10, y);
     y += 5;
-    doc.text('© ORZAYAH CI — pay.mobilepay-ci.com', 10, y);
+    doc.text('© ORZAYAH — pay.mobilepay-ci.com', 10, y);
 
-    doc.save(`recu-mobilepay-${(receipt.reference ?? receipt.id).slice(0, 10)}.pdf`);
+    doc.save(`recu-ORZAYAH-${(receipt.reference ?? receipt.id).slice(0, 10)}.pdf`);
   };
 
   const applyResponse = (res: PaymentResponse) => {
@@ -298,7 +298,7 @@ export default function CheckoutPage({
     <div className="mp-container">
       <div className="mp-header">
         <div className="mp-header-row" style={{ justifyContent: 'center' }}>
-          <img src="/brand/mobilepay-logo-badge-dark.svg" alt="MobilePay CI" style={{ height: 42, width: 'auto', borderRadius: 10 }} />
+          <img src="/brand/ORZAYAH-logo-badge-dark.svg" alt="ORZAYAH" style={{ height: 42, width: 'auto', borderRadius: 10 }} />
         </div>
       </div>
 
@@ -332,7 +332,7 @@ export default function CheckoutPage({
             className="mp-feature-card featured"
           >
             {/* § Badge de marque « M-Pay » — remplace le cœur vert 💚, un emoji
-                générique qui ne dit rien de MobilePay. Le format est
+                générique qui ne dit rien de ORZAYAH. Le format est
                 rectangulaire : « M-Pay » est un mot, il ne tient pas dans un
                 carré sans se couper sur deux lignes. */}
             <div
@@ -361,7 +361,7 @@ export default function CheckoutPage({
               </span>
             </div>
             <div className="mp-feature-text">
-              <div className="mp-feature-title">Payer avec MobilePay</div>
+              <div className="mp-feature-title">Payer avec ORZAYAH</div>
               <div className="mp-feature-sub">{mobilePaySubtitle}</div>
             </div>
             <div className="mp-feature-chevron">→</div>
@@ -370,7 +370,7 @@ export default function CheckoutPage({
             <div className="mp-feature-icon">📱</div>
             <div className="mp-feature-text">
               <div className="mp-feature-title">Payer avec un autre Mobile Money</div>
-              <div className="mp-feature-sub">Orange, MTN, Moov ou Wave — sans compte MobilePay</div>
+              <div className="mp-feature-sub">Orange, MTN, Moov ou Wave — sans compte ORZAYAH</div>
             </div>
             <div className="mp-feature-chevron">→</div>
           </div>

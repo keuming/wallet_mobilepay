@@ -165,7 +165,7 @@ export default function DeplafonnementPage() {
           <div style={{ fontSize: 40, marginBottom: 8 }}>✅</div>
           <p style={{ fontWeight: 700, color: 'var(--mp-navy)' }}>Dossier envoyé avec succès</p>
           <p style={{ color: 'var(--mp-muted)', fontSize: 13.5 }}>
-            Un administrateur MobilePay va vérifier votre pièce d'identité, votre selfie et votre
+            Un administrateur ORZAYAH va vérifier votre pièce d'identité, votre selfie et votre
             localisation. Vous serez notifié dès que votre compte sera déplafonné.
           </p>
         </div>

@@ -29,7 +29,7 @@ const COUNTRIES = [
 type Destination = 'MOBILEPAY' | 'ORANGE' | 'MOOV' | 'WAVE' | 'MTN' | 'VISA' | 'VIREMENT';
 
 const DESTINATIONS: Array<{ id: Destination; label: string; badge: PaymentMethodId | null; available: boolean }> = [
-  { id: 'MOBILEPAY', label: 'Compte MobilePay', badge: 'MOBILEPAY', available: true },
+  { id: 'MOBILEPAY', label: 'Compte ORZAYAH', badge: 'MOBILEPAY', available: true },
   { id: 'ORANGE', label: 'Orange Money', badge: 'ORANGE', available: true },
   { id: 'MOOV', label: 'Moov Money', badge: 'MOOV', available: true },
   { id: 'WAVE', label: 'Wave', badge: 'WAVE', available: true },
@@ -164,7 +164,7 @@ export default function EnvoyerPage() {
 
       // Le statut réel renvoyé par le serveur détermine la couleur du modal —
       // un envoi vers un opérateur externe reste PROCESSING tant que HUB2 n'a
-      // pas confirmé, ce n'est pas un succès immédiat comme un transfert MobilePay.
+      // pas confirmé, ce n'est pas un succès immédiat comme un transfert ORZAYAH.
       if (response.status === 'SUCCESS') {
         if (expenseCategoryId && response.id) {
           apiFetch(`/expenses/transactions/${response.id}/category`, {
@@ -285,7 +285,7 @@ export default function EnvoyerPage() {
         {step === 0 && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             <p style={{ color: 'var(--fz-text-secondary)', fontSize: 13, margin: '0 0 4px' }}>
-              Veuillez choisir où envoyer l'argent : un compte MobilePay, ou un Mobile Money externe.
+              Veuillez choisir où envoyer l'argent : un compte ORZAYAH, ou un Mobile Money externe.
             </p>
             {DESTINATIONS.map((d) => (
               <button

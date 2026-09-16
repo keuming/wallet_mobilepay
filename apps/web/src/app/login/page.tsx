@@ -75,7 +75,7 @@ function LoginPageInner() {
       <div className="mp-header" style={{ paddingBottom: 14, borderRadius: '0 0 32px 32px' }}>
         <div className="mp-brand-mark">
           <span className="dot" />
-          MobilePay CI
+          ORZAYAH
         </div>
         <h1>Bon retour parmi nous</h1>
         <p>{step === 'credentials' ? 'Connectez-vous pour accéder à votre wallet' : 'Dernière étape — vérification de sécurité'}</p>
@@ -141,7 +141,7 @@ function LoginPageInner() {
       )}
 
       <p style={{ textAlign: 'center', fontSize: 11.5, color: 'var(--fz-text-secondary)', opacity: 0.7, padding: '20px 0 16px', margin: 0 }}>
-        © {new Date().getFullYear()} ORZAYAH CI
+        © {new Date().getFullYear()} ORZAYAH
       </p>
     </div>
   );

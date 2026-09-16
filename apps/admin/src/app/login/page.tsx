@@ -71,7 +71,7 @@ export default function LoginPage() {
               <circle cx="18" cy="170" r="10" fill="#0d9488" fillOpacity="0.4" />
             </svg>
           </div>
-          <div className="adm-login-subtitle">Espace réservé aux administrateurs MobilePay CI</div>
+          <div className="adm-login-subtitle">Espace réservé aux administrateurs ORZAYAH</div>
           <p className="adm-login-message">
             Pilotez la plateforme en toute sécurité : marchands, particuliers, transactions et
             providers de paiement, réunis en un seul tableau de bord.
@@ -149,7 +149,7 @@ export default function LoginPage() {
               )}
             </form>
 
-            <p className="adm-login-footer">ORZAYAH CI</p>
+            <p className="adm-login-footer">ORZAYAH</p>
           </div>
         </div>
       </div>

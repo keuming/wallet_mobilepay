@@ -90,7 +90,7 @@ export default function CodeSecretPage() {
       <div className="mp-section" style={{ paddingBottom: 0 }}>
         <p style={{ color: 'var(--mp-muted)', fontSize: 13.5 }}>
           Ce code à 4-6 chiffres sera demandé pour autoriser vos transactions — distinct de votre mot
-          de passe de connexion. Ne le partagez avec personne, MobilePay ne vous le demandera jamais
+          de passe de connexion. Ne le partagez avec personne, ORZAYAH ne vous le demandera jamais
           par téléphone.
         </p>
       </div>

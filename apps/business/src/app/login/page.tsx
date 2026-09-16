@@ -140,7 +140,7 @@ export default function LoginPage() {
           )}
         </form>
         <p style={{ textAlign: 'center', fontSize: 11.5, color: '#5a7a94', opacity: 0.8, marginTop: 20, marginBottom: 0 }}>
-          © {new Date().getFullYear()} ORZAYAH CI
+          © {new Date().getFullYear()} ORZAYAH
         </p>
       </div>
     </div>

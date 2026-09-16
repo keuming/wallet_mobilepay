@@ -47,7 +47,7 @@ export class SmsController {
     // Validation réelle ici : accepte le format local, rejette un numéro
     // véritablement invalide avec un message clair.
     const toPhone = normalizePhoneStrict(dto.toPhone);
-    const message = `MobilePay CI : voici ${dto.label ?? 'ton lien'} — ${dto.url}`;
+    const message = `ORZAYAH : voici ${dto.label ?? 'ton lien'} — ${dto.url}`;
 
     const result = await this.sms.send(toPhone, message);
 

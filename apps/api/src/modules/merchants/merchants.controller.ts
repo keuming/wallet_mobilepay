@@ -197,7 +197,7 @@ export class MerchantsController {
   }
 
   /** Débit direct via HUB2 (§ app Business — Phase A) — collecte Mobile Money
-   * directe sur le numéro du client, sans exiger qu'il soit utilisateur MobilePay. */
+   * directe sur le numéro du client, sans exiger qu'il soit utilisateur ORZAYAH. */
   @Post(':merchantId/debit-direct')
   @UseGuards(JwtAuthGuard, MerchantScopeGuard)
   debitDirect(
@@ -278,7 +278,7 @@ export class MerchantsController {
     const raw = attempt?.rawResponse as any;
     const toPhone = normalizePhoneCI(raw?.payments?.[0]?.number ?? raw?.customerReference ?? '');
 
-    const message = `MobilePay : ouvre ce lien pour confirmer ton paiement — ${tx.nextActionUrl}`;
+    const message = `ORZAYAH : ouvre ce lien pour confirmer ton paiement — ${tx.nextActionUrl}`;
     const result = await this.sms.send(toPhone, message);
 
     await this.prisma.smsLog.create({
@@ -338,7 +338,7 @@ export class MerchantsController {
     // § Le client peut être dans un autre pays — on essaie chaque pays
     // supporté plutôt que de supposer 'CI'.
     const customer = await this.prisma.user.findFirst({ where: { phone: { in: normalizePhoneCandidates(dto.customerPhone) } } });
-    if (!customer) throw new NotFoundException('Aucun compte MobilePay pour ce numéro.');
+    if (!customer) throw new NotFoundException('Aucun compte ORZAYAH pour ce numéro.');
 
     const merchantWallet = await this.merchantsService.getWallet(merchantId);
     const existing = await this.prisma.transaction.findUnique({ where: { idempotencyKey } });

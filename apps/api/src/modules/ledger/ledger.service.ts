@@ -109,7 +109,7 @@ export class LedgerService {
     });
   }
 
-  /** Calcule les frais MobilePay en points de base (bps). 200 bps = 2%. */
+  /** Calcule les frais ORZAYAH en points de base (bps). 200 bps = 2%. */
   computeFee(amount: bigint, feeRateBps: number): bigint {
     return (amount * BigInt(feeRateBps)) / 10_000n;
   }

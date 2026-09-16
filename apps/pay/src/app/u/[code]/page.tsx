@@ -8,7 +8,7 @@ export default function ParticulierQrPayPage({ params }: { params: { code: strin
       walletAppUrl="https://wallet.mobilepay-ci.com"
       walletAppQueryKey="u"
       walletAppPath="envoyer"
-      mobilePaySubtitle="Ouvre ton app MobilePay et envoie à ce numéro"
+      mobilePaySubtitle="Ouvre ton app ORZAYAH et envoie à ce numéro"
       identifier={params.code}
     />
   );

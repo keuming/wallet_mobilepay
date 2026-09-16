@@ -72,7 +72,7 @@ function CommissionCard({
         <div className="adm-commission-breakdown">
           <span>Volume : {fcfa(data.volume)}</span>
           {showHub2Fee && <span>Frais HUB2 : {fcfa(data.hub2Fee ?? 0)}</span>}
-          <span>Marge MobilePay (1%) : {fcfa(data.mobilePayMarkup)}</span>
+          <span>Marge ORZAYAH (1%) : {fcfa(data.mobilePayMarkup)}</span>
         </div>
       </div>
     </div>
@@ -101,7 +101,7 @@ export default function ProvidersPage() {
     <AdminShell title="Providers de paiement">
       <p style={{ color: 'var(--adm-muted)', fontSize: 13, marginBottom: 20 }}>
         Statut des intégrations, soldes réels et commissions calculées depuis la grille tarifaire
-        HUB2 (frais réels par opérateur) et la marge MobilePay de 1% appliquée à tout type de
+        HUB2 (frais réels par opérateur) et la marge ORZAYAH de 1% appliquée à tout type de
         transaction, tout opérateur confondu.
       </p>
 

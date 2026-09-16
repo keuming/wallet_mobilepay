@@ -54,7 +54,7 @@ export default function DashboardPage() {
   if (loading || !admin) return null;
 
   return (
-    <AdminShell title="MobilePay Admin">
+    <AdminShell title="ORZAYAH Admin">
       {!stats ? (
         <p style={{ color: '#8a97b3' }}>Chargement...</p>
       ) : (

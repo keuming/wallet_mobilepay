@@ -102,7 +102,7 @@ export class PaymentEngineController {
   }
 
   /**
-   * Envoi vers une destination externe au wallet MobilePay (§ parcours Envoyer
+   * Envoi vers une destination externe au wallet ORZAYAH (§ parcours Envoyer
    * repensé) — Mobile Money d'un autre opérateur, via HUB2. Le code secret
    * transactionnel est obligatoire pour toute sortie de fonds externe.
    */

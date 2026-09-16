@@ -111,7 +111,7 @@ export default function WalletPage() {
           <div className="mc-stat-value">{detail ? fcfa(detail.pendingBalance) : '—'} FCFA</div>
         </div>
         <div className="mc-stat-card">
-          <div className="mc-stat-label">Frais MobilePay ce mois</div>
+          <div className="mc-stat-label">Frais ORZAYAH ce mois</div>
           <div className="mc-stat-value">{detail ? fcfa(detail.feesThisMonth) : '—'} FCFA</div>
         </div>
       </div>
@@ -151,7 +151,7 @@ export default function WalletPage() {
           ) : (
             <p style={{ color: 'var(--mc-muted)', fontSize: 13 }}>
               🔒 Le transfert d'argent depuis ce wallet n'est pas autorisé pour le moment. Contactez un
-              administrateur MobilePay pour l'activer.
+              administrateur ORZAYAH pour l'activer.
             </p>
           )}
         </div>
@@ -196,7 +196,7 @@ export default function WalletPage() {
         {!detail || detail.recentSettlements.length === 0 ? (
           <div style={{ padding: 18, color: 'var(--mc-muted)', fontSize: 13 }}>
             Aucun règlement effectué pour le moment. Les règlements sont initiés par l'administrateur
-            MobilePay selon la périodicité convenue.
+            ORZAYAH selon la périodicité convenue.
           </div>
         ) : (
           <table className="mc-table">

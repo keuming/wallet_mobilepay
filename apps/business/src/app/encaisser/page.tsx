@@ -200,7 +200,7 @@ function StaticQrPanel({ merchantId }: { merchantId: string }) {
         Le client scanne ce QR fixe puis saisit lui-même le montant à payer.
       </p>
       {qr ? (
-        <QrResultCard imageDataUrl={qr.imageDataUrl} url={qr.url} title="QR permanent" filename="mobilepay-qr-permanent" />
+        <QrResultCard imageDataUrl={qr.imageDataUrl} url={qr.url} title="QR permanent" filename="ORZAYAH-qr-permanent" />
       ) : (
         <p>Chargement...</p>
       )}
@@ -249,7 +249,7 @@ function DynamicQrPanel({ merchantId }: { merchantId: string }) {
         {submitting ? 'Génération...' : 'Générer le QR'}
       </button>
       {result && (
-        <QrResultCard imageDataUrl={result.imageDataUrl} url={result.url} title="QR dynamique" filename="mobilepay-qr-dynamique" />
+        <QrResultCard imageDataUrl={result.imageDataUrl} url={result.url} title="QR dynamique" filename="ORZAYAH-qr-dynamique" />
       )}
     </div>
   );
@@ -307,7 +307,7 @@ function PaymentLinkPanel({ merchantId }: { merchantId: string }) {
 }
 
 const MOMO_PROVIDERS: { id: string; label: string; badge: PaymentMethodId }[] = [
-  { id: 'mobilepay', label: 'MobilePay', badge: 'MOBILEPAY' },
+  { id: 'ORZAYAH', label: 'ORZAYAH', badge: 'MOBILEPAY' },
   { id: 'orange', label: 'Orange Money', badge: 'ORANGE' },
   { id: 'mtn', label: 'MTN MoMo', badge: 'MTN' },
   { id: 'moov', label: 'Moov Money', badge: 'MOOV' },
@@ -337,8 +337,8 @@ function PaymentRequestPanel({ merchantId }: { merchantId: string }) {
     setOtpTransactionId(null);
     setNextActionShown(false);
     try {
-      if (provider === 'mobilepay') {
-        // Le client paie depuis son propre solde MobilePay — confirmation
+      if (provider === 'ORZAYAH') {
+        // Le client paie depuis son propre solde ORZAYAH — confirmation
         // dans son app, pas de circuit HUB2 impliqué.
         await apiFetch(`/merchants/${merchantId}/payment-requests`, {
           method: 'POST',
@@ -351,7 +351,7 @@ function PaymentRequestPanel({ merchantId }: { merchantId: string }) {
         });
         setResult({
           status: 'pending',
-          message: `Demande envoyée au ${customerPhone} — le client doit confirmer dans son app MobilePay (solde MobilePay).`,
+          message: `Demande envoyée au ${customerPhone} — le client doit confirmer dans son app ORZAYAH (solde ORZAYAH).`,
         });
       } else {
         const res = await apiFetch<{ id: string; status: string; paymentLink?: string }>(`/merchants/${merchantId}/debit-direct`, {
@@ -489,7 +489,7 @@ function PaymentRequestPanel({ merchantId }: { merchantId: string }) {
   return (
     <div className="mp-form">
       <p style={{ color: 'var(--fz-text-secondary)', fontSize: 13, margin: 0 }}>
-        Saisis le numéro, choisis l'opérateur et le montant à débiter. Si le client a MobilePay, il
+        Saisis le numéro, choisis l'opérateur et le montant à débiter. Si le client a ORZAYAH, il
         confirme dans son app ; sinon, un prompt Mobile Money s'affiche directement sur son
         téléphone via son opérateur.
       </p>
@@ -595,7 +595,7 @@ function PaymentLinkResult({ link, merchantId, transactionId }: { link: string; 
   const handleShare = async () => {
     try {
       if (navigator.share) {
-        await navigator.share({ title: 'Lien de paiement MobilePay', url: link });
+        await navigator.share({ title: 'Lien de paiement ORZAYAH', url: link });
       } else {
         await handleCopy();
       }

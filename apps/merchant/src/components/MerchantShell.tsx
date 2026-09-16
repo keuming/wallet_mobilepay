@@ -71,7 +71,7 @@ export default function MerchantShell({ title, children }: { title: string; chil
           ))}
         </nav>
         <p style={{ textAlign: 'center', fontSize: 10.5, color: 'var(--fz-text-secondary)', margin: '16px 0 8px', opacity: 0.7 }}>
-          © {new Date().getFullYear()} ORZAYAH CI
+          © {new Date().getFullYear()} ORZAYAH
         </p>
       </aside>
       <main className="mc-main">

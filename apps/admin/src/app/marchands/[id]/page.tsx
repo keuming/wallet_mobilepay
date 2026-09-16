@@ -189,7 +189,7 @@ export default function MerchantDetailPage() {
             <span>{merchant.category ?? '—'}</span>
           </div>
           <div className="adm-kv">
-            <span>Frais MobilePay</span>
+            <span>Frais ORZAYAH</span>
             <span>{merchant.feeRateBps / 100}%</span>
           </div>
           <div className="adm-kv">

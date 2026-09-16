@@ -69,7 +69,7 @@ export default function MerchantSideMenu({ open, onClose }: MerchantSideMenuProp
           </button>
 
           <p style={{ textAlign: 'center', fontSize: 11, color: 'var(--fz-text-secondary)', margin: '20px 0 8px', opacity: 0.7 }}>
-            © {new Date().getFullYear()} ORZAYAH CI
+            © {new Date().getFullYear()} ORZAYAH
           </p>
         </div>
       </div>

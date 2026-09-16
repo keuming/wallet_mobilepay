@@ -381,13 +381,13 @@ export default function RechargerPage() {
         {step === 4 && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             <p style={{ color: 'var(--fz-text-secondary)', fontSize: 13, margin: '0 0 4px' }}>
-              Veuillez choisir le moyen de paiement digital pour financer cet achat — ton solde MobilePay, ou un Mobile Money externe (peut être un opérateur différent de celui crédité).
+              Veuillez choisir le moyen de paiement digital pour financer cet achat — ton solde ORZAYAH, ou un Mobile Money externe (peut être un opérateur différent de celui crédité).
             </p>
             <button
               onClick={() => setPaymentMethod('WALLET')}
               className={`mp-list-card ${paymentMethod === 'WALLET' ? 'selected' : ''}`}
             >
-              💰 Solde MobilePay
+              💰 Solde ORZAYAH
             </button>
             <div style={{ fontSize: 12.5, color: 'var(--fz-text-secondary)', fontWeight: 600, marginTop: 4 }}>
               MOBILE MONEY
@@ -519,7 +519,7 @@ export default function RechargerPage() {
                 <span className="k">Paiement</span>
                 <span className="v">
                   {paymentMethod === 'WALLET'
-                    ? 'Solde MobilePay'
+                    ? 'Solde ORZAYAH'
                     : `${MOMO_OPTIONS.find((o) => o.id === momoOperator)?.label} — ${momoAccount}`}
                 </span>
               </div>

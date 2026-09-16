@@ -5,8 +5,8 @@ import { sora, jakarta } from './fonts';
 import './globals.css';
 
 export const metadata = {
-  title: 'MobilePay Business — Encaissement',
-  description: 'Application mobile marchand MobilePay CI — encaissement client',
+  title: 'ORZAYAH Business — Encaissement',
+  description: 'Application mobile marchand ORZAYAH — encaissement client',
   manifest: '/manifest.json',
   themeColor: '#47b686',
 };

@@ -259,7 +259,7 @@ export class TransactionFilterQuery {
 }
 
 // Toutes les routes de ce controller sont réservées à l'administrateur
-// plateforme — c'est le back-office principal MobilePay (§16).
+// plateforme — c'est le back-office principal ORZAYAH (§16).
 //
 // § Depuis l'audit d'administration d'équipe : être ADMIN ne suffit plus à
 // tout faire. Chaque endpoint déclare la permission métier qu'il exige

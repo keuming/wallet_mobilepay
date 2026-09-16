@@ -31,7 +31,7 @@ const MERCHANT_MONTHLY_LIMIT_FCFA = 10_000_000;
 // Types de transaction comptés comme "sortants" pour le calcul du plafond
 // mensuel — tout ce qui quitte réellement le wallet vers l'extérieur ou
 // vers un tiers (une collecte/épargne interne n'est pas comptée : l'argent
-// reste dans l'écosystème MobilePay, ce n'est pas une "dépense").
+// reste dans l'écosystème ORZAYAH, ce n'est pas une "dépense").
 const OUTGOING_TYPES = ['TRANSFER', 'WITHDRAWAL', 'PAYMENT', 'AIRTIME', 'GIFT_CARD', 'UTILITY_PAYMENT'];
 
 @Injectable()

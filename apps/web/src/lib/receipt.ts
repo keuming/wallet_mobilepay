@@ -16,7 +16,7 @@ function fcfa(cents: number): string {
 
 function buildReceiptText(p: ReceiptParams): string {
   const lines = [
-    'MobilePay CI — Reçu de transaction',
+    'ORZAYAH — Reçu de transaction',
     '─────────────────────────────',
     `Référence : ${p.reference}`,
     `Type : ${p.typeLabel}`,
@@ -29,7 +29,7 @@ function buildReceiptText(p: ReceiptParams): string {
   lines.push(`Statut : ${p.status}`);
   lines.push(`Date : ${new Date(p.date).toLocaleString('fr-FR')}`);
   lines.push('─────────────────────────────');
-  lines.push('Généré depuis l\'app MobilePay CI');
+  lines.push('Généré depuis l\'app ORZAYAH');
   return lines.join('\n');
 }
 
@@ -42,7 +42,7 @@ export async function shareReceipt(p: ReceiptParams): Promise<'shared' | 'copied
 
   if (typeof navigator !== 'undefined' && navigator.share) {
     try {
-      await navigator.share({ title: 'Reçu MobilePay CI', text });
+      await navigator.share({ title: 'Reçu ORZAYAH', text });
       return 'shared';
     } catch {
       // L'utilisateur a annulé le partage, ou l'API a échoué silencieusement —

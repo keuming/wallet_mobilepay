@@ -4,7 +4,7 @@ import { PricingService } from './pricing.service';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 
 /**
- * Aperçu des frais internes MobilePay (§ affiché au résumé, avant
+ * Aperçu des frais internes ORZAYAH (§ affiché au résumé, avant
  * validation, sur tous les parcours de transaction) — ne connaît QUE notre
  * propre part (pourcentage + montant fixe, paramétrable en back-office).
  * Les frais HUB2 restent inconnus tant que la transaction n'est pas

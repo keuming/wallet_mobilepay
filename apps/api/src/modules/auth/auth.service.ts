@@ -60,7 +60,7 @@ export class AuthService {
       },
     });
 
-    const result = await this.sms.send(phone, `MobilePay CI : votre code de vérification est ${code}. Valable 10 minutes.`);
+    const result = await this.sms.send(phone, `ORZAYAH : votre code de vérification est ${code}. Valable 10 minutes.`);
     if (!result.success) {
       throw new BadRequestException(result.errorReason ?? "Échec de l'envoi du code.");
     }
@@ -244,7 +244,7 @@ export class AuthService {
       // § Le résultat était ignoré — l'utilisateur recevait "requiresOtp:
       // true" (donc l'écran de saisie du code) même quand le SMS avait
       // réellement échoué à partir, le laissant bloqué sans code à saisir.
-      const smsResult = await this.sms.send(user.phone, `MobilePay CI : ton code de connexion est ${code}. Ne le partage avec personne.`);
+      const smsResult = await this.sms.send(user.phone, `ORZAYAH : ton code de connexion est ${code}. Ne le partage avec personne.`);
       if (!smsResult.success) {
         throw new BadRequestException(
           "Impossible d'envoyer le code de connexion pour le moment. Réessaie dans quelques instants.",

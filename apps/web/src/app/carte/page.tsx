@@ -129,7 +129,7 @@ export default function CartePage() {
                 }}
               />
               <div style={{ fontSize: 12, opacity: 0.75, marginBottom: 22, position: 'relative', fontWeight: 600 }}>
-                MobilePay CI
+                ORZAYAH
               </div>
               <div style={{ fontSize: 19, letterSpacing: 3, marginBottom: 18, position: 'relative', fontFamily: 'Sora, sans-serif' }}>
                 {card.maskedPan ?? '•••• •••• •••• ••••'}

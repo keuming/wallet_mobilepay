@@ -316,7 +316,7 @@ export default function RechargerWalletPage() {
               </div>
               <div className="mp-detail-row">
                 <span className="k">Objet</span>
-                <span className="v">Dépôt sur mon wallet MobilePay</span>
+                <span className="v">Dépôt sur mon wallet ORZAYAH</span>
               </div>
               <div className="mp-detail-row">
                 <span className="k">Source</span>

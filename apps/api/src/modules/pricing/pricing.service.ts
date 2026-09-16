@@ -37,7 +37,7 @@ export class PricingService {
   }
 
   /**
-   * Calcule les frais internes MobilePay (hors part HUB2, lue séparément
+   * Calcule les frais internes ORZAYAH (hors part HUB2, lue séparément
    * depuis la réponse HUB2 de chaque transaction) : pourcentage + montant
    * fixe, tous deux paramétrables en back-office.
    */

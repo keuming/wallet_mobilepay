@@ -127,7 +127,7 @@ export default function TarificationPage() {
               }}
             >
               Exemple : pour une transaction de <strong>{fcfa(previewAmount * 100)} FCFA</strong>, les frais internes
-              MobilePay seraient de <strong>{fcfa(previewOurFee * 100)} FCFA</strong> (hors frais HUB2, ajoutés
+              ORZAYAH seraient de <strong>{fcfa(previewOurFee * 100)} FCFA</strong> (hors frais HUB2, ajoutés
               séparément le cas échéant).
             </div>
 

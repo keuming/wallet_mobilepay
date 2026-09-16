@@ -85,7 +85,7 @@ export default function InscriptionPage() {
       <div className="mp-header" style={{ paddingBottom: 40, borderRadius: '0 0 32px 32px' }}>
         <div className="mp-brand-mark">
           <span className="dot" />
-          MobilePay CI
+          ORZAYAH
         </div>
         <h1>Bienvenue 👋</h1>
         <p>Crée ton compte en quelques instants</p>
@@ -221,7 +221,7 @@ export default function InscriptionPage() {
       )}
 
       <p style={{ textAlign: 'center', fontSize: 11.5, color: 'var(--fz-text-secondary)', opacity: 0.7, padding: '20px 0 16px', margin: 0 }}>
-        © {new Date().getFullYear()} ORZAYAH CI
+        © {new Date().getFullYear()} ORZAYAH
       </p>
     </div>
   );

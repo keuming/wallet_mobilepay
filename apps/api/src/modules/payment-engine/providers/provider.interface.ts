@@ -10,7 +10,7 @@ export interface InitiateTopupParams {
   amount: bigint; // centimes
   currency: string;
   customerPhone: string;
-  reference: string; // référence interne MobilePay à faire revenir dans le webhook
+  reference: string; // référence interne ORZAYAH à faire revenir dans le webhook
   provider: string; // 'orange' | 'mtn' | 'moov' | 'wave' — exigé par le vrai flux PAY-IN HUB2
   country?: string; // code ISO 3166-1 alpha-2 — défaut 'CI' si absent
   /**
@@ -51,7 +51,7 @@ export interface WebhookVerificationResult {
   /** Code technique brut du provider — journalisé pour le diagnostic, jamais affiché à l'utilisateur. */
   failureCode?: string;
   /** Somme des frais HUB2 (tableau `fees` de la réponse), en centimes —
-   * dynamique, jamais paramétré côté MobilePay (§ tarification). */
+   * dynamique, jamais paramétré côté ORZAYAH (§ tarification). */
   hub2FeeAmount?: bigint;
 }
 

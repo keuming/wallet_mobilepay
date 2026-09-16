@@ -175,7 +175,7 @@ export class WalletsService {
     await this.kycLimits.assertWithinMonthlyLimit(senderId, BigInt(dto.amount));
 
     if (!recipientUser) {
-      throw new NotFoundException('Aucun compte MobilePay associé à ce numéro.');
+      throw new NotFoundException('Aucun compte ORZAYAH associé à ce numéro.');
     }
     if (recipientUser.id === senderId) {
       throw new BadRequestException('Vous ne pouvez pas vous envoyer de l\'argent à vous-même.');
@@ -222,7 +222,7 @@ export class WalletsService {
           fromWalletId: senderWallet.id,
           toWalletId: null,
           amount: feeAmount,
-          description: 'Frais MobilePay',
+          description: 'Frais ORZAYAH',
         });
       }
 

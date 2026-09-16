@@ -27,7 +27,7 @@ const MANUAL_FUNDING_SERVICE_LABELS: Record<string, string> = {
 // MTN transfer : 1% → 0.5% au 28/07/2026).
 const HUB2_PAYIN_RATE_BPS: Record<string, number> = { ORANGE: 200, MOOV: 200, WAVE: 200, MTN: 200 };
 const HUB2_PAYOUT_RATE_BPS: Record<string, number> = { ORANGE: 100, MOOV: 100, WAVE: 125, MTN: 50 };
-// Marge MobilePay — 1% flat, tout opérateur et tout type de transaction,
+// Marge ORZAYAH — 1% flat, tout opérateur et tout type de transaction,
 // ajoutée en plus des frais HUB2/Reloadly eux-mêmes.
 const MOBILEPAY_MARKUP_BPS = 100;
 
@@ -49,7 +49,7 @@ export class AdminService {
    * KPIs providers (§ dashboard admin) — soldes réels HUB2/Reloadly quand des
    * identifiants sont configurés (sinon `null`, affiché honnêtement côté UI
    * plutôt que de simuler un chiffre) ; consommation Reloadly par opérateur ;
-   * et commissions HUB2 pay-in/pay-out + marge MobilePay, calculées depuis nos
+   * et commissions HUB2 pay-in/pay-out + marge ORZAYAH, calculées depuis nos
    * propres volumes de transactions réussies (grille tarifaire HUB2 réelle
    * fournie par l'administrateur, pas une donnée fictive).
    */
@@ -503,7 +503,7 @@ export class AdminService {
     }
 
     // Commission HUB2 pay-in (recharges wallet, TOPUP) : volume réel × taux
-    // HUB2 réel par opérateur, + marge MobilePay 1% sur le même volume.
+    // HUB2 réel par opérateur, + marge ORZAYAH 1% sur le même volume.
     let payInVolume = 0n;
     let payInHub2Fee = 0;
     for (const row of topupRows) {
@@ -523,7 +523,7 @@ export class AdminService {
     }
     const payOutMarkup = applyRate(payOutVolume, MOBILEPAY_MARKUP_BPS);
 
-    // Reloadly n'expose pas de commission séparée — la marge MobilePay 1% sur
+    // Reloadly n'expose pas de commission séparée — la marge ORZAYAH 1% sur
     // le volume est la seule "commission" que nous percevons sur ces flux.
     const reloadlyTopupVolume = Object.values(consumption.airtime).reduce((a, b) => a + b, 0);
     const reloadlyDataVolume = Object.values(consumption.data).reduce((a, b) => a + b, 0);
@@ -798,7 +798,7 @@ export class AdminService {
 
   /**
    * Détail complet d'une transaction (§ utile en cas de litige) — numéro du
-   * payeur (wallet MobilePay ou Mobile Money externe selon le circuit),
+   * payeur (wallet ORZAYAH ou Mobile Money externe selon le circuit),
    * marchand destinataire, toutes les tentatives de paiement associées.
    */
   async getTransactionDetail(id: string) {
@@ -833,7 +833,7 @@ export class AdminService {
     ]);
 
     // Pour un paiement Mobile Money externe (HUB2, sans wallet source — le
-    // client n'a pas forcément de compte MobilePay), le vrai numéro payeur
+    // client n'a pas forcément de compte ORZAYAH), le vrai numéro payeur
     // se trouve dans la tentative de paiement, pas sur un wallet.
     const lastAttempt = tx.paymentAttempts[tx.paymentAttempts.length - 1];
     const externalPayerPhone =
@@ -955,7 +955,7 @@ export class AdminService {
     const existing = await this.prisma.user.findUnique({ where: { phone } });
 
     // § Un compte existant n'est pas forcément une erreur : il est fréquent
-    // qu'un collaborateur ait DÉJÀ un compte particulier MobilePay avant
+    // qu'un collaborateur ait DÉJÀ un compte particulier ORZAYAH avant
     // qu'on lui donne accès au back-office. Refuser purement et simplement
     // obligeait à créer un second compte avec un autre numéro, ce qui n'a
     // pas de sens. On promeut donc le compte existant, sauf s'il est déjà

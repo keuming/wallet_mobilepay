@@ -3,8 +3,8 @@ import { AuthProvider } from '../contexts/AuthContext';
 import './globals.css';
 
 export const metadata = {
-  title: 'MobilePay CI — Dashboard Marchand',
-  description: 'Dashboard marchand MobilePay CI',
+  title: 'ORZAYAH — Dashboard Marchand',
+  description: 'Dashboard marchand ORZAYAH',
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {

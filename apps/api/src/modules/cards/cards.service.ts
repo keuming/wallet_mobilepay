@@ -19,7 +19,7 @@ export class CardsService {
   /**
    * Émet une carte virtuelle pour un particulier OU un marchand (jamais les
    * deux). Le titulaire doit fournir un nom (pour l'embossage côté partenaire) ;
-   * aucune donnée de carte sensible n'est générée côté MobilePay — tout vient
+   * aucune donnée de carte sensible n'est générée côté ORZAYAH — tout vient
    * de la réponse du partenaire (simulée en local, voir SimulatedCardAdapter).
    */
   async issueCard(params: {

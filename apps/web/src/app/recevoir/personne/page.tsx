@@ -36,12 +36,12 @@ export default function EncaisserPage() {
   const handleShare = async () => {
     if (!requestLink) return;
     const text = amount
-      ? `Merci de m'envoyer ${Number(amount).toLocaleString('fr-FR')} FCFA via MobilePay : ${requestLink}`
-      : `Envoyez-moi de l'argent via MobilePay : ${requestLink}`;
+      ? `Merci de m'envoyer ${Number(amount).toLocaleString('fr-FR')} FCFA via ORZAYAH : ${requestLink}`
+      : `Envoyez-moi de l'argent via ORZAYAH : ${requestLink}`;
 
     if (typeof navigator !== 'undefined' && navigator.share) {
       try {
-        await navigator.share({ title: 'Demande de paiement MobilePay', text });
+        await navigator.share({ title: 'Demande de paiement ORZAYAH', text });
         setShareStatus('shared');
         return;
       } catch {

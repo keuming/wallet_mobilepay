@@ -60,7 +60,7 @@ export default function DashboardPage() {
     return (
       <MerchantShell title="Dashboard">
         <p style={{ color: 'var(--mc-muted)' }}>
-          Aucun marchand rattaché à ce compte. Contactez un agent MobilePay pour créer votre établissement.
+          Aucun marchand rattaché à ce compte. Contactez un agent ORZAYAH pour créer votre établissement.
         </p>
       </MerchantShell>
     );

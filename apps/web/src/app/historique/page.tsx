@@ -192,7 +192,7 @@ export default function HistoriquePage() {
                     </div>
                     {feeAmount !== null && (
                       <div className="mp-detail-row">
-                        <span className="k">Frais MobilePay</span>
+                        <span className="k">Frais ORZAYAH</span>
                         <span className="v">{fcfa(feeAmount)}</span>
                       </div>
                     )}

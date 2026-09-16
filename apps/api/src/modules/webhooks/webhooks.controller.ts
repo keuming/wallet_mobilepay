@@ -10,7 +10,7 @@ import { WebhooksService } from './webhooks.service';
  * IMPORTANT : ce controller doit recevoir le corps BRUT (non parsé) pour que
  * la vérification HMAC porte sur les octets exacts envoyés par HUB2. Voir
  * `main.ts` — `rawBody: true` doit être activé sur `NestFactory.create`.
- * Exclu de Swagger : ces routes ne sont jamais appelées par un client MobilePay.
+ * Exclu de Swagger : ces routes ne sont jamais appelées par un client ORZAYAH.
  */
 @ApiExcludeController()
 @Controller('webhooks')

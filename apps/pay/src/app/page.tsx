@@ -5,7 +5,7 @@ import jsQR from 'jsqr';
 
 /**
  * Scanner QR par caméra (§ rôle réel de la page racine) — décode en direct
- * les images de la caméra, redirige automatiquement dès qu'un QR MobilePay
+ * les images de la caméra, redirige automatiquement dès qu'un QR ORZAYAH
  * est détecté. Saisie manuelle en repli si la caméra est refusée/absente.
  */
 export default function Home() {
@@ -85,7 +85,7 @@ export default function Home() {
 
   return (
     <div className="mp-container" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '32px 24px' }}>
-      <h1 style={{ fontSize: 20, marginBottom: 6, textAlign: 'center' }}>📷 Scanner un QR MobilePay</h1>
+      <h1 style={{ fontSize: 20, marginBottom: 6, textAlign: 'center' }}>📷 Scanner un QR ORZAYAH</h1>
       <p style={{ color: 'var(--mp-muted)', fontSize: 13.5, textAlign: 'center', marginBottom: 20, maxWidth: 320 }}>
         Vise le QR code du marchand ou du particulier — la redirection se fait automatiquement.
       </p>

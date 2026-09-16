@@ -8,7 +8,7 @@ export default function CollectePage() {
       serviceType="COLLECTE"
       title="Collecte"
       icon="📥"
-      description="Marchands utilisant MobilePay pour l'encaissement de masse pour le compte d'un tiers (frais scolaires, factures, cotisations...)."
+      description="Marchands utilisant ORZAYAH pour l'encaissement de masse pour le compte d'un tiers (frais scolaires, factures, cotisations...)."
     />
   );
 }

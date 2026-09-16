@@ -45,7 +45,7 @@ export default function BusinessHomePage() {
       <div className="mp-container">
         <div className="mp-section">
           <p style={{ color: 'var(--fz-text-secondary)' }}>
-            Aucun marchand rattaché à ce compte. Contactez un agent MobilePay.
+            Aucun marchand rattaché à ce compte. Contactez un agent ORZAYAH.
           </p>
         </div>
       </div>
@@ -61,7 +61,7 @@ export default function BusinessHomePage() {
           ☰
         </button>
         <div className="fz-header-logo-wrap">
-          <img src="/brand/mobilepay-logo-badge-dark.svg" alt="MobilePay" className="fz-header-logo" />
+          <img src="/brand/ORZAYAH-logo-badge-dark.svg" alt="ORZAYAH" className="fz-header-logo" />
         </div>
         <div className="fz-profile" onClick={() => setMenuOpen(true)}>
           <span className="fz-avatar">{activeMerchant.businessName.charAt(0).toUpperCase()}</span>

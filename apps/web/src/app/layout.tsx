@@ -5,8 +5,8 @@ import { sora, jakarta } from './fonts';
 import './globals.css';
 
 export const metadata = {
-  title: 'MobilePay CI',
-  description: 'Wallet Particulier — MobilePay CI',
+  title: 'ORZAYAH',
+  description: 'Wallet Particulier — ORZAYAH',
   manifest: '/manifest.json',
   themeColor: '#47b686',
 };
