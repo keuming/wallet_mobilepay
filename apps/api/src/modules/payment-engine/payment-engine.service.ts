@@ -1672,9 +1672,34 @@ export class PaymentEngineService {
     const raw = transaction.paymentAttempts[0]?.rawResponse as any;
     const intentId: string | undefined =
       raw?.id ?? raw?.payments?.[0]?.intentId ?? undefined;
-    // Sans identifiant d'intention exploitable, aucun appel n'est possible :
-    // on le signale pour ne pas gaspiller le délai d'espacement.
-    if (!intentId || !String(intentId).startsWith('pi_')) return false;
+    // § Bug corrigé : cette relance ne sait interroger QUE les intentions de
+    // paiement (pi_…). Un TRANSFERT sortant (PAY-OUT) n'en a pas — sa
+    // référence est un identifiant de transfert. La réconciliation repassait
+    // donc dessus toutes les minutes sans jamais pouvoir le résoudre,
+    // indéfiniment (constaté en production : 1 transaction relancée en
+    // boucle pendant des heures).
+    //
+    // On interroge désormais le bon endpoint selon le type d'objet, et on
+    // renonce proprement quand aucun identifiant exploitable n'existe.
+    if (!intentId || !String(intentId).startsWith('pi_')) {
+      const transferRef = transaction.providerRef;
+      if (transferRef && !transferRef.startsWith('pi_')) {
+        const remoteTransfer = await this.hub2.fetchTransferStatus(transferRef);
+        if (!remoteTransfer) return true;
+        if (['SUCCESS', 'FAILED', 'CANCELLED', 'EXPIRED'].includes(remoteTransfer.status)) {
+          await this.completeWithdrawal(
+            transactionId,
+            remoteTransfer.status === 'SUCCESS',
+            remoteTransfer.failureReason ?? "Le transfert n'a pas abouti.",
+            0n,
+          ).catch((err: any) =>
+            this.logger.warn(`Finalisation transfert (${transactionId}) : ${err?.message ?? err}`),
+          );
+        }
+        return true;
+      }
+      return false;
+    }
 
     const remote = await this.hub2.fetchPaymentIntentStatus(intentId);
     if (!remote) return true; // appel effectué, même sans réponse exploitable

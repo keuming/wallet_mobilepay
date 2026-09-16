@@ -390,12 +390,33 @@ export class Hub2Adapter implements PaymentProviderAdapter {
         "L'opérateur Mobile Money est momentanément indisponible — réessaie dans quelques instants.",
     };
 
-    const failureCode = payload.failure?.code;
+    // § Les transferts (PAY-OUT) échouaient SANS aucune raison journalisée :
+    // on ne lisait que `payload.failure`, qui n'est visiblement pas le champ
+    // utilisé pour les transferts. Sans la charge brute, impossible de savoir
+    // pourquoi un retrait échoue. On la journalise donc intégralement sur
+    // chaque échec — c'est le seul moyen d'apprendre la vraie structure.
+    const rawStatus = String(payload.status ?? '').toLowerCase();
+    if (['failed', 'canceled', 'cancelled', 'expired'].includes(rawStatus)) {
+      this.logger.error(
+        `Webhook ÉCHEC (${envelope.type ?? '?'}) — charge brute : ${JSON.stringify(payload)}`,
+      );
+    }
+
+    // On tente plusieurs emplacements : HUB2 ne documente pas le champ
+    // d'erreur des transferts, et il diffère de celui des paiements.
+    const failureCode =
+      payload.failure?.code ??
+      payload.failureCode ??
+      payload.error?.code ??
+      payload.reason;
     // § Un code inconnu ne doit jamais être affiché brut à l'utilisateur
     // (ex: "wave_payment_expired: Payment too old..." tel qu'observé en
     // production) — on retombe sur un message générique compréhensible, le
     // code technique restant journalisé côté serveur pour le diagnostic.
-    const failureMessage = payload.failure?.message
+    const rawFailureMessage =
+      payload.failure?.message ?? payload.failureMessage ?? payload.error?.message ?? payload.reason;
+
+    const failureMessage = rawFailureMessage
       ? (FRIENDLY_FAILURE_MESSAGES[failureCode ?? ''] ??
         "Le paiement n'a pas pu aboutir. Réessaie, ou contacte ton opérateur Mobile Money si le problème persiste.")
       : undefined;
@@ -512,6 +533,64 @@ export class Hub2Adapter implements PaymentProviderAdapter {
       };
     } catch (err: any) {
       this.logger.warn(`Relance statut HUB2 (${intentId}) — exception : ${err?.message ?? err}`);
+      return null;
+    }
+  }
+
+
+  /**
+   * Interroge l'état d'un TRANSFERT sortant (PAY-OUT).
+   *
+   * § Pendant vrai du suivi des paiements entrants : un transfert n'est pas
+   * une intention de paiement et vit sur un autre endpoint. Sans cette
+   * méthode, un retrait dont le webhook se perd restait bloqué pour
+   * toujours — et la réconciliation le reprenait en boucle sans jamais
+   * pouvoir trancher.
+   */
+  async fetchTransferStatus(transferRef: string): Promise<{
+    status: string;
+    failureReason?: string;
+  } | null> {
+    if (!this.apiKey) return null;
+
+    try {
+      const res = await fetch(`${this.baseUrl}/transfers/${transferRef}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          ApiKey: this.apiKey,
+          MerchantId: this.merchantId,
+          Environment: this.environment,
+        },
+      });
+
+      if (!res.ok) {
+        this.logger.warn(`Relance transfert HUB2 (${transferRef}) — réponse ${res.status}`);
+        return null;
+      }
+
+      const json = await res.json();
+      const statusMap: Record<string, string> = {
+        succeeded: 'SUCCESS',
+        successful: 'SUCCESS',
+        failed: 'FAILED',
+        canceled: 'CANCELLED',
+        cancelled: 'CANCELLED',
+      };
+      const raw = String(json.status ?? '').toLowerCase();
+
+      this.logger.log(
+        `Relance transfert HUB2 (${transferRef}) : status=${raw}` +
+          (raw === 'failed' ? ` — charge brute : ${JSON.stringify(json)}` : ''),
+      );
+
+      return {
+        status: statusMap[raw] ?? 'PENDING',
+        failureReason:
+          json.failure?.message ?? json.failureMessage ?? json.reason ?? undefined,
+      };
+    } catch (err: any) {
+      this.logger.warn(`Relance transfert HUB2 (${transferRef}) — exception : ${err?.message ?? err}`);
       return null;
     }
   }
