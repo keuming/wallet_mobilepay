@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import {
   View,
   Text,
+  Image,
   StyleSheet,
   ScrollView,
   Pressable,
@@ -14,7 +15,6 @@ import { useAuth } from '../src/contexts/AuthContext';
 import { apiFetch } from '../src/lib/apiClient';
 import { colors, spacing, fontSize, radius, shadow } from '../src/theme';
 import SideMenu from '../src/components/SideMenu';
-import MPayIcon from '../src/components/MPayIcon';
 
 interface Wallet {
   cachedBalance: number;
@@ -110,12 +110,15 @@ export default function DashboardScreen() {
           <Pressable style={styles.iconBtn} onPress={() => setMenuOpen(true)}>
             <Text style={styles.iconBtnText}>☰</Text>
           </Pressable>
-          <View style={styles.logoBadge}>
-            <MPayIcon size={26} />
-            <Text style={styles.logoText}>
-              Mobile<Text style={{ color: colors.accent }}>Pay</Text>
-            </Text>
-          </View>
+          {/* § Le logotype complet, pas « monogramme + texte » : le « OR »
+              est DÉJÀ contenu dans ORZAYAH, les juxtaposer faisait lire
+              « OR ORZAYAH ». Le logo officiel porte les deux d'un seul
+              tenant. */}
+          <Image
+            source={require('../assets/logo.png')}
+            style={styles.headerLogo}
+            resizeMode="contain"
+          />
           <Pressable style={styles.avatar} onPress={() => router.push('/profil')}>
             <Text style={styles.avatarText}>{user.firstName.charAt(0).toUpperCase()}</Text>
           </Pressable>
@@ -326,28 +329,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   iconBtnText: { fontSize: 22, fontWeight: '900', color: '#000' },
-logoBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.navy,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    borderRadius: radius.md,
-    gap: spacing.sm,
-  },
-  logoMark: {
-    width: 26,
-    height: 26,
-    borderRadius: 8,
-    backgroundColor: colors.accent,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  logoMarkText: { fontSize: 13 },
-  logoText: { color: '#fff', fontWeight: '800', fontSize: fontSize.lg },
-
-
-
+  headerLogo: { width: 128, height: 38 },
   sectionHeader: {
     flexDirection: 'row',
     alignItems: 'center',

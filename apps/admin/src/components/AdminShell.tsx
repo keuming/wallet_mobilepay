@@ -47,7 +47,7 @@ export default function AdminShell({ title, children }: { title: string; childre
     <div className="adm-shell">
       <aside className="adm-sidebar">
         <div className="adm-sidebar-brand">
-          Mobile<span>Pay</span> Admin
+          ORZAYAH Admin
         </div>
         <nav>
           {NAV_ITEMS.map((item) => (

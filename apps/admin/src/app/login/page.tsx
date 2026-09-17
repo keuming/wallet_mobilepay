@@ -85,7 +85,7 @@ export default function LoginPage() {
               <div className="adm-login-logo-mark">M</div>
             </div>
             <div className="adm-login-brand">
-              Mobile<span>Pay</span>
+              ORZAYAH
             </div>
 
             <form onSubmit={step === 'credentials' ? handleSubmit : handleVerifyOtp} className="adm-login-form">

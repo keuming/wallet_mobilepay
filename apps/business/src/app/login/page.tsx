@@ -61,7 +61,7 @@ export default function LoginPage() {
       <div style={{ maxWidth: 380, margin: '0 auto', width: '100%', padding: 20 }}>
         <div style={{ textAlign: 'center', marginBottom: 28 }}>
           <div style={{ fontWeight: 800, fontSize: 22, color: 'white', fontFamily: 'Sora, sans-serif' }}>
-            Mobile<span style={{ color: '#00d27a' }}>Pay</span>
+            ORZAYAH
           </div>
           <div style={{ color: 'rgba(255,255,255,0.75)', fontSize: 12.5, marginTop: 4, fontWeight: 600, letterSpacing: 0.4 }}>
             BUSINESS — ENCAISSEMENT

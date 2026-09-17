@@ -49,7 +49,7 @@ export default function LoginPage() {
     <div className="mc-login-shell">
       <div className="mc-login-card">
         <div style={{ fontWeight: 800, fontSize: 18, marginBottom: 4, color: '#0f2d52' }}>
-          Mobile<span style={{ color: '#00d27a' }}>Pay</span>
+          ORZAYAH
         </div>
         <div style={{ color: '#5a7a94', fontSize: 13, marginBottom: 24 }}>Dashboard Marchand</div>
         <form onSubmit={step === 'credentials' ? handleSubmit : handleVerifyOtp} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
