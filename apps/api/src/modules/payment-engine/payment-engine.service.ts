@@ -1767,4 +1767,129 @@ export class PaymentEngineService {
     return true;
   }
 
+
+  /**
+   * Identifiant fixe du compte technique "QR Lite" — propriétaire de toutes
+   * les transactions d'achat de crédit/data sans compte ORZAYAH. Le schéma
+   * exige un `initiatedByUserId` non nul sur chaque transaction ; plutôt que
+   * d'assouplir cette contrainte (migration risquée sur la base de
+   * production, effets de bord sur toutes les requêtes qui la supposent
+   * non nulle), on utilise le même mécanisme que le "compte invité" de
+   * n'importe quelle plateforme e-commerce.
+   */
+  private static readonly LITE_SYSTEM_PHONE = '+2250000000000';
+  private liteSystemUserId: string | null = null;
+
+  private async getLiteSystemUserId(): Promise<string> {
+    if (this.liteSystemUserId) return this.liteSystemUserId;
+
+    const existing = await this.prisma.user.findUnique({
+      where: { phone: PaymentEngineService.LITE_SYSTEM_PHONE },
+      select: { id: true },
+    });
+    if (existing) {
+      this.liteSystemUserId = existing.id;
+      return existing.id;
+    }
+
+    // Créé une seule fois, au tout premier achat QR Lite du service.
+    const created = await this.prisma.user.create({
+      data: {
+        phone: PaymentEngineService.LITE_SYSTEM_PHONE,
+        firstName: 'ORZAYAH',
+        lastName: 'QR Lite',
+        country: 'CI',
+        role: 'PARTICULIER',
+        // Compte technique : jamais de connexion possible avec ce mot de
+        // passe — personne ne le connaît, et l'authentification par mot de
+        // passe seul ne suffit de toute façon jamais (voir flux OTP).
+        passwordHash: await bcrypt.hash(crypto.randomUUID(), 10),
+      },
+      select: { id: true },
+    });
+    this.liteSystemUserId = created.id;
+    return created.id;
+  }
+
+  /**
+   * Achat de crédit/data SANS compte ORZAYAH — le parcours "QR Lite" du site
+   * vitrine. N'importe qui scanne le QR, paie depuis son propre Mobile
+   * Money, reçoit son crédit : aucune inscription, aucun mot de passe,
+   * aucun code secret (rien à débiter chez nous, tout part chez
+   * l'opérateur).
+   */
+  async purchaseAirtimeLite(params: {
+    phoneNumber: string;
+    operatorId?: string;
+    amount: bigint;
+    kind: 'AIRTIME' | 'DATA';
+    momoProvider: string;
+    payerPhone: string;
+    countryCode: string;
+  }) {
+    if (!params.momoProvider) {
+      throw new BadRequestException("L'opérateur Mobile Money du payeur est requis.");
+    }
+    const systemUserId = await this.getLiteSystemUserId();
+    const label = params.kind === 'DATA' ? 'Forfait data' : 'Recharge crédit';
+    const idempotencyKey = `LITE-${nanoid(16)}`;
+
+    const transaction = await this.prisma.transaction.create({
+      data: {
+        type: 'AIRTIME',
+        status: 'PROCESSING',
+        amount: params.amount,
+        initiatedByUserId: systemUserId,
+        description: `${label} ${params.phoneNumber} (QR Lite, sans compte) — en attente de confirmation du paiement`,
+        providerName: 'HUB2',
+        operatorId: params.operatorId,
+        airtimeKind: params.kind,
+        idempotencyKey,
+      },
+    });
+
+    await this.prisma.pendingAirtimeDelivery.create({
+      data: {
+        transactionId: transaction.id,
+        phoneNumber: params.phoneNumber,
+        operatorId: params.operatorId,
+        kind: params.kind,
+        countryCode: params.countryCode,
+      },
+    });
+
+    const collection = await this.hub2.initiateTopup({
+      walletId: '',
+      amount: params.amount,
+      currency: 'XOF',
+      customerPhone: params.payerPhone,
+      reference: transaction.id,
+      provider: params.momoProvider,
+      country: params.countryCode,
+    });
+
+    await this.prisma.transaction.update({
+      where: { id: transaction.id },
+      data: { providerRef: collection.providerRef },
+    });
+    await this.prisma.paymentAttempt.create({
+      data: {
+        transactionId: transaction.id,
+        providerName: 'HUB2',
+        status: 'PROCESSING',
+        providerRef: collection.providerRef,
+        rawResponse: collection.raw as Prisma.InputJsonValue,
+      },
+    });
+
+    return {
+      id: transaction.id,
+      status: transaction.status,
+      providerRef: collection.providerRef,
+      nextActionType: collection.nextActionType,
+      nextActionMessage: collection.nextActionMessage,
+      nextActionUrl: collection.redirectUrl,
+    };
+  }
+
 }
