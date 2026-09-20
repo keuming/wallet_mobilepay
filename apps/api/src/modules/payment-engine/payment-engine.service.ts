@@ -1829,6 +1829,7 @@ export class PaymentEngineService {
     recipientCountry: string;
     /** Pays du payeur — pilote la collecte HUB2 (Mobile Money). */
     payerCountry: string;
+    otpCode?: string;
   }) {
     if (!params.momoProvider) {
       throw new BadRequestException("L'opérateur Mobile Money du payeur est requis.");
@@ -1871,6 +1872,7 @@ export class PaymentEngineService {
       reference: transaction.id,
       provider: params.momoProvider,
       country: params.payerCountry,
+      otpCode: params.otpCode,
     });
 
     await this.prisma.transaction.update({
