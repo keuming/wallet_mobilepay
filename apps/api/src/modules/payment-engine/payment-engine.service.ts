@@ -1381,6 +1381,10 @@ export class PaymentEngineService {
    * Reloadly que si le paiement a effectivement réussi.
    */
   async completeAirtimeMobileMoneyDeposit(transactionId: string, paymentSuccess: boolean, failureReason?: string, hub2FeeAmount: bigint = 0n) {
+    const transaction2 = await this.prisma.transaction.findUnique({ where: { id: transactionId } });
+    if (transaction2?.idempotencyKey?.startsWith('LITE-')) {
+      return this.completeAirtimeLiteDeposit(transactionId, paymentSuccess, failureReason);
+    }
     const transaction = await this.prisma.transaction.findUniqueOrThrow({ where: { id: transactionId } });
     if (transaction.status === 'SUCCESS' || transaction.status === 'FAILED') {
       return transaction; // déjà traité — idempotence webhook
@@ -1456,6 +1460,71 @@ export class PaymentEngineService {
     return updated;
   }
 
+  private async completeAirtimeLiteDeposit(transactionId: string, paymentSuccess: boolean, failureReason?: string) {
+    const transaction = await this.prisma.transaction.findUniqueOrThrow({ where: { id: transactionId } });
+    if (transaction.status === 'SUCCESS' || transaction.status === 'FAILED') {
+      return transaction;
+    }
+
+    if (!paymentSuccess) {
+      return this.prisma.transaction.update({
+        where: { id: transactionId },
+        data: { status: 'FAILED', failureReason: failureReason ?? "Le paiement n'a pas pu etre confirme." },
+      });
+    }
+
+    const pending = await this.prisma.pendingAirtimeDelivery.findUnique({ where: { transactionId } });
+    if (!pending) {
+      return this.prisma.transaction.update({
+        where: { id: transactionId },
+        data: { status: 'FAILED', failureReason: 'Details de livraison introuvables.' },
+      });
+    }
+
+    this.logger.log(
+      `Livraison Lite (${transaction.id}) : operateur=${pending.operatorId} ` +
+        `montant envoye=${Number(transaction.amount) / 100} FCFA (${transaction.amount} centimes)`,
+    );
+
+    const result = await this.reloadly.purchaseAirtime({
+      phoneNumber: pending.phoneNumber,
+      operatorId: pending.operatorId ?? undefined,
+      amount: transaction.amount,
+      kind: pending.kind as 'AIRTIME' | 'DATA',
+      reference: transaction.id,
+      countryCode: pending.countryCode,
+    });
+
+    const finalStatus = result.status === 'SUCCESS' ? 'SUCCESS' : 'FAILED';
+
+    await this.prisma.paymentAttempt.create({
+      data: {
+        transactionId: transaction.id,
+        providerName: 'RELOADLY',
+        status: finalStatus,
+        providerRef: result.providerRef,
+        rawResponse: result.raw as Prisma.InputJsonValue,
+      },
+    });
+
+    const updated = await this.prisma.transaction.update({
+      where: { id: transactionId },
+      data: {
+        status: finalStatus,
+        operatorName: result.operatorName,
+        failureReason:
+          finalStatus === 'FAILED'
+            ? `Paiement recu mais echec de la livraison Reloadly.${result.failureReason ? ` (${result.failureReason})` : ''}`
+            : undefined,
+      },
+    });
+
+    if (updated.status === 'SUCCESS') {
+      await this.notifyAirtimeDelivery(pending.phoneNumber, transaction.amount, pending.kind as 'AIRTIME' | 'DATA', updated.operatorName);
+    }
+
+    return updated;
+  }
   /** Initie une recharge de wallet particulier via HUB2 (cash-in mobile money). */
   async initiateTopup(
     userId: string,
