@@ -20,6 +20,16 @@ export interface InitiateTopupParams {
    * s'écoule pendant que le client cherche son code, et le paiement expire.
    */
   otpCode?: string;
+  /**
+   * URL vers lesquelles Wave (entre autres) redirige le client après avoir
+   * quitté son application. § Bug corrigé : ces URL étaient codées en dur
+   * sur le dashboard marchand, quel que soit l'appelant — un client ayant
+   * payé via le parcours QR Lite (sans compte) se retrouvait renvoyé vers
+   * un écran de connexion marchand, sans rapport avec son achat. Chaque
+   * appelant doit désormais fournir SES propres URL de retour.
+   */
+  onSuccessRedirectionUrl?: string;
+  onFailedRedirectionUrl?: string;
 }
 
 export interface InitiateWithdrawalParams {

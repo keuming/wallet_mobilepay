@@ -183,8 +183,13 @@ export class Hub2Adapter implements PaymentProviderAdapter {
         // redirige le client vers sa propre interface avant de revenir) —
         // doivent être imbriqués DANS mobileMoney (schéma officiel
         // PayMobileMoneyDto), pas au niveau racine du corps.
-        onSuccessRedirectionUrl: 'https://business.mobilepay-ci.com/transactions',
-        onFailedRedirectionUrl: 'https://business.mobilepay-ci.com/encaisser',
+        // § Repli sur le dashboard marchand UNIQUEMENT si l'appelant ne
+        // fournit rien — préserve le comportement existant du parcours
+        // d'encaissement, qui n'a jamais transmis ces champs explicitement.
+        onSuccessRedirectionUrl:
+          params.onSuccessRedirectionUrl ?? 'https://business.mobilepay-ci.com/transactions',
+        onFailedRedirectionUrl:
+          params.onFailedRedirectionUrl ?? 'https://business.mobilepay-ci.com/encaisser',
       },
     };
 
