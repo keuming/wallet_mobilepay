@@ -149,8 +149,19 @@ export class WebhooksService {
       );
     }
 
+    // § Journalisation corrigée : affichait `verification.status`, qui ne
+    // reflète que le PAIEMENT côté HUB2 (le client a-t-il payé ?), jamais
+    // le résultat final de la livraison Reloadly — d'où des lignes
+    // "finalisée — statut=SUCCESS" alarmantes en présence d'un échec de
+    // livraison juste au-dessus. On relit l'état réel en base pour
+    // journalisation fidèle.
+    const finalTransaction = await this.prisma.transaction.findUnique({
+      where: { id: transaction.id },
+      select: { status: true },
+    });
     this.logger.log(
-      `Webhook HUB2 : transaction ${transaction.id} (${transaction.type}) finalisée — statut=${verification.status}` +
+      `Webhook HUB2 : transaction ${transaction.id} (${transaction.type}) finalisée — ` +
+        `paiement=${verification.status} statut final=${finalTransaction?.status ?? '?'}` +
         (verification.failureCode ? ` code=${verification.failureCode}` : '') +
         (verification.failureReason ? ` raison=${verification.failureReason}` : ''),
     );
