@@ -6,6 +6,9 @@ import { normalizePhoneStrict } from '../../common/utils/phone.util';
 
 const MAX_TRANSACTION_AMOUNT_CENTS = 50_000_00; // 50 000 FCFA — plafond QR Lite
 
+/** Pays où HUB2 sait collecter un paiement Mobile Money (zones UEMOA/CEMAC). */
+const HUB2_COUNTRIES = ['CI', 'SN', 'ML', 'BF', 'BJ', 'TG', 'NE', 'GW', 'CM', 'GA', 'CG', 'TD', 'CF', 'GQ'];
+
 /**
  * § Endpoint DÉLIBÉRÉMENT public : c'est tout le sens du "QR Lite" —
  * scanner un code depuis le site vitrine et acheter du crédit SANS jamais
@@ -22,6 +25,11 @@ export class PurchaseAirtimeLiteDto {
   @IsString()
   @MinLength(6, { message: 'Numéro du bénéficiaire invalide.' })
   phoneNumber: string;
+
+  // § Pays du BÉNÉFICIAIRE — Reloadly couvre 190+ pays, quel qu'il soit :
+  // on peut acheter du crédit pour n'importe qui, où qu'il vive.
+  @IsString()
+  recipientCountry: string;
 
   @IsInt()
   @IsPositive()
@@ -42,8 +50,12 @@ export class PurchaseAirtimeLiteDto {
   @MinLength(6, { message: 'Numéro du payeur invalide.' })
   payerPhone: string;
 
-  @IsString()
-  countryCode: string;
+  // § Pays du PAYEUR — c'est LUI qui paie en Mobile Money via HUB2, donc
+  // forcément l'un des pays qu'HUB2 sait collecter. Distinct du pays du
+  // bénéficiaire : on peut très bien payer depuis la Côte d'Ivoire pour
+  // recharger un proche au Sénégal, en France ou ailleurs.
+  @IsIn(HUB2_COUNTRIES, { message: 'Le paiement Mobile Money doit se faire depuis un pays UEMOA ou CEMAC.' })
+  payerCountry: string;
 }
 
 @Controller('airtime-lite')
@@ -63,9 +75,11 @@ export class AirtimeLiteController {
   async purchase(@Body() dto: PurchaseAirtimeLiteDto) {
     // La normalisation STRICTE rejette un numéro réellement invalide avec un
     // message clair, plutôt que de le laisser échouer silencieusement plus
-    // loin chez l'opérateur.
-    const phoneNumber = normalizePhoneStrict(dto.phoneNumber, dto.countryCode as any);
-    const payerPhone = normalizePhoneStrict(dto.payerPhone, dto.countryCode as any);
+    // loin chez l'opérateur. Chaque numéro est normalisé avec SON PROPRE
+    // pays — le bénéficiaire et le payeur peuvent vivre dans des pays
+    // différents.
+    const phoneNumber = normalizePhoneStrict(dto.phoneNumber, dto.recipientCountry as any);
+    const payerPhone = normalizePhoneStrict(dto.payerPhone, dto.payerCountry as any);
 
     return this.paymentEngine.purchaseAirtimeLite({
       phoneNumber,
@@ -74,7 +88,8 @@ export class AirtimeLiteController {
       operatorId: dto.operatorId,
       momoProvider: dto.momoProvider,
       payerPhone,
-      countryCode: dto.countryCode,
+      recipientCountry: dto.recipientCountry,
+      payerCountry: dto.payerCountry,
     });
   }
 }

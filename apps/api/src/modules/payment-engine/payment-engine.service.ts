@@ -1825,7 +1825,10 @@ export class PaymentEngineService {
     kind: 'AIRTIME' | 'DATA';
     momoProvider: string;
     payerPhone: string;
-    countryCode: string;
+    /** Pays du bénéficiaire — pilote le catalogue Reloadly et la livraison. */
+    recipientCountry: string;
+    /** Pays du payeur — pilote la collecte HUB2 (Mobile Money). */
+    payerCountry: string;
   }) {
     if (!params.momoProvider) {
       throw new BadRequestException("L'opérateur Mobile Money du payeur est requis.");
@@ -1854,10 +1857,12 @@ export class PaymentEngineService {
         phoneNumber: params.phoneNumber,
         operatorId: params.operatorId,
         kind: params.kind,
-        countryCode: params.countryCode,
+        countryCode: params.recipientCountry,
       },
     });
 
+    // § HUB2 collecte auprès du PAYEUR : c'est son pays qui détermine
+    // l'opérateur Mobile Money interrogé, pas celui du bénéficiaire.
     const collection = await this.hub2.initiateTopup({
       walletId: '',
       amount: params.amount,
@@ -1865,7 +1870,7 @@ export class PaymentEngineService {
       customerPhone: params.payerPhone,
       reference: transaction.id,
       provider: params.momoProvider,
-      country: params.countryCode,
+      country: params.payerCountry,
     });
 
     await this.prisma.transaction.update({
