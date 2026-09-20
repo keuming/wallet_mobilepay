@@ -1818,6 +1818,9 @@ export class PaymentEngineService {
    * aucun code secret (rien à débiter chez nous, tout part chez
    * l'opérateur).
    */
+  /** Frais fixes QR Lite — 100 FCFA (10 000 centimes) par achat, ajustable ici. */
+  private static readonly LITE_FEE_CENTS = 10_000n;
+
   async purchaseAirtimeLite(params: {
     phoneNumber: string;
     operatorId?: string;
@@ -1829,6 +1832,14 @@ export class PaymentEngineService {
     recipientCountry: string;
     /** Pays du payeur — pilote la collecte HUB2 (Mobile Money). */
     payerCountry: string;
+    /**
+     * Code Orange fourni EN AMONT (§ recommandation officielle HUB2 : le
+     * délai d'Orange est de 10 minutes ; le demander APRÈS l'initiation
+     * consomme ce délai avant même que le client ait pu le saisir, d'où les
+     * expirations systématiques observées). Le client compose #144*82# et
+     * saisit le code AVANT de valider — le paiement part déjà authentifié.
+     */
+    otpCode?: string;
   }) {
     if (!params.momoProvider) {
       throw new BadRequestException("L'opérateur Mobile Money du payeur est requis.");
@@ -1861,21 +1872,30 @@ export class PaymentEngineService {
       },
     });
 
+    // § Frais QR Lite : 100 FCFA fixes par achat, collectés en plus du
+    // montant chez le PAYEUR via HUB2. Reloadly, lui, ne reçoit et ne livre
+    // TOUJOURS que le montant pur (params.amount, voir
+    // pendingAirtimeDelivery ci-dessus, déjà écrit avant ce point) —
+    // augmenter ce qui est collecté ne doit jamais augmenter ce qui est
+    // livré, sous peine de perdre de l'argent sur chaque transaction.
+    const collectionAmount = params.amount + PaymentEngineService.LITE_FEE_CENTS;
+
     // § HUB2 collecte auprès du PAYEUR : c'est son pays qui détermine
     // l'opérateur Mobile Money interrogé, pas celui du bénéficiaire.
     const collection = await this.hub2.initiateTopup({
       walletId: '',
-      amount: params.amount,
+      amount: collectionAmount,
       currency: 'XOF',
       customerPhone: params.payerPhone,
       reference: transaction.id,
       provider: params.momoProvider,
       country: params.payerCountry,
+      otpCode: params.otpCode,
     });
 
     await this.prisma.transaction.update({
       where: { id: transaction.id },
-      data: { providerRef: collection.providerRef },
+      data: { providerRef: collection.providerRef, feeAmount: PaymentEngineService.LITE_FEE_CENTS },
     });
     await this.prisma.paymentAttempt.create({
       data: {
@@ -1894,7 +1914,31 @@ export class PaymentEngineService {
       nextActionType: collection.nextActionType,
       nextActionMessage: collection.nextActionMessage,
       nextActionUrl: collection.redirectUrl,
+      feeAmount: PaymentEngineService.LITE_FEE_CENTS.toString(),
     };
+  }
+
+
+  /**
+   * Lecture PUBLIQUE et volontairement minimale d'une transaction, pour le
+   * suivi côté page /lite (§ airtime-lite.controller.ts). Seuls les champs
+   * nécessaires à l'affichage sont renvoyés — jamais les écritures
+   * comptables, les tentatives de paiement brutes ni tout autre détail
+   * qu'expose l'endpoint authentifié /transactions/:id.
+   */
+  async findLiteTransactionPublic(transactionId: string) {
+    const tx = await this.prisma.transaction.findUnique({
+      where: { id: transactionId },
+      select: {
+        id: true,
+        status: true,
+        nextActionType: true,
+        nextActionMessage: true,
+        nextActionUrl: true,
+        failureReason: true,
+      },
+    });
+    return tx;
   }
 
 }
