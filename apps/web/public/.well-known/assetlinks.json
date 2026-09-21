@@ -3,6 +3,6 @@
   "target": {
     "namespace": "android_app",
     "package_name": "com.orzayah.wallet.twa",
-    "sha256_cert_fingerprints": ["D1:45:8A:02:4B:56:A3:65:EA:B8:81:D4:D1:9D:2B:47:5F:FB:BA:CF:BF:0D:4F:E7:6E:FA:65:0C:6F:58:5A:AE"]
+    "sha256_cert_fingerprints": ["DC:0B:4A:5E:58:7B:66:F1:FC:E5:1A:E5:6C:FF:7E:99:C7:CE:49:85:12:EC:ED:B9:4B:C8:46:F6:AC:B9:C9:F1"]
   }
 }]
