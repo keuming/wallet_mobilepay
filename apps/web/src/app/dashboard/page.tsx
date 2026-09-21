@@ -129,7 +129,7 @@ export default function DashboardPage() {
           ☰
         </button>
         <div className="fz-header-logo-wrap">
-          <img src="/brand/ORZAYAH-logo-badge-dark.svg" alt="ORZAYAH" className="fz-header-logo" />
+          <img src="/brand/orzayah-logo.png" alt="ORZAYAH" className="fz-header-logo" />
         </div>
         <Link href="/profil" className="fz-profile" title="Mon profil">
           {user.profilePhotoBase64 ? (

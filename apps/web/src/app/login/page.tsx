@@ -74,8 +74,7 @@ function LoginPageInner() {
     <div className="mp-container mp-center-page">
       <div className="mp-header" style={{ paddingBottom: 14, borderRadius: '0 0 32px 32px' }}>
         <div className="mp-brand-mark">
-          <span className="dot" />
-          ORZAYAH
+          <img src="/brand/orzayah-logo.png" alt="ORZAYAH" style={{ height: 32, width: "auto" }} />
         </div>
         <h1>Bon retour parmi nous</h1>
         <p>{step === 'credentials' ? 'Connectez-vous pour accéder à votre wallet' : 'Dernière étape — vérification de sécurité'}</p>
