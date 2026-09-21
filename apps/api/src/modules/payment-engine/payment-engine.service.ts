@@ -1840,7 +1840,6 @@ export class PaymentEngineService {
      * saisit le code AVANT de valider — le paiement part déjà authentifié.
      */
     otpCode?: string;
-    idempotencyKey: string;
   }) {
     if (!params.momoProvider) {
       throw new BadRequestException("L'opérateur Mobile Money du payeur est requis.");
