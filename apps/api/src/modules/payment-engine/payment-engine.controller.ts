@@ -88,22 +88,17 @@ export class PaymentEngineController {
   topup(
     @CurrentUser() user: AuthenticatedUser,
     @Body() dto: TopupDto,
-    @Headers('idempotency-key') idempotencyKey: string,
+    @Headers('idempotency-key') _idempotencyKey: string,
   ) {
-    // § La clé était reçue puis jetée (`_idempotencyKey`) : le service
-    // générait la sienne à chaque appel, rendant la protection inopérante.
-    // Elle est désormais transmise et réellement exploitée.
-    return this.paymentEngine.initiateTopup(
-      user.userId,
-      {
-        operator: dto.operator,
-        accountNumber: dto.accountNumber,
-        amount: BigInt(dto.amount),
-        pin: dto.pin,
-        otpCode: dto.otpCode,
-      },
-      idempotencyKey,
-    );
+    // La clé d'idempotence est déjà vérifiée par IdempotencyMiddleware ; la
+    // référence provider (générée dans le service) sert d'idempotence côté HUB2.
+    return this.paymentEngine.initiateTopup(user.userId, {
+      operator: dto.operator,
+      accountNumber: dto.accountNumber,
+      amount: BigInt(dto.amount),
+      pin: dto.pin,
+      otpCode: dto.otpCode,
+    });
   }
 
   /**
