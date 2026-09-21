@@ -201,6 +201,7 @@ export class ReloadlyAdapter {
       customIdentifier: params.reference,
     };
 
+    this.logger.warn('Corps envoye a Reloadly /topups : ' + JSON.stringify(body));
     const res = await fetch(`${this.baseUrl}/topups`, {
       method: 'POST',
       headers: {
