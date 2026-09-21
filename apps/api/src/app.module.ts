@@ -77,6 +77,11 @@ export class AppModule implements NestModule {
         'api/wallets/withdraw',
         'api/wallets/send-external',
         'api/airtime',
+        // § QR Lite (achat sans compte) : le trou décrit ci-dessus, en
+        // vrai. Sans cette ligne, un rejeu réseau ou un double-clic sur
+        // "Confirmer le paiement" créait une SECONDE transaction, donc un
+        // second débit réel chez le payeur.
+        'api/airtime-lite',
         'api/cards/:id/load',
         // Cartes cadeaux / factures (particulier)
         'api/gift-cards/orders',

@@ -1,4 +1,5 @@
-import { Body, Controller, Get, Post, Query } from '@nestjs/common';
+import { Body, Controller, Get, Headers, NotFoundException, Param, Post, Query } from '@nestjs/common';
+import { assertIdempotencyKey } from '../../common/utils/idempotency.util';
 import { IsIn, IsInt, IsOptional, IsPositive, IsString, Max, MinLength } from 'class-validator';
 import { PaymentEngineService } from './payment-engine.service';
 import { ReloadlyAdapter } from './providers/reloadly.adapter';
@@ -56,6 +57,13 @@ export class PurchaseAirtimeLiteDto {
   // recharger un proche au Sénégal, en France ou ailleurs.
   @IsIn(HUB2_COUNTRIES, { message: 'Le paiement Mobile Money doit se faire depuis un pays UEMOA ou CEMAC.' })
   payerCountry: string;
+
+  // § Orange uniquement : code généré via #144*82#, transmis EN AMONT
+  // (voir commentaire sur purchaseAirtimeLite). Absent pour les autres
+  // opérateurs, qui authentifient directement sur le téléphone du payeur.
+  @IsOptional()
+  @IsString()
+  otpCode?: string;
 }
 
 @Controller('airtime-lite')
@@ -71,8 +79,39 @@ export class AirtimeLiteController {
     return this.reloadly.listOperatorsForCountry(country);
   }
 
+  /**
+   * § Suivi PUBLIC d'une transaction QR Lite — sans ce doublon,
+   * la page /lite interrogeait GET /transactions/:id, qui exige un jeton
+   * (aucun compte sur ce parcours). Chaque appel échouait en 401,
+   * silencieusement absorbé côté client : l'écran restait figé sur le
+   * formulaire même après un paiement Wave réellement réussi.
+   *
+   * On expose ici UNIQUEMENT ce qui sert à l'affichage (statut, action
+   * requise, raison d'échec) — jamais les écritures comptables ni les
+   * détails internes que renvoie l'endpoint authentifié.
+   */
+  @Get(':id/status')
+  async getStatus(@Param('id') id: string) {
+    await this.paymentEngine.refreshFromProvider(id).catch(() => null);
+
+    const transaction = await this.paymentEngine.findLiteTransactionPublic(id);
+    if (!transaction) throw new NotFoundException('Transaction introuvable.');
+    return transaction;
+  }
+
   @Post()
-  async purchase(@Body() dto: PurchaseAirtimeLiteDto) {
+  async purchase(
+    @Body() dto: PurchaseAirtimeLiteDto,
+    @Headers('idempotency-key') idempotencyKeyHeader: string,
+  ) {
+    // § Défense en profondeur : le middleware exige déjà cet en-tête (voir
+    // app.module.ts), mais l'ancien service générait SA PROPRE clé
+    // aléatoire à chaque appel plutôt que de réutiliser celle-ci — un rejeu
+    // réseau ou un double-clic sur "Confirmer" créait donc systématiquement
+    // une SECONDE transaction et un second débit réel, malgré l'en-tête
+    // présent. Corrigé : la clé du client est désormais celle qui compte.
+    const idempotencyKey = assertIdempotencyKey(idempotencyKeyHeader);
+
     // La normalisation STRICTE rejette un numéro réellement invalide avec un
     // message clair, plutôt que de le laisser échouer silencieusement plus
     // loin chez l'opérateur. Chaque numéro est normalisé avec SON PROPRE
@@ -90,6 +129,8 @@ export class AirtimeLiteController {
       payerPhone,
       recipientCountry: dto.recipientCountry,
       payerCountry: dto.payerCountry,
+      otpCode: dto.otpCode,
+      idempotencyKey,
     });
   }
 }
