@@ -88,7 +88,7 @@ export class PaymentEngineController {
   topup(
     @CurrentUser() user: AuthenticatedUser,
     @Body() dto: TopupDto,
-    @Headers('idempotency-key') _idempotencyKey: string,
+    @Headers('idempotency-key') idempotencyKey: string,
   ) {
     // La clé d'idempotence est déjà vérifiée par IdempotencyMiddleware ; la
     // référence provider (générée dans le service) sert d'idempotence côté HUB2.
@@ -98,7 +98,7 @@ export class PaymentEngineController {
       amount: BigInt(dto.amount),
       pin: dto.pin,
       otpCode: dto.otpCode,
-    });
+    }, idempotencyKey);
   }
 
   /**

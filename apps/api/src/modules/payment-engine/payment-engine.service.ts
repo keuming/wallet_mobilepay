@@ -1460,7 +1460,14 @@ export class PaymentEngineService {
   async initiateTopup(
     userId: string,
     params: { operator: 'ORANGE' | 'MOOV' | 'WAVE' | 'MTN'; accountNumber: string; amount: bigint; pin?: string; otpCode?: string },
+    idempotencyKey: string,
   ) {
+    assertIdempotencyKey(idempotencyKey);
+    const existingTopup = await this.prisma.transaction.findUnique({ where: { idempotencyKey } });
+    if (existingTopup) {
+      return { id: existingTopup.id, status: existingTopup.status };
+    }
+
     // § Dépôt : le code secret n'est plus exigé (voir TopupDto). S'il est
     // tout de même fourni par un client plus ancien, on le vérifie — on ne
     // laisse jamais passer un code ERRONÉ silencieusement.
