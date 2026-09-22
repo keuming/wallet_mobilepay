@@ -61,7 +61,7 @@ export class AdminService {
         failureReason: { contains: 'remboursement', mode: 'insensitive' },
       },
       include: {
-        paymentAttempts: { orderBy: { createdAt: 'desc' }, take: 1 },
+        paymentAttempts: { where: { providerName: 'HUB2' }, orderBy: { createdAt: 'desc' }, take: 1 },
       },
       orderBy: { createdAt: 'desc' },
     });
@@ -93,7 +93,7 @@ export class AdminService {
   async processRefund(transactionId: string) {
     const tx = await this.prisma.transaction.findUniqueOrThrow({
       where: { id: transactionId },
-      include: { paymentAttempts: { orderBy: { createdAt: 'desc' }, take: 1 } },
+      include: { paymentAttempts: { where: { providerName: 'HUB2' }, orderBy: { createdAt: 'desc' }, take: 1 } },
     });
 
     if (tx.refundedAt) {
