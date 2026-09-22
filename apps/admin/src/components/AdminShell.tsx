@@ -12,6 +12,7 @@ const NAV_ITEMS = [
   { href: '/agents', label: '🧑\u200d💼 Agents' },
   { href: '/transactions', label: '💳 Transactions' },
   { href: '/approvisionnement', label: '💵 Approvisionnement' },
+  { href: '/remboursements', label: '💸 Remboursements' },
   { href: '/tarification', label: '⚙️ Tarification' },
   { href: '/cartes', label: '💎 Cartes virtuelles' },
   { href: '/collecte', label: '📥 Collecte' },
