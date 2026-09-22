@@ -46,6 +46,93 @@ export class AdminService {
   ) {}
 
   /**
+   * Liste les transactions QR Lite dont le paiement HUB2 a ete collecte
+   * mais dont la livraison Reloadly a echoue — argent du client bloque,
+   * remboursement a traiter. Extrait le numero du payeur et l'operateur
+   * Mobile Money depuis la reponse HUB2 brute deja enregistree
+   * (PaymentAttempt.rawResponse), aucune nouvelle donnee a demander.
+   */
+  async listPendingRefunds() {
+    const stuck = await this.prisma.transaction.findMany({
+      where: {
+        type: 'AIRTIME',
+        status: 'FAILED',
+        refundedAt: null,
+        failureReason: { contains: 'remboursement', mode: 'insensitive' },
+      },
+      include: {
+        paymentAttempts: { orderBy: { createdAt: 'desc' }, take: 1 },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    return stuck.map((tx) => {
+      const raw = tx.paymentAttempts[0]?.rawResponse as any;
+      const payment = raw?.payments?.[0];
+      return {
+        id: tx.id,
+        amount: tx.amount.toString(),
+        feeAmount: tx.feeAmount.toString(),
+        totalCollected: (tx.amount + tx.feeAmount).toString(),
+        operatorId: tx.operatorId,
+        createdAt: tx.createdAt,
+        payerPhone: raw?.customerReference ?? payment?.number ?? null,
+        payerProvider: payment?.provider ?? null,
+        providerRef: tx.providerRef,
+      };
+    });
+  }
+
+  /**
+   * Declenche le remboursement effectif : un transfert HUB2 (le meme
+   * mecanisme qu'un retrait) vers le numero du payeur d'origine, pour le
+   * montant total qu'il avait paye (credit demande + frais ORZAYAH). La
+   * transaction d'origine est marquee remboursee une fois le transfert
+   * initie avec succes, pour ne plus apparaitre dans la liste.
+   */
+  async processRefund(transactionId: string) {
+    const tx = await this.prisma.transaction.findUniqueOrThrow({
+      where: { id: transactionId },
+      include: { paymentAttempts: { orderBy: { createdAt: 'desc' }, take: 1 } },
+    });
+
+    if (tx.refundedAt) {
+      throw new BadRequestException('Cette transaction a deja ete remboursee.');
+    }
+
+    const raw = tx.paymentAttempts[0]?.rawResponse as any;
+    const payment = raw?.payments?.[0];
+    const payerPhone = raw?.customerReference ?? payment?.number;
+    const payerProvider = payment?.provider;
+
+    if (!payerPhone || !payerProvider) {
+      throw new BadRequestException(
+        'Numero ou operateur du payeur introuvable dans les donnees de la transaction — remboursement a traiter manuellement.',
+      );
+    }
+
+    const totalAmount = tx.amount + tx.feeAmount;
+
+    const refund = await this.hub2.initiateWithdrawal({
+      walletId: '',
+      amount: totalAmount,
+      currency: 'XOF',
+      customerPhone: payerPhone,
+      provider: payerProvider,
+      recipientName: 'Remboursement ORZAYAH',
+      reference: `REFUND-${tx.id}`,
+    });
+
+    await this.prisma.transaction.update({
+      where: { id: tx.id },
+      data: { refundedAt: new Date(), refundTransactionId: refund.providerRef },
+    });
+
+    return { success: true, providerRef: refund.providerRef, amountRefunded: totalAmount.toString() };
+  }
+
+
+  /**
    * KPIs providers (§ dashboard admin) — soldes réels HUB2/Reloadly quand des
    * identifiants sont configurés (sinon `null`, affiché honnêtement côté UI
    * plutôt que de simuler un chiffre) ; consommation Reloadly par opérateur ;

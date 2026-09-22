@@ -282,6 +282,21 @@ export class AdminController {
     return this.adminService.getDashboardStats();
   }
 
+  /** Transactions QR Lite bloquees (§ paiement collecte, livraison echouee). */
+  @RequirePermissions(ADMIN_PERMISSIONS.FUNDING_MANAGE)
+  @Get('refunds/pending')
+  listPendingRefunds() {
+    return this.adminService.listPendingRefunds();
+  }
+
+  /** Declenche le remboursement effectif vers le payeur d'origine (via HUB2). */
+  @RequirePermissions(ADMIN_PERMISSIONS.FUNDING_MANAGE)
+  @Post('refunds/:id/process')
+  processRefund(@Param('id') id: string) {
+    return this.adminService.processRefund(id);
+  }
+
+
   /** Soldes réels HUB2/Reloadly + consommation par opérateur (§ KPIs admin). */
   @RequirePermissions(ADMIN_PERMISSIONS.DASHBOARD_VIEW)
   @Get('kpis/providers')

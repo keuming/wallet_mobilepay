@@ -608,6 +608,8 @@ model Transaction {
   reference String            @unique @default(cuid()) // référence publique, ex: TX-XXXXXXXX
   type      TransactionType
   status    TransactionStatus @default(INITIATED)
+  refundedAt          DateTime? // horodatage du remboursement manuel (§ back-office)
+  refundTransactionId String?   // id de la transaction WITHDRAWAL qui a effectue le remboursement
 
   amount   BigInt // montant brut en centimes
   feeAmount BigInt @default(0)
