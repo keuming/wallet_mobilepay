@@ -5,7 +5,7 @@ export default function ParticulierQrPayPage({ params }: { params: { code: strin
     <CheckoutPage
       resolveEndpoint={`/qr/${params.code}`}
       payExternalEndpoint={`/qr/${params.code}/pay-external`}
-      walletAppUrl="https://wallet.mobilepay-ci.com"
+      walletAppUrl="https://wallet.orzayah.com"
       walletAppQueryKey="u"
       walletAppPath="envoyer"
       mobilePaySubtitle="Ouvre ton app ORZAYAH et envoie à ce numéro"
