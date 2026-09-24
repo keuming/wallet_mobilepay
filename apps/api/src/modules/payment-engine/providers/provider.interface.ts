@@ -30,6 +30,20 @@ export interface InitiateTopupParams {
    */
   onSuccessRedirectionUrl?: string;
   onFailedRedirectionUrl?: string;
+  /**
+   * § Paiement par carte bancaire (Visa/Mastercard). Champs deduits par
+   * coherence avec le patron mobileMoney/bankTransfer de HUB2 (objet
+   * nomme d'apres la methode, en camelCase) — jamais confirmes par un
+   * exemple explicite dans leur documentation publique. A tester
+   * imperativement en environnement sandbox avant tout paiement reel.
+   */
+  card?: {
+    cardNumber: string;
+    expiryDate: string; // format MMYY, par analogie avec les schemas de
+    // paiement carte les plus courants observes ailleurs
+    cvv: string;
+    cardholderName: string;
+  };
 }
 
 export interface InitiateWithdrawalParams {

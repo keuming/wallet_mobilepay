@@ -298,7 +298,7 @@ export default function CheckoutPage({
     <div className="mp-container">
       <div className="mp-header">
         <div className="mp-header-row" style={{ justifyContent: 'center' }}>
-          <img src="/brand/ORZAYAH-logo-badge-dark.svg" alt="ORZAYAH" style={{ height: 42, width: 'auto', borderRadius: 10 }} />
+          <img src="/brand/orzayah-logo.png" alt="ORZAYAH" style={{ height: 42, width: 'auto' }} />
         </div>
       </div>
 
@@ -351,13 +351,13 @@ export default function CheckoutPage({
                 style={{
                   color: '#00D27A',
                   fontWeight: 900,
-                  fontSize: 15,
+                  fontSize: 20,
                   letterSpacing: -0.3,
                   whiteSpace: 'nowrap',
                   lineHeight: 1,
                 }}
               >
-                M-Pay
+                OR
               </span>
             </div>
             <div className="mp-feature-text">

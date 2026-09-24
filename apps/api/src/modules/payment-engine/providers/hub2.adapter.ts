@@ -168,30 +168,48 @@ export class Hub2Adapter implements PaymentProviderAdapter {
     // confirmé actif sur ce compte marchand. Une implémentation devinée
     // aurait échoué en production, au pire moment — devant un client en
     // train de payer. À rebrancher dès que HUB2 fournit la spécification.
-    const attemptBody: Record<string, unknown> = {
-      token: intent.token,
-      paymentMethod: 'mobile_money',
-      country: params.country ?? 'CI',
-      provider: params.provider.toLowerCase(),
-      mobileMoney: {
-        msisdn: params.customerPhone,
-        // § Si le client a déjà généré son code (Orange #144*82#), on
-        // l'envoie directement : le paiement part authentifié et ne
-        // consomme pas le délai d'expiration de 10 minutes d'Orange.
-        ...(params.otpCode ? { otp: params.otpCode } : {}),
-        // Exigé par HUB2 pour certains circuits (Wave notamment, qui
-        // redirige le client vers sa propre interface avant de revenir) —
-        // doivent être imbriqués DANS mobileMoney (schéma officiel
-        // PayMobileMoneyDto), pas au niveau racine du corps.
-        // § Repli sur le dashboard marchand UNIQUEMENT si l'appelant ne
-        // fournit rien — préserve le comportement existant du parcours
-        // d'encaissement, qui n'a jamais transmis ces champs explicitement.
-        onSuccessRedirectionUrl:
-          params.onSuccessRedirectionUrl ?? 'https://business.mobilepay-ci.com/transactions',
-        onFailedRedirectionUrl:
-          params.onFailedRedirectionUrl ?? 'https://business.mobilepay-ci.com/encaisser',
-      },
-    };
+    // § Repli sur le dashboard marchand ORZAYAH uniquement si l'appelant ne
+    // fournit rien — ancien domaine mobilepay-ci.com corrige au passage.
+    const successUrl = params.onSuccessRedirectionUrl ?? 'https://business.orzayah.com/transactions';
+    const failedUrl = params.onFailedRedirectionUrl ?? 'https://business.orzayah.com/encaisser';
+
+    const isCard = params.provider.toLowerCase() === 'card';
+
+    const attemptBody: Record<string, unknown> = isCard
+      ? {
+          token: intent.token,
+          // § Confirme par le schema officiel HUB2 (discriminant "method"
+          // de leur PaymentCreditCardDto) — PAS "card" comme suppose lors
+          // d'une premiere tentative anterieure, qui avait echoue.
+          paymentMethod: 'credit_card',
+          country: params.country ?? 'CI',
+          // § Objet "creditCard" DEDUIT par coherence avec mobileMoney et
+          // bankTransfer (jamais confirme par un exemple HUB2 explicite) —
+          // a valider en sandbox avant toute mise en production.
+          creditCard: {
+            cardNumber: params.card?.cardNumber,
+            expiryDate: params.card?.expiryDate,
+            cvv: params.card?.cvv,
+            cardholderName: params.card?.cardholderName,
+            onSuccessRedirectionUrl: successUrl,
+            onFailedRedirectionUrl: failedUrl,
+          },
+        }
+      : {
+          token: intent.token,
+          paymentMethod: 'mobile_money',
+          country: params.country ?? 'CI',
+          provider: params.provider.toLowerCase(),
+          mobileMoney: {
+            msisdn: params.customerPhone,
+            // § Si le client a deja genere son code (Orange #144*82#), on
+            // l'envoie directement : le paiement part authentifie et ne
+            // consomme pas le delai d'expiration de 10 minutes d'Orange.
+            ...(params.otpCode ? { otp: params.otpCode } : {}),
+            onSuccessRedirectionUrl: successUrl,
+            onFailedRedirectionUrl: failedUrl,
+          },
+        };
 
     this.logger.log(
       `PAY-IN initié — provider=${attemptBody.provider} country=${attemptBody.country} ` +

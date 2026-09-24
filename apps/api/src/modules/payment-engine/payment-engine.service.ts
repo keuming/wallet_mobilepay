@@ -504,6 +504,7 @@ export class PaymentEngineService {
       provider: string;
       amount: bigint;
       description: string;
+      card?: { cardNumber: string; expiryDate: string; cvv: string; cardholderName: string };
       initiatedByUserId: string;
     },
     idempotencyKey: string,
@@ -544,8 +545,9 @@ export class PaymentEngineService {
       reference: transaction.id,
       provider: params.provider,
       country: merchant.country,
-      onSuccessRedirectionUrl: "https://pay.orzayah.com/retour?statut=succes&id=${transaction.id}",
-      onFailedRedirectionUrl: "https://pay.orzayah.com/retour?statut=echec&id=${transaction.id}",
+      card: params.card,
+      onSuccessRedirectionUrl: `https://pay.orzayah.com/retour?statut=succes&id=${transaction.id}`,
+      onFailedRedirectionUrl: `https://pay.orzayah.com/retour?statut=echec&id=${transaction.id}`,
     });
 
     await this.prisma.transaction.update({
