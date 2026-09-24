@@ -7,7 +7,7 @@ import { ApiError } from '../../lib/apiClient';
 import PasswordInput from '../../components/PasswordInput';
 
 export default function LoginPage() {
-  const { login, verifyLoginOtp } = useAuth();
+  const { login, verifyLoginOtp, user } = useAuth();
   const router = useRouter();
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
@@ -38,7 +38,7 @@ export default function LoginPage() {
     setSubmitting(true);
     try {
       await verifyLoginOtp(phone, password, code);
-      router.push('/dashboard');
+      router.push(user?.role === 'AGENT' ? '/agent' : '/dashboard');
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Code invalide.');
     } finally {
