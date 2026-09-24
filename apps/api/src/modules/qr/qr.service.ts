@@ -23,10 +23,24 @@ export class QrService {
    * qu'il l'attache a cette carte, en une seule transaction atomique. Le
    * marchand n'a jamais besoin de rien faire lui-meme au prealable.
    */
+  /**
+   * Image QR (couleurs ORZAYAH) d'UN SEUL code — utilise par l'API
+   * d'integration externe (COMIX), qui traite un membre a la fois.
+   */
+  async getSingleQrImage(qrCode: string) {
+    const url = `${this.config.get('QR_LINK_BASE_URL')}/q/${qrCode}`;
+    const imageDataUrl = await QRCode.toDataURL(url, {
+      color: { dark: '#0f2d52', light: '#ffffff' },
+      width: 400,
+      margin: 2,
+    });
+    return { code: qrCode, url, imageDataUrl };
+  }
+
   async linkQrToNewMerchant(
     qrCode: string,
     agentUserId: string,
-    dto: { businessName: string; ownerPhone: string; ownerPin: string; country?: string },
+    dto: { businessName: string; ownerPhone: string; ownerPin?: string; country?: string },
   ) {
     const qr = await this.prisma.qrCode.findUnique({ where: { code: qrCode } });
     if (!qr) throw new NotFoundException('Code QR introuvable.');
@@ -64,7 +78,8 @@ export class QrService {
         data: { type: 'MERCHANT', merchantId: merchant.id, currency: 'XOF' },
       });
 
-      const passwordHash = await bcrypt.hash(dto.ownerPin, 12);
+      const finalPin = dto.ownerPin ?? '0000';
+      const passwordHash = await bcrypt.hash(finalPin, 12);
       const owner = await tx.user.create({
         data: {
           phone,
@@ -73,6 +88,7 @@ export class QrService {
           country: dto.country ?? 'CI',
           passwordHash,
           role: 'MERCHANT_USER',
+          mustChangePin: true,
         },
       });
 

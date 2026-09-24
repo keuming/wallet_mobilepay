@@ -160,6 +160,7 @@ model User {
   phone        String   @unique // format E.164, ex: +2250700000000 — identifiant de connexion principal
   email        String?  @unique
   passwordHash String
+  mustChangePin Boolean @default(false) // § compte cree via lien QR (agent ou COMIX) avec le code secret par defaut 0000 — a changer par le titulaire
   firstName    String
   country      String   @default("CI") // code ISO 3166-1 alpha-2 — pays de résidence, pilote HUB2/Reloadly et le pays par défaut des transferts
   // Photo de profil (§ affichée à la place de l'initiale sur l'accueil) —
