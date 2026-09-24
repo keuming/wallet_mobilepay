@@ -13,6 +13,7 @@ const NAV_ITEMS = [
   { href: '/transactions', label: '💳 Transactions' },
   { href: '/approvisionnement', label: '💵 Approvisionnement' },
   { href: '/remboursements', label: '💸 Remboursements' },
+  { href: '/cartes-qr', label: '🎫 Cartes QR' },
   { href: '/tarification', label: '⚙️ Tarification' },
   { href: '/cartes', label: '💎 Cartes virtuelles' },
   { href: '/collecte', label: '📥 Collecte' },
