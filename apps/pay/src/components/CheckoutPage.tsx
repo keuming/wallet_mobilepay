@@ -57,7 +57,7 @@ function fcfa(cents: number): string {
 }
 
 /**
- * Page de paiement publique (§ pay.mobilepay-ci.com) — accessible sans compte
+ * Page de paiement publique (§ pay.orzayah.com) — accessible sans compte
  * ORZAYAH. Le client choisit soit de payer avec son solde ORZAYAH (s'il
  * en a un, redirection vers le wallet), soit avec un autre Mobile Money
  * (Orange/MTN/Moov/Wave), directement sur cette page sans connexion.
@@ -190,7 +190,7 @@ export default function CheckoutPage({
     doc.setTextColor(gray);
     doc.text("Ce reçu confirme un paiement effectué via ORZAYAH.", 10, y);
     y += 5;
-    doc.text('© ORZAYAH — pay.mobilepay-ci.com', 10, y);
+    doc.text('© ORZAYAH — pay.orzayah.com', 10, y);
 
     doc.save(`recu-ORZAYAH-${(receipt.reference ?? receipt.id).slice(0, 10)}.pdf`);
   };
@@ -298,7 +298,8 @@ export default function CheckoutPage({
     <div className="mp-container">
       <div className="mp-header">
         <div className="mp-header-row" style={{ justifyContent: 'center' }}>
-          <img src="/brand/orzayah-logo.png" alt="ORZAYAH" style={{ height: 42, width: 'auto' }} />
+          {/* Logo officiel recadré (sans marge transparente) : parfaitement centré et net. */}
+          <img src="/brand/orzayah-logo-entete.png" alt="ORZAYAH" style={{ height: 48, width: 'auto', display: 'block' }} />
         </div>
       </div>
 
@@ -331,35 +332,12 @@ export default function CheckoutPage({
             href={walletAppPath === 'envoyer' ? `${walletAppUrl}/envoyer` : `${walletAppUrl}/${walletAppPath}?${walletAppQueryKey}=${identifier}`}
             className="mp-feature-card featured"
           >
-            {/* § Badge de marque « M-Pay » — remplace le cœur vert 💚, un emoji
-                générique qui ne dit rien de ORZAYAH. Le format est
-                rectangulaire : « M-Pay » est un mot, il ne tient pas dans un
-                carré sans se couper sur deux lignes. */}
-            <div
-              style={{
-                width: 58,
-                height: 38,
-                borderRadius: 10,
-                background: '#0f2d52',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                flexShrink: 0,
-              }}
-            >
-              <span
-                style={{
-                  color: '#00D27A',
-                  fontWeight: 900,
-                  fontSize: 20,
-                  letterSpacing: -0.3,
-                  whiteSpace: 'nowrap',
-                  lineHeight: 1,
-                }}
-              >
-                OR
-              </span>
-            </div>
+            {/* § Icône officielle ORZAYAH (« OR ») : même visuel que le logo. */}
+            <img
+              src="/brand/orzayah-icone-128.png"
+              alt="ORZAYAH"
+              style={{ width: 44, height: 44, borderRadius: 11, flexShrink: 0, display: 'block' }}
+            />
             <div className="mp-feature-text">
               <div className="mp-feature-title">Payer avec ORZAYAH</div>
               <div className="mp-feature-sub">{mobilePaySubtitle}</div>
