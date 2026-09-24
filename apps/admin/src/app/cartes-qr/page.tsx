@@ -18,9 +18,7 @@ interface QrBatch {
 
 interface AgentOption {
   id: string;
-  firstName: string;
-  lastName: string;
-  phone: string;
+  user: { firstName: string; lastName: string; phone: string };
 }
 
 export default function CartesQrPage() {
@@ -56,7 +54,7 @@ export default function CartesQrPage() {
   useEffect(() => {
     if (admin) {
       load();
-      apiFetch<{ items: AgentOption[] }>('/admin/agents').then((r) => setAgents(r.items ?? (r as any))).catch(() => {});
+      apiFetch<{ agents: { id: string; merchants?: number; user: { firstName: string; lastName: string; phone: string } }[] }>('/admin/agents').then((r) => setAgents(r.agents ?? [])).catch(() => {});
     }
   }, [admin]);
 
@@ -165,7 +163,7 @@ export default function CartesQrPage() {
                         <select value={selectedAgentId} onChange={(e) => setSelectedAgentId(e.target.value)} style={{ padding: '8px 12px', borderRadius: 8, border: '1px solid #cbd5e1' }}>
                           <option value="">Choisir un agent...</option>
                           {agents.map((a) => (
-                            <option key={a.id} value={a.id}>{a.firstName} {a.lastName} ({a.phone})</option>
+                            <option key={a.id} value={a.id}>{a.user.firstName} {a.user.lastName} ({a.user.phone})</option>
                           ))}
                         </select>
                         <button onClick={() => handleAssign(b.id)} disabled={assigning || !selectedAgentId} style={{ background: '#00D27A', color: '#fff', border: 'none', borderRadius: 8, padding: '8px 16px', fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>
