@@ -285,6 +285,9 @@ export class AdminController {
   /** Transactions QR Lite bloquees (§ paiement collecte, livraison echouee). */
   @RequirePermissions(ADMIN_PERMISSIONS.FUNDING_MANAGE)
   @Get('refunds/pending')
+  listPendingRefunds() {
+    return this.adminService.listPendingRefunds();
+  }
 
   /** Genere un nouveau lot de cartes QR vierges, pretes a imprimer. */
   @RequirePermissions(ADMIN_PERMISSIONS.QR_MANAGE)
@@ -309,10 +312,6 @@ export class AdminController {
   @Post('qr-batches/:id/assign')
   assignQrBatch(@Param('id') id: string, @Body() dto: { agentId: string }) {
     return this.adminService.assignQrBatch(id, dto.agentId);
-  }
-
-  listPendingRefunds() {
-    return this.adminService.listPendingRefunds();
   }
 
   /** Declenche le remboursement effectif vers le payeur d'origine (via HUB2). */
