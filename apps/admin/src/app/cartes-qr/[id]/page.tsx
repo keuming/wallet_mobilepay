@@ -62,6 +62,14 @@ export default function QrBatchImagesPage() {
             <div style={{ fontSize: 9, color: '#94a3b8', marginTop: 4, fontFamily: 'monospace' }}>
               {img.code}
             </div>
+            <a
+              href={img.imageDataUrl}
+              download={`orzayah-${img.code}.png`}
+              className='no-print'
+              style={{ display: 'inline-block', marginTop: 10, fontSize: 11, color: '#0f2d52', fontWeight: 700, textDecoration: 'underline', cursor: 'pointer' }}
+            >
+              Telecharger
+            </a>
           </div>
         ))}
       </div>
