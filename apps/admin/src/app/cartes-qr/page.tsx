@@ -1,5 +1,7 @@
 'use client';
 
+import Link from 'next/link';
+
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '../../contexts/AuthContext';
@@ -152,6 +154,7 @@ export default function CartesQrPage() {
                     <div style={{ fontSize: 13, color: '#475569', marginTop: 2 }}>
                       {b.linkedCount} / {b.totalCount} cartes liees
                     </div>
+                      <Link href={'/cartes-qr/' + b.id} style={{ fontSize: 12, color: '#00D27A', fontWeight: 700, marginTop: 4, display: 'inline-block' }}>Voir les codes QR</Link>
                     <div style={{ fontSize: 12, color: '#94a3b8', marginTop: 4 }}>
                       {b.assignedAgent ? `Assigne a ${b.assignedAgent}` : 'Non assigne'} - {new Date(b.createdAt).toLocaleDateString('fr-FR')}
                     </div>
