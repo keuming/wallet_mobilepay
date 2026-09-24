@@ -52,6 +52,84 @@ export class AdminService {
    * Mobile Money depuis la reponse HUB2 brute deja enregistree
    * (PaymentAttempt.rawResponse), aucune nouvelle donnee a demander.
    */
+
+  /**
+   * Genere un lot de N cartes QR VIERGES (status UNASSIGNED), pretes a
+   * imprimer. Format court et lisible (utile si le code doit aussi etre
+   * saisi a la main en cas de QR illisible) — distinct des codes QR
+   * marchands existants, qui derivent de l'id du marchand deja cree.
+   */
+  async createQrBatch(quantity: number, label: string, adminUserId: string, idempotencyKey: string) {
+    if (quantity < 1 || quantity > 5000) {
+      throw new BadRequestException('La quantite doit etre entre 1 et 5000.');
+    }
+    const existing = await this.prisma.qrBatch.findFirst({ where: { label } });
+    if (existing) {
+      // § Rejeu detecte via le label (unique par convention cote UI) plutot
+      // qu'une vraie colonne idempotencyKey sur QrBatch — evite une
+      // migration de schema pour une operation rare et a faible risque
+      // financier direct, tout en empechant un doublon de lot physique.
+      return this.listQrBatches().then((all) => all.find((b) => b.id === existing.id));
+    }
+
+    return this.prisma.$transaction(async (tx) => {
+      const batch = await tx.qrBatch.create({
+        data: { label, quantity, generatedBy: adminUserId },
+      });
+
+      const codes = Array.from({ length: quantity }, () => ({
+        code: `ORZ-${crypto.randomUUID().slice(0, 8).toUpperCase()}`,
+        type: 'MERCHANT_STATIC' as const,
+        status: 'UNASSIGNED' as const,
+        batchId: batch.id,
+      }));
+
+      await tx.qrCode.createMany({ data: codes });
+
+      return { batch, codes: codes.map((c) => c.code) };
+    });
+  }
+
+  /** Assigne un lot deja genere a un agent commercial nomme. */
+  async assignQrBatch(batchId: string, agentId: string) {
+    const batch = await this.prisma.qrBatch.findUniqueOrThrow({ where: { id: batchId } });
+    if (batch.assignedAgentId) {
+      throw new BadRequestException('Ce lot est deja assigne a un agent.');
+    }
+
+    return this.prisma.$transaction(async (tx) => {
+      await tx.qrBatch.update({ where: { id: batchId }, data: { assignedAgentId: agentId } });
+      await tx.qrCode.updateMany({
+        where: { batchId, status: 'UNASSIGNED' },
+        data: { status: 'ASSIGNED' },
+      });
+      return tx.qrBatch.findUniqueOrThrow({ where: { id: batchId }, include: { codes: true } });
+    });
+  }
+
+  /** Liste des lots, avec compte des cartes liees vs en attente. */
+  async listQrBatches() {
+    const batches = await this.prisma.qrBatch.findMany({
+      include: {
+        assignedAgent: { include: { user: { select: { firstName: true, lastName: true, phone: true } } } },
+        codes: { select: { status: true } },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    return batches.map((b) => ({
+      id: b.id,
+      label: b.label,
+      quantity: b.quantity,
+      createdAt: b.createdAt,
+      assignedAgent: b.assignedAgent
+        ? `${b.assignedAgent.user.firstName} ${b.assignedAgent.user.lastName} (${b.assignedAgent.user.phone})`
+        : null,
+      linkedCount: b.codes.filter((c) => c.status === 'ACTIVE').length,
+      totalCount: b.codes.length,
+    }));
+  }
+
   async listPendingRefunds() {
     const stuck = await this.prisma.transaction.findMany({
       where: {

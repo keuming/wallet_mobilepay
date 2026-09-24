@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Patch, Post, Query, Res, UseGuards, UseInterceptors, UploadedFile, BadRequestException } from '@nestjs/common';
+import { Body, Controller, Get, Headers, Param, Patch, Post, Query, Res, UseGuards, UseInterceptors, UploadedFile, BadRequestException } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { IsBoolean, IsEnum, IsIn, IsInt, IsObject, IsOptional, IsPhoneNumber, IsPositive, IsString, Length, Matches, MinLength } from 'class-validator';
@@ -285,6 +285,32 @@ export class AdminController {
   /** Transactions QR Lite bloquees (§ paiement collecte, livraison echouee). */
   @RequirePermissions(ADMIN_PERMISSIONS.FUNDING_MANAGE)
   @Get('refunds/pending')
+
+  /** Genere un nouveau lot de cartes QR vierges, pretes a imprimer. */
+  @RequirePermissions(ADMIN_PERMISSIONS.QR_MANAGE)
+  @Post('qr-batches')
+  createQrBatch(
+    @CurrentUser() user: AuthenticatedUser,
+    @Body() dto: { quantity: number; label: string },
+    @Headers('idempotency-key') idempotencyKey: string,
+  ) {
+    return this.adminService.createQrBatch(dto.quantity, dto.label, user.userId, idempotencyKey);
+  }
+
+  /** Liste tous les lots generes, avec leur progression de liaison terrain. */
+  @RequirePermissions(ADMIN_PERMISSIONS.QR_MANAGE)
+  @Get('qr-batches')
+  listQrBatches() {
+    return this.adminService.listQrBatches();
+  }
+
+  /** Assigne un lot deja imprime a un agent commercial nomme. */
+  @RequirePermissions(ADMIN_PERMISSIONS.QR_MANAGE)
+  @Post('qr-batches/:id/assign')
+  assignQrBatch(@Param('id') id: string, @Body() dto: { agentId: string }) {
+    return this.adminService.assignQrBatch(id, dto.agentId);
+  }
+
   listPendingRefunds() {
     return this.adminService.listPendingRefunds();
   }
