@@ -5,6 +5,8 @@ import * as QRCode from 'qrcode';
 import { PrismaService } from '../../config/prisma.service';
 import { PaymentEngineService } from '../payment-engine/payment-engine.service';
 import { CreateDynamicQrDto, CreatePaymentLinkDto } from '../merchants/dto/merchants.dto';
+import * as bcrypt from 'bcrypt';
+import { normalizePhoneCI } from '../../common/utils/phone.util';
 
 @Injectable()
 export class QrService {
@@ -13,6 +15,79 @@ export class QrService {
     private paymentEngine: PaymentEngineService,
     private config: ConfigService,
   ) {}
+
+
+  /**
+   * Lien terrain agent (§ QR pre-imprimes) : un commercial scanne une carte
+   * VIERGE (status UNASSIGNED) et cree le compte marchand EN MEME TEMPS
+   * qu'il l'attache a cette carte, en une seule transaction atomique. Le
+   * marchand n'a jamais besoin de rien faire lui-meme au prealable.
+   */
+  async linkQrToNewMerchant(
+    qrCode: string,
+    agentUserId: string,
+    dto: { businessName: string; ownerPhone: string; ownerPin: string; country?: string },
+  ) {
+    const qr = await this.prisma.qrCode.findUnique({ where: { code: qrCode } });
+    if (!qr) throw new NotFoundException('Code QR introuvable.');
+    if (qr.status === 'ACTIVE') {
+      // § Rejeu possible : reseau coupe juste apres le succes cote serveur,
+      // avant que la reponse n'atteigne l'agent, qui retente alors la meme
+      // action. Si c'est bien CE marchand deja lie via CETTE carte, on
+      // renvoie le resultat existant au lieu d'echouer confusement.
+      const existingMerchant = await this.prisma.merchant.findUnique({ where: { id: qr.merchantId! } });
+      if (existingMerchant) {
+        return { merchant: existingMerchant, qr, alreadyLinked: true };
+      }
+      throw new BadRequestException('Cette carte est deja liee a un compte.');
+    }
+    if (qr.status !== 'UNASSIGNED' && qr.status !== 'ASSIGNED') {
+      throw new BadRequestException('Cette carte ne peut pas etre liee (statut invalide).');
+    }
+
+    const phone = normalizePhoneCI(dto.ownerPhone, (dto.country ?? 'CI') as any);
+    const existing = await this.prisma.user.findUnique({ where: { phone } });
+    if (existing) {
+      throw new BadRequestException('Ce numero est deja associe a un compte ORZAYAH existant.');
+    }
+
+    return this.prisma.$transaction(async (tx) => {
+      const merchant = await tx.merchant.create({
+        data: {
+          businessName: dto.businessName,
+          status: 'ACTIVE',
+          country: dto.country ?? 'CI',
+        },
+      });
+
+      await tx.wallet.create({
+        data: { type: 'MERCHANT', merchantId: merchant.id, currency: 'XOF' },
+      });
+
+      const passwordHash = await bcrypt.hash(dto.ownerPin, 12);
+      const owner = await tx.user.create({
+        data: {
+          phone,
+          firstName: dto.businessName,
+          lastName: '',
+          country: dto.country ?? 'CI',
+          passwordHash,
+          role: 'MERCHANT_USER',
+        },
+      });
+
+      await tx.merchantUser.create({
+        data: { merchantId: merchant.id, userId: owner.id, role: 'MERCHANT_ADMIN' },
+      });
+
+      const linkedQr = await tx.qrCode.update({
+        where: { id: qr.id },
+        data: { status: 'ACTIVE', merchantId: merchant.id },
+      });
+
+      return { merchant, qr: linkedQr };
+    });
+  }
 
   /** QR statique du marchand, généré à sa création (§13). */
   async getMerchantStaticQr(merchantId: string) {

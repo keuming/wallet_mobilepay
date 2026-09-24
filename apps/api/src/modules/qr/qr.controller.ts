@@ -4,6 +4,8 @@ import { QrService } from './qr.service';
 import { CreateDynamicQrDto, CreatePaymentLinkDto, PayExternalDto } from '../merchants/dto/merchants.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { MerchantScopeGuard } from '../../common/guards/merchant-scope.guard';
+import { RolesGuard } from '../../common/guards/roles.guard';
+import { Roles } from '../../common/decorators/roles.decorator';
 import { CurrentUser, AuthenticatedUser } from '../../common/decorators/current-user.decorator';
 import { PaymentEngineService } from '../payment-engine/payment-engine.service';
 
@@ -137,5 +139,20 @@ export class QrController {
   @Post('public/transactions/:id/authenticate')
   publicAuthenticate(@Param('id') id: string, @Body('confirmationCode') confirmationCode: string) {
     return this.paymentEngine.authenticateGuestTransaction(id, confirmationCode);
+  }
+
+  /**
+   * Lien terrain agent (§ QR pre-imprimes) : cree le compte marchand ET
+   * active la carte en une seule action, depuis l'app mobile de l'agent.
+   * Reserve au role AGENT.
+   */
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('AGENT' as any)
+  @Post('agents/link-merchant')
+  linkMerchant(
+    @CurrentUser() user: AuthenticatedUser,
+    @Body() dto: { qrCode: string; businessName: string; ownerPhone: string; ownerPin: string; country?: string },
+  ) {
+    return this.qrService.linkQrToNewMerchant(dto.qrCode, user.userId, dto);
   }
 }

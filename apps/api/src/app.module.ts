@@ -91,6 +91,7 @@ export class AppModule implements NestModule {
         'api/payment-links/:slug/pay',
         'api/qr/:code/pay-external',
         'api/payment-links/:slug/pay-external',
+        'api/agents/link-merchant',
         // Collecte & Épargne
         'api/collecte/types/:id/deposit',
         'api/collecte/types/:id/withdraw',
