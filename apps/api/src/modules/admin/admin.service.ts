@@ -1,4 +1,5 @@
 import { BadRequestException, ConflictException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import * as QRCode from 'qrcode';
 import { ConfigService } from '@nestjs/config';
 import { Prisma, MerchantStatus, TransactionStatus } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
@@ -105,6 +106,35 @@ export class AdminService {
       });
       return tx.qrBatch.findUniqueOrThrow({ where: { id: batchId }, include: { codes: true } });
     });
+  }
+
+
+  /**
+   * Genere l'image QR (avec les couleurs de marque ORZAYAH) de chaque
+   * carte d'un lot, prete a etre imprimee — sur autocollant caisse ou
+   * carte membre selon le support choisi cote impression.
+   */
+  async getQrBatchImages(batchId: string) {
+    const batch = await this.prisma.qrBatch.findUniqueOrThrow({
+      where: { id: batchId },
+      include: { codes: { orderBy: { createdAt: 'asc' } } },
+    });
+
+    const baseUrl = this.config.get('QR_LINK_BASE_URL');
+
+    const images = await Promise.all(
+      batch.codes.map(async (qr) => {
+        const url = `${baseUrl}/q/${qr.code}`;
+        const imageDataUrl = await QRCode.toDataURL(url, {
+          color: { dark: '#0f2d52', light: '#ffffff' },
+          width: 400,
+          margin: 2,
+        });
+        return { code: qr.code, url, imageDataUrl, status: qr.status };
+      }),
+    );
+
+    return { label: batch.label, images };
   }
 
   /** Liste des lots, avec compte des cartes liees vs en attente. */

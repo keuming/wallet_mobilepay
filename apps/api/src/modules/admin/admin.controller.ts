@@ -307,6 +307,13 @@ export class AdminController {
     return this.adminService.listQrBatches();
   }
 
+  /** Images QR (couleurs ORZAYAH) de toutes les cartes d'un lot, pretes a imprimer. */
+  @RequirePermissions(ADMIN_PERMISSIONS.QR_MANAGE)
+  @Get('qr-batches/:id/images')
+  getQrBatchImages(@Param('id') id: string) {
+    return this.adminService.getQrBatchImages(id);
+  }
+
   /** Assigne un lot deja imprime a un agent commercial nomme. */
   @RequirePermissions(ADMIN_PERMISSIONS.QR_MANAGE)
   @Post('qr-batches/:id/assign')
