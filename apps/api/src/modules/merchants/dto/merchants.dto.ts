@@ -189,10 +189,10 @@ export class PayExternalDto {
   customerPhone: string;
 
   @IsIn(['orange', 'mtn', 'moov', 'wave', 'card'], { message: 'Opérateur Mobile Money invalide.' })
+  provider: string;
 
   @IsOptional()
   card?: { cardNumber: string; expiryDate: string; cvv: string; cardholderName: string };
-  provider: string;
 }
 
 /** § Hiérarchie distributeur → détaillants (comptes Business). */
