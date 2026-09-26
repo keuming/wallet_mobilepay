@@ -840,6 +840,40 @@ export class PaymentEngineService {
         description: transaction.description ?? 'Paiement marchand (Mobile Money)',
       });
 
+      // § Livraison automatique pour les paiements de services ORZAYAH
+      // (credit, data...) via cette page de paiement generique — le
+      // wallet ORZAYAH est deja credite ci-dessus (vraie recette recue) ;
+      // reste a livrer le service commande, encode dans la description
+      // du lien au moment de sa creation.
+      const wallet = await tx.wallet.findUnique({ where: { id: transaction.destWalletId! }, select: { merchantId: true } });
+      if (wallet?.merchantId === PaymentEngineService.ORZAYAH_MERCHANT_ID && transaction.description?.startsWith('ORZAYAH_AIRTIME|')) {
+        const parts = transaction.description.split('|');
+        const phoneNumber = parts[1];
+        const operatorId = parts[2];
+        const kind = parts[3] as 'AIRTIME' | 'DATA';
+        const countryCode = parts[4];
+        try {
+          const delivery = await this.reloadly.purchaseAirtime({
+            phoneNumber, operatorId, amount: transaction.amount, kind, reference: transaction.id, countryCode,
+          });
+          const finalStatus = delivery.status === 'SUCCESS' ? 'SUCCESS' : 'FAILED';
+          return tx.transaction.update({
+            where: { id: transactionId },
+            data: {
+              status: finalStatus,
+              feeAmount: totalFee,
+              operatorName: delivery.operatorName,
+              failureReason: finalStatus === 'FAILED' ? 'Paiement recu mais echec de la livraison Reloadly - remboursement a traiter manuellement.' : undefined,
+            },
+          });
+        } catch (err) {
+          return tx.transaction.update({
+            where: { id: transactionId },
+            data: { status: 'FAILED', feeAmount: totalFee, failureReason: 'Paiement recu mais echec de la livraison Reloadly - remboursement a traiter manuellement.' },
+          });
+        }
+      }
+
       return tx.transaction.update({ where: { id: transactionId }, data: { status: 'SUCCESS', feeAmount: totalFee } });
     });
   }
@@ -1904,6 +1938,12 @@ export class PaymentEngineService {
    */
   /** Frais fixes QR Lite — 100 FCFA (10 000 centimes) par achat, ajustable ici. */
   private static readonly LITE_FEE_CENTS = 10_000n;
+
+  // § Compte marchand ORZAYAH lui-meme (createur : +2250504921096) — recoit
+  // tous les paiements de services generiques (credit, data, factures,
+  // cartes cadeaux) via des liens de paiement pay.orzayah.com, quel que
+  // soit le mode choisi par le client (wallet, mobile money, carte).
+  private static readonly ORZAYAH_MERCHANT_ID = '4767ff23-ab3e-4d1c-bd54-62b2e35b4c1b';
 
   async purchaseAirtimeLite(params: {
     phoneNumber: string;
