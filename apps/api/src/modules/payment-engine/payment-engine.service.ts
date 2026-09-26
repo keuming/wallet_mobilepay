@@ -785,6 +785,8 @@ export class PaymentEngineService {
       reference: transaction.id,
       provider: params.provider,
       country: recipientUser.country,
+      onSuccessRedirectionUrl: `https://pay.orzayah.com/retour?statut=succes&id=${transaction.id}`,
+      onFailedRedirectionUrl: `https://pay.orzayah.com/retour?statut=echec&id=${transaction.id}`,
     });
 
     await this.prisma.transaction.update({
