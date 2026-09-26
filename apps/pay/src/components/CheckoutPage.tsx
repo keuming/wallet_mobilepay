@@ -3,6 +3,30 @@
 import { useEffect, useRef, useState } from 'react';
 import { apiFetch, ApiError } from '../lib/apiClient';
 
+/* § Réseau de la carte déduit du numéro saisi (préfixes officiels) :
+   Visa 4… ; Mastercard 51-55… ou 2221-2720… */
+function reseauCarte(numero: string): 'visa' | 'mastercard' | null {
+  const n = numero.replace(/\D/g, '');
+  if (/^4/.test(n)) return 'visa';
+  if (/^5[1-5]/.test(n)) return 'mastercard';
+  const p4 = parseInt(n.slice(0, 4), 10);
+  if (n.length >= 4 && p4 >= 2221 && p4 <= 2720) return 'mastercard';
+  return null;
+}
+/* § Contrôle de Luhn : détecte une faute de frappe avant l'envoi. */
+function numeroCarteValide(numero: string): boolean {
+  const n = numero.replace(/\D/g, '');
+  if (n.length < 13 || n.length > 19) return false;
+  let somme = 0;
+  for (let i = 0; i < n.length; i++) {
+    let c = parseInt(n[n.length - 1 - i], 10);
+    if (i % 2 === 1) { c *= 2; if (c > 9) c -= 9; }
+    somme += c;
+  }
+  return somme % 10 === 0;
+}
+const LIBELLE_RESEAU = { visa: 'Carte Visa', mastercard: 'Carte Mastercard' } as const;
+
 const MOMO_PROVIDERS = [
   { id: 'orange', label: 'Orange Money', dialCode: '225' },
   { id: 'mtn', label: 'MTN MoMo', dialCode: '225' },
@@ -385,10 +409,10 @@ export default function CheckoutPage({
               n'est pas encore active par HUB2 sur ce compte marchand — un
               echec cote leur infrastructure reste possible en attendant. */}
           <div className="mp-feature-card" style={{ cursor: 'pointer' }} onClick={() => setMode('card')}>
-            <img src="/brand/moyens-paiement.png" alt="Visa, Mastercard, PayPal" style={{ height: 32, width: 'auto', flexShrink: 0 }} />
+            <img src="/brand/moyens-paiement.png" alt="Visa, Mastercard, PayPal" style={{ height: 40, width: 'auto', flexShrink: 0, display: 'block' }} />
             <div className="mp-feature-text" style={{ marginLeft: 12 }}>
               <div className="mp-feature-title">Payer par carte bancaire</div>
-              <div className="mp-feature-sub">Visa ou Mastercard</div>
+              <div className="mp-feature-sub">Le type de carte est reconnu à la saisie du numéro</div>
             </div>
             <div className="mp-feature-chevron">→</div>
           </div>
@@ -445,14 +469,43 @@ export default function CheckoutPage({
           <button onClick={() => { setMode('choice'); setError(null); }} style={{ background: 'none', border: 'none', color: 'var(--fz-text-secondary)', fontSize: 13, marginBottom: 12, cursor: 'pointer' }}>
             ← Retour
           </button>
-          <input className="mp-input" placeholder="Numero de carte" inputMode="numeric" maxLength={19} value={cardNumber} onChange={(e) => setCardNumber(e.target.value.replace(/[^0-9 ]/g, ''))} style={{ marginBottom: 10 }} />
+          <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 12 }}>
+            <img src="/brand/moyens-paiement.png" alt="Visa, Mastercard, PayPal" style={{ height: 52, width: 'auto', display: 'block' }} />
+          </div>
+          <input
+            className="mp-input"
+            placeholder="Numéro de carte"
+            inputMode="numeric"
+            autoComplete="cc-number"
+            maxLength={23}
+            value={cardNumber}
+            onChange={(e) => setCardNumber(e.target.value.replace(/\D/g, '').slice(0, 19).replace(/(\d{4})(?=\d)/g, '$1 '))}
+            style={{ marginBottom: 6, letterSpacing: 1 }}
+          />
+          {(() => {
+            const chiffres = cardNumber.replace(/\D/g, '');
+            if (chiffres.length < 2) return <div style={{ height: 10 }} />;
+            const reseau = reseauCarte(chiffres);
+            const complet = chiffres.length >= 13;
+            const erreurSaisie = complet && !numeroCarteValide(chiffres);
+            const couleur = erreurSaisie || (!reseau && chiffres.length >= 4) ? '#d64545' : 'var(--mp-navy, #0f2d52)';
+            return (
+              <div style={{ fontSize: 12.5, fontWeight: 700, color: couleur, marginBottom: 10 }}>
+                {erreurSaisie
+                  ? 'Numéro de carte invalide : vérifiez la saisie.'
+                  : reseau
+                    ? `✓ ${LIBELLE_RESEAU[reseau]}`
+                    : chiffres.length >= 4 ? 'Carte non reconnue : seules Visa et Mastercard sont acceptées.' : ''}
+              </div>
+            );
+          })()}
           <div style={{ display: 'flex', gap: 10, marginBottom: 10 }}>
             <input className="mp-input" placeholder="MM/AA" inputMode="numeric" maxLength={5} value={expiryDate} onChange={(e) => setExpiryDate(e.target.value.replace(/[^0-9/]/g, ''))} style={{ flex: 1 }} />
             <input className="mp-input" placeholder="CVV" inputMode="numeric" maxLength={4} value={cvv} onChange={(e) => setCvv(e.target.value.replace(/\D/g, ''))} style={{ flex: 1 }} />
           </div>
           <input className="mp-input" placeholder="Nom sur la carte" value={cardholderName} onChange={(e) => setCardholderName(e.target.value)} style={{ marginBottom: 16 }} />
           {error && <p style={{ color: '#ef4444', fontSize: 13, marginBottom: 12 }}>{error}</p>}
-          <button className="mp-btn-primary" disabled={submitting || !cardNumber || !expiryDate || !cvv || !cardholderName} onClick={submitCard}>
+          <button className="mp-btn-primary" disabled={submitting || !reseauCarte(cardNumber) || !numeroCarteValide(cardNumber) || !expiryDate || !cvv || !cardholderName} onClick={submitCard}>
             {submitting ? 'Traitement...' : 'Payer'}
           </button>
         </div>
