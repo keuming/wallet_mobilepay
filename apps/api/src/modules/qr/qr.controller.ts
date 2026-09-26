@@ -112,7 +112,7 @@ export class QrController {
     @Body() dto: PayExternalDto,
     @Headers('idempotency-key') idempotencyKey: string,
   ) {
-    return this.qrService.payQrExternal(code, dto.amount, dto.customerPhone, dto.provider, idempotencyKey);
+    return this.qrService.payQrExternal(code, dto.amount, dto.customerPhone, dto.provider, idempotencyKey, dto.card);
   }
 
   @Post('payment-links/:slug/pay-external')
@@ -121,7 +121,7 @@ export class QrController {
     @Body() dto: PayExternalDto,
     @Headers('idempotency-key') idempotencyKey: string,
   ) {
-    return this.qrService.payPaymentLinkExternal(slug, dto.amount, dto.customerPhone, dto.provider, idempotencyKey);
+    return this.qrService.payPaymentLinkExternal(slug, dto.amount, dto.customerPhone, dto.provider, idempotencyKey, dto.card);
   }
 
   /**

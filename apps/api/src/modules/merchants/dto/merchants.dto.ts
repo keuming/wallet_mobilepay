@@ -166,9 +166,11 @@ export class DebitDirectDto {
   @Max(MAX_TRANSACTION_AMOUNT_CENTS, { message: 'Montant trop élevé.' })
   amount: number;
 
-  @IsIn(['orange', 'mtn', 'moov', 'wave'], { message: 'Opérateur Mobile Money invalide.' })
+  @IsIn(['orange', 'mtn', 'moov', 'wave', 'card'], { message: 'Opérateur Mobile Money invalide.' })
   provider: string;
 
+  @IsOptional()
+  card?: { cardNumber: string; expiryDate: string; cvv: string; cardholderName: string };
   @IsOptional()
   @IsString()
   @MaxLength(140)
@@ -186,7 +188,10 @@ export class PayExternalDto {
   @MinLength(6, { message: 'Numéro invalide.' })
   customerPhone: string;
 
-  @IsIn(['orange', 'mtn', 'moov', 'wave'], { message: 'Opérateur Mobile Money invalide.' })
+  @IsIn(['orange', 'mtn', 'moov', 'wave', 'card'], { message: 'Opérateur Mobile Money invalide.' })
+
+  @IsOptional()
+  card?: { cardNumber: string; expiryDate: string; cvv: string; cardholderName: string };
   provider: string;
 }
 

@@ -352,6 +352,7 @@ export class QrService {
     customerPhone: string,
     provider: string,
     idempotencyKey: string,
+    card?: { cardNumber: string; expiryDate: string; cvv: string; cardholderName: string },
   ) {
     const qr = await this.resolveQr(code);
     if (qr.type === 'PARTICULIER') {
@@ -367,6 +368,7 @@ export class QrService {
       {
         merchantId: qr.merchantId,
         customerPhone,
+        card,
         provider,
         amount: finalAmount,
         description: qr.description ?? `Paiement QR ${qr.code}`,
@@ -413,6 +415,7 @@ export class QrService {
     customerPhone: string,
     provider: string,
     idempotencyKey: string,
+    card?: { cardNumber: string; expiryDate: string; cvv: string; cardholderName: string },
   ) {
     const link = await this.resolvePaymentLink(slug);
     const finalAmount = link.amount ?? (amount ? BigInt(amount) : null);
@@ -422,6 +425,7 @@ export class QrService {
       {
         merchantId: link.merchantId,
         customerPhone,
+        card,
         provider,
         amount: finalAmount,
         description: link.description ?? `Paiement lien ${link.slug}`,

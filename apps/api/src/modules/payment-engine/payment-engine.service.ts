@@ -725,7 +725,7 @@ export class PaymentEngineService {
    * (page publique, sans connexion), pas par le marchand.
    */
   async payMerchantAnonymously(
-    params: { merchantId: string; customerPhone: string; provider: string; amount: bigint; description: string },
+    params: { merchantId: string; customerPhone: string; provider: string; amount: bigint; description: string; card?: { cardNumber: string; expiryDate: string; cvv: string; cardholderName: string } },
     idempotencyKey: string,
   ) {
     const guest = await this.getOrCreateGuestUser();
@@ -736,6 +736,7 @@ export class PaymentEngineService {
         provider: params.provider,
         amount: params.amount,
         description: params.description,
+        card: params.card,
         initiatedByUserId: guest.id,
       },
       idempotencyKey,
