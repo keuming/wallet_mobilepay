@@ -76,6 +76,23 @@ const CONFETTI_PIECES = Array.from({ length: 16 }, (_, i) => {
   };
 });
 
+// § Les paiements de services generiques ORZAYAH (credit, data, factures,
+// cartes cadeaux...) encodent leurs details de livraison dans la
+// description technique du lien de paiement (ex: ORZAYAH_AIRTIME|...) — le
+// client ne doit jamais voir ce format brut, uniquement un texte clair.
+function friendlyDescription(description?: string | null): string | null {
+  if (!description) return null;
+  if (description.startsWith('ORZAYAH_AIRTIME|')) {
+    const parts = description.split('|');
+    const kind = parts[3];
+    return kind === 'DATA' ? 'Achat de forfait data' : 'Achat de credit telephonique';
+  }
+  if (description.startsWith('ORZAYAH_')) {
+    return 'Achat de service ORZAYAH';
+  }
+  return description;
+}
+
 function fcfa(cents: number): string {
   return (cents / 100).toLocaleString('fr-FR');
 }
@@ -197,7 +214,7 @@ export default function CheckoutPage({
     };
 
     row('Bénéficiaire', businessName ?? '—');
-    if (target?.description) row('Description', target.description);
+    if (target?.description) row('Description', friendlyDescription(target.description) ?? '');
     row('Montant', `${fcfa(receipt.amount ?? fixedAmount ?? 0)} FCFA`);
     if (receipt.feeAmount) row('Frais', `${fcfa(receipt.feeAmount)} FCFA`);
     row(
@@ -366,7 +383,7 @@ export default function CheckoutPage({
           </div>
         )}
         {target?.description && (
-          <div style={{ fontSize: 12.5, opacity: 0.85, marginTop: 4 }}>{target.description}</div>
+          <div style={{ fontSize: 12.5, opacity: 0.85, marginTop: 4 }}>{friendlyDescription(target.description)}</div>
         )}
         {fixedAmount ? (
           <div className="mp-balance-amount" style={{ marginTop: 10 }}>
@@ -574,7 +591,7 @@ export default function CheckoutPage({
                     <div style={{ fontWeight: 700, marginBottom: 8, color: 'var(--fz-text-primary)' }}>📋 Détails du paiement</div>
                     {[
                       ['Bénéficiaire', businessName ?? '—'],
-                      ...(target?.description ? [['Description', target.description]] : []),
+                      ...(target?.description ? [['Description', friendlyDescription(target.description) ?? '']] : []),
                       ['Montant', `${fcfa(receipt.amount ?? fixedAmount ?? 0)} FCFA`],
                       ...(receipt.feeAmount ? [['Frais', `${fcfa(receipt.feeAmount)} FCFA`]] : []),
                       ['Total débité', `${fcfa((receipt.amount ?? fixedAmount ?? 0) + (receipt.feeAmount ?? 0))} FCFA`],
