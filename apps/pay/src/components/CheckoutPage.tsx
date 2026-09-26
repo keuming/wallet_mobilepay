@@ -86,9 +86,13 @@ export default function CheckoutPage({
 }) {
   const [target, setTarget] = useState<ResolvedTarget | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
-  const [mode, setMode] = useState<'choice' | 'external'>('choice');
+  const [mode, setMode] = useState<'choice' | 'external' | 'card'>('choice');
 
   const [localNumber, setLocalNumber] = useState('');
+  const [cardNumber, setCardNumber] = useState('');
+  const [expiryDate, setExpiryDate] = useState('');
+  const [cvv, setCvv] = useState('');
+  const [cardholderName, setCardholderName] = useState('');
   const [provider, setProvider] = useState('');
   const [amount, setAmount] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -263,6 +267,30 @@ export default function CheckoutPage({
     }
   };
 
+  const submitCard = async () => {
+    setSubmitting(true);
+    setError(null);
+    setResult(null);
+    try {
+      const phone = (dialCode && localNumber) ? ('+' + dialCode + localNumber.replace(/\D/g, '')) : '+2250000000000';
+      const res = await apiFetch<PaymentResponse>(payExternalEndpoint, {
+        method: 'POST',
+        idempotent: true,
+        body: JSON.stringify({
+          customerPhone: phone,
+          provider: 'card',
+          amount: fixedAmount ? undefined : Math.round(Number(amount) * 100),
+          card: { cardNumber: cardNumber.replace(/\s/g, ''), expiryDate, cvv, cardholderName },
+        }),
+      });
+      applyResponse(res);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Echec du paiement.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   const submitOtp = async () => {
     if (!transactionId) return;
     setSubmitting(true);
@@ -352,21 +380,17 @@ export default function CheckoutPage({
             </div>
             <div className="mp-feature-chevron">→</div>
           </div>
-          {/* § Carte bancaire annoncée mais NON activable : la référence API
-              HUB2 évoque bien le paiement par carte, mais aucune
-              documentation ne décrit la structure de requête, et le canal
-              n'est pas confirmé actif sur ce compte marchand. Proposer un
-              bouton qui échouerait serait pire que d'annoncer l'échéance :
-              le payeur perdrait confiance au moment de payer. */}
-          <div className="mp-feature-card" style={{ opacity: 0.55, cursor: 'default' }}>
-            <div className="mp-feature-icon">💳</div>
-            <div className="mp-feature-text">
+          {/* § Paiement carte : format de requete HUB2 confirme par leur
+              propre schema OpenAPI (paymentMethod=credit_card), mais le canal
+              n'est pas encore active par HUB2 sur ce compte marchand — un
+              echec cote leur infrastructure reste possible en attendant. */}
+          <div className="mp-feature-card" style={{ cursor: 'pointer' }} onClick={() => setMode('card')}>
+            <img src="/brand/moyens-paiement.png" alt="Visa, Mastercard, PayPal" style={{ height: 32, width: 'auto', flexShrink: 0 }} />
+            <div className="mp-feature-text" style={{ marginLeft: 12 }}>
               <div className="mp-feature-title">Payer par carte bancaire</div>
-              <div className="mp-feature-sub">Visa ou Mastercard — bientôt disponible</div>
+              <div className="mp-feature-sub">Visa ou Mastercard</div>
             </div>
-            <div className="mp-feature-chevron" style={{ fontSize: 11, fontWeight: 700 }}>
-              BIENTÔT
-            </div>
+            <div className="mp-feature-chevron">→</div>
           </div>
         </div>
       )}
@@ -412,6 +436,24 @@ export default function CheckoutPage({
             onClick={submit}
           >
             {submitting ? 'Envoi...' : 'Payer maintenant'}
+          </button>
+        </div>
+      )}
+
+      {target && mode === 'card' && !result && (
+        <div className="mp-form">
+          <button onClick={() => { setMode('choice'); setError(null); }} style={{ background: 'none', border: 'none', color: 'var(--fz-text-secondary)', fontSize: 13, marginBottom: 12, cursor: 'pointer' }}>
+            ← Retour
+          </button>
+          <input className="mp-input" placeholder="Numero de carte" inputMode="numeric" maxLength={19} value={cardNumber} onChange={(e) => setCardNumber(e.target.value.replace(/[^0-9 ]/g, ''))} style={{ marginBottom: 10 }} />
+          <div style={{ display: 'flex', gap: 10, marginBottom: 10 }}>
+            <input className="mp-input" placeholder="MM/AA" inputMode="numeric" maxLength={5} value={expiryDate} onChange={(e) => setExpiryDate(e.target.value.replace(/[^0-9/]/g, ''))} style={{ flex: 1 }} />
+            <input className="mp-input" placeholder="CVV" inputMode="numeric" maxLength={4} value={cvv} onChange={(e) => setCvv(e.target.value.replace(/\D/g, ''))} style={{ flex: 1 }} />
+          </div>
+          <input className="mp-input" placeholder="Nom sur la carte" value={cardholderName} onChange={(e) => setCardholderName(e.target.value)} style={{ marginBottom: 16 }} />
+          {error && <p style={{ color: '#ef4444', fontSize: 13, marginBottom: 12 }}>{error}</p>}
+          <button className="mp-btn-primary" disabled={submitting || !cardNumber || !expiryDate || !cvv || !cardholderName} onClick={submitCard}>
+            {submitting ? 'Traitement...' : 'Payer'}
           </button>
         </div>
       )}
