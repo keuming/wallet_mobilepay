@@ -1720,6 +1720,8 @@ export class PaymentEngineService {
       try {
         return await this.prisma.$transaction(fn, {
           isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
+          maxWait: 10000,
+          timeout: 20000,
         });
       } catch (err: any) {
         const isConflict = err?.code === 'P2034' || err?.meta?.code === '40001';
