@@ -1976,6 +1976,8 @@ export class PaymentEngineService {
       provider: params.momoProvider,
       country: params.payerCountry,
       otpCode: params.otpCode,
+      onSuccessRedirectionUrl: `https://www.orzayah.com/lite/merci?statut=succes&id=${transaction.id}`,
+      onFailedRedirectionUrl: `https://www.orzayah.com/lite/merci?statut=echec&id=${transaction.id}`,
     });
 
     await this.prisma.transaction.update({
